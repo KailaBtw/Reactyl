@@ -28,6 +28,8 @@ nodemon mol_mod
 ### Backend Changes
 
 * Move deployment into a docker container!
+* Add prettier formatter
+* Add code linter for static analysis
 
 ### Frontend Changes
 
