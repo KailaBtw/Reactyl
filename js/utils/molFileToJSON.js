@@ -24,11 +24,13 @@ const molFileToJSON = (molFile) => {
     const atomsArray = [];
     for (let i = 4; i < 4 + parseInt(molObj.counts.molecules); i++) {
         const atom = {};
+        console.log("Raw atom line:", split[i]); 
         atom.position = {};
         atom.position.x = split[i].slice(0, 10).trim();
         atom.position.y = split[i].slice(10, 20).trim();
         atom.position.z = split[i].slice(20, 30).trim();
         atom.type = split[i].slice(31, 33).trim();
+        console.log(atom.type);
         atomsArray.push(atom);
     }
     molObj.atoms = atomsArray;

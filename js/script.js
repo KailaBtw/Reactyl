@@ -4,28 +4,28 @@
 
 // define variables
 const moleculeGeometries = {
-  "C": new THREE.SphereGeometry( .8, 32, 32 ),
-  "H": new THREE.SphereGeometry( .3, 32, 32 ),
-  "O": new THREE.SphereGeometry( .5, 32, 32 ),
-  "N": new THREE.SphereGeometry( .6, 32, 32 ),
-  "S": new THREE.SphereGeometry( .8, 32, 32 ),
-  "P": new THREE.SphereGeometry( .9, 32, 32 ),
-  "F": new THREE.SphereGeometry( .4, 32, 32 ),
-  "Cl": new THREE.SphereGeometry( .5, 32, 32 ),
-  "Br": new THREE.SphereGeometry( .6, 32, 32 ),
-  "I": new THREE.SphereGeometry( .7, 32, 32 ),
-}
+  C: new THREE.SphereGeometry(0.8, 32, 32),
+  H: new THREE.SphereGeometry(0.3, 32, 32),
+  O: new THREE.SphereGeometry(0.5, 32, 32),
+  N: new THREE.SphereGeometry(0.6, 32, 32),
+  S: new THREE.SphereGeometry(0.8, 32, 32),
+  P: new THREE.SphereGeometry(0.9, 32, 32),
+  F: new THREE.SphereGeometry(0.4, 32, 32),
+  Cl: new THREE.SphereGeometry(0.5, 32, 32),
+  Br: new THREE.SphereGeometry(0.6, 32, 32),
+  I: new THREE.SphereGeometry(0.7, 32, 32),
+};
 const moleculeMaterials = {
-  "C": new THREE.MeshStandardMaterial( { color: 0x333333 } ),
-  "H": new THREE.MeshStandardMaterial( { color: 0xffffff } ),
-  "O": new THREE.MeshStandardMaterial( { color: 0xff0000 } ),
-  "N": new THREE.MeshStandardMaterial( { color: 0x0000ff } ),
-  "S": new THREE.MeshStandardMaterial( { color: 0xffff00 } ),
-  "P": new THREE.MeshStandardMaterial( { color: 0xff00ff } ),
-  "F": new THREE.MeshStandardMaterial( { color: 0x00ff00 } ),
-  "Cl": new THREE.MeshStandardMaterial( { color: 0x00ff00 } ),
-  "Br": new THREE.MeshStandardMaterial( { color: 0x00ff00 } ),
-}
+  C: new THREE.MeshStandardMaterial({ color: 0x333333 }),
+  H: new THREE.MeshStandardMaterial({ color: 0xffffff }),
+  O: new THREE.MeshStandardMaterial({ color: 0xff0000 }),
+  N: new THREE.MeshStandardMaterial({ color: 0x0000ff }),
+  S: new THREE.MeshStandardMaterial({ color: 0xffff00 }),
+  P: new THREE.MeshStandardMaterial({ color: 0xff00ff }),
+  F: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
+  Cl: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
+  Br: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
+};
 
 // create canvas element
 const canvas = document.createElement("canvas");
@@ -41,11 +41,11 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
 
-const geometry = new THREE.SphereGeometry( .1, 32, 32 );
-const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
 
 // Define "main" code
 
@@ -53,19 +53,18 @@ const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
  * Initialize the MolMod scene when page is opened
  */
 function init(CSID) {
-
   // Clear the scene when the init function is called:
-  while(scene.children.length > 0){ 
-    scene.remove(scene.children[0]); 
+  while (scene.children.length > 0) {
+    scene.remove(scene.children[0]);
   }
 
   applyLighting();
 
-  fetch('molecules/' + CSID + '.mol')
-  .then(response => response.text())
-  .then(molFile => {
+  fetch("molecules/" + CSID + ".mol")
+    .then((response) => response.text())
+    .then((molFile) => {
       drawMolecule(molFile);
-  });
+    });
 
   camera.position.set(5, 5, 5);
   camera.lookAt(0, 0, 0);
@@ -78,33 +77,37 @@ function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
+
+
+/**
+ * "main" execution
+ */
 // initialize the program
 const defaultCSID = 2424;
-init(defaultCSID);
+init(2424);
 // start animation loop
 animate();
 
-
-
 // Define helper functions
 
-function drawMolecule(molFile){
+function drawMolecule(molFile) {
+  const molObject = molFileToJSON(molFile);
+  //console.log(molObject);
 
-    const molObject = molFileToJSON(molFile);
-    console.log(molObject);
-
-    for(let item of molObject.atoms){
-
-      // Verify a valid atom type
-      if (!moleculeGeometries[item.type] || !moleculeMaterials[item.type]) {
-        console.warn(`Unknown atom type: ${item.type}`);
-        continue;
-      }
-
-      const sphere = new THREE.Mesh( moleculeGeometries[item.type], moleculeMaterials[item.type] );
-      sphere.position.set(item.position.x, item.position.y, item.position.z);  
-      scene.add( sphere );
+  for (let item of molObject.atoms) {
+    // Verify a valid atom type
+    if (!moleculeGeometries[item.type] || !moleculeMaterials[item.type]) {
+      console.warn(`Unknown atom type: ${item.type}`);
+      continue;
     }
+
+    const sphere = new THREE.Mesh(
+      moleculeGeometries[item.type],
+      moleculeMaterials[item.type]
+    );
+    sphere.position.set(item.position.x, item.position.y, item.position.z);
+    scene.add(sphere);
+  }
 }
 
 function applyLighting() {
@@ -120,9 +123,9 @@ function applyLighting() {
   spotLight.shadow.mapSize.width = 1024;
   spotLight.shadow.mapSize.height = 1024;
 
-spotLight.shadow.camera.near = 500;
-spotLight.shadow.camera.far = 4000;
-spotLight.shadow.camera.fov = 30;
+  spotLight.shadow.camera.near = 500;
+  spotLight.shadow.camera.far = 4000;
+  spotLight.shadow.camera.fov = 30;
 
   scene.add(spotLight);
 }
