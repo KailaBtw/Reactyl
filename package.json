@@ -1,0 +1,24 @@
+{
+  "name": "mol_mod",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KailaBtw/MolMod-Molecular_Modeler.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KailaBtw/MolMod-Molecular_Modeler/issues"
+  },
+  "homepage": "https://github.com/KailaBtw/MolMod-Molecular_Modeler#readme",
+  "dependencies": {
+    "three": "^0.173.0"
+  }
+}
