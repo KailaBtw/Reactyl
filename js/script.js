@@ -38,11 +38,11 @@ function drawMolecule(molFile){
  * Initialize the MolMod scene when page is opened
  */
 function init(CSID) {
-  // Create a rudamentry shape (from three.js tutorial)
-  // const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-  // const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-  // const cube = new THREE.Mesh( geometry, material );
-  // scene.add( cube );
+
+  // Clear the scene when the init function is called:
+  while(scene.children.length > 0){ 
+    scene.remove(scene.children[0]); 
+  }
 
   fetch('molecules/' + CSID + '.mol')
   .then(response => response.text())
