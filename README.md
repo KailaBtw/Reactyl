@@ -30,6 +30,8 @@ nodemon mol_mod
 * Move deployment into a docker container!
 * Add prettier formatter
 * Add code linter for static analysis
+* Make bot for fetching .mol files from ChemSpider
+    * iterate over to get many
 
 ### Frontend Changes
 
