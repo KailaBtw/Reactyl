@@ -15,10 +15,24 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-// Set up the renderer
-const renderer = new THREE.WebGLRenderer({ canvas });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+const geometry = new THREE.SphereGeometry( .1, 32, 32 );
+const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+
+function drawMolecule(molFile){
+    const molObject = molFileToJSON(molFile);
+    
+    for(let item of molObject.atoms){
+        const sphere = new THREE.Mesh( geometry, material );
+        sphere.position.x = item.position.x;
+        sphere.position.y = item.position.y;
+        sphere.position.z = item.position.z;
+        scene.add( sphere );
+    }
+}
 
 /**
  * Initialize the MolMod scene when page is opened
@@ -30,11 +44,11 @@ function init(CSID) {
   // const cube = new THREE.Mesh( geometry, material );
   // scene.add( cube );
 
-  fetch("molecules/" + CSID + ".mol")
-    .then((response) => response.text())
-    .then((data) => {
-      console.log(data);
-    });
+  fetch('molecules/' + CSID + '.mol')
+  .then(response => response.text())
+  .then(molFile => {
+      drawMolecule(molFile);
+  });
 
   camera.position.set(5, 5, 5);
   camera.lookAt(0, 0, 0);
