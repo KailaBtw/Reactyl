@@ -2,6 +2,8 @@
  * Main Javascript class for Mol Mod
  */
 
+const DEBUG_MODE = true; // Set to false to disable debug logs
+
 // define variables
 const moleculeGeometries = {
   C: new THREE.SphereGeometry(0.8, 32, 32),
@@ -59,8 +61,8 @@ function init(CSID) {
   }
 
   // Display axis
-  const axesHelper = new THREE.AxesHelper( 5 );
-  scene.add( axesHelper );
+  const axesHelper = new THREE.AxesHelper(5);
+  scene.add(axesHelper);
 
   applyLighting();
 
@@ -82,8 +84,6 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-
-
 /**
  * "main" execution
  */
@@ -97,10 +97,17 @@ animate();
 
 function drawMolecule(molFile) {
   const molObject = molFileToJSON(molFile);
-  //console.log("Atoms before centering:", molObject.atoms);
+  log("Atoms before centering:", molObject.atoms);
 
   const center = findCenter(molObject);
-  //console.log("Computed Center:", center);
+  log("Computed Center:", center);
+  log("Using Center: (", 
+    center?.x || 0, 
+    ", ", 
+    center?.y || 0,
+    ", ",
+    center?.z || 0,
+    ")");
 
   for (let item of molObject.atoms) {
     // Verify a valid atom type
@@ -112,10 +119,7 @@ function drawMolecule(molFile) {
     const defaultMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 }); // Gray
     const material = moleculeMaterials[item.type] || defaultMaterial;
 
-    const sphere = new THREE.Mesh(
-      moleculeGeometries[item.type],
-      material
-    );
+    const sphere = new THREE.Mesh(moleculeGeometries[item.type], material);
 
     const x = parseFloat(item.position.x || 0) - (center?.x || 0);
     const y = parseFloat(item.position.y || 0) - (center?.y || 0);
@@ -144,4 +148,10 @@ function applyLighting() {
   spotLight.shadow.camera.fov = 30;
 
   scene.add(spotLight);
+}
+
+function log(...messages) {
+  if (DEBUG_MODE) {
+    console.log("[DEBUG]", ...messages);
+  }
 }
