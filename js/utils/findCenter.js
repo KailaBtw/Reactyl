@@ -1,3 +1,5 @@
+import * as THREE from "three";
+
 export function findCenter(molObject) {
     //Get the first point in the molecule:  
   let firstPoint = new THREE.Vector3(

@@ -5,6 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -19,6 +21,9 @@
   },
   "homepage": "https://github.com/KailaBtw/MolMod-Molecular_Modeler#readme",
   "dependencies": {
-    "three": "^0.173.0"
+    "dat.gui": "^0.7.9",
+    "three": "^0.173.0",
+    "three-orbitcontrols": "^2.110.2",
+    "vite": "^6.2.0"
   }
 }

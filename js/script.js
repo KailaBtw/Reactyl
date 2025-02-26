@@ -2,9 +2,10 @@
  * Main Javascript class for Mol Mod
  */
 import * as THREE from "three";
-import { OrbitControls } from "OrbitControls";
-import { molFileToJSON } from "molFileToJSON";
-import { findCenter } from "findCenter";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+import { molFileToJSON } from "./utils/molFileToJSON.js";
+import { findCenter } from "./utils/findCenter.js";
 
 const DEBUG_MODE = true; // Set to false to disable debug logs
 
@@ -155,6 +156,10 @@ function applyLighting() {
   spotLight.shadow.camera.fov = 30;
 
   scene.add(spotLight);
+
+  const light = new THREE.AmbientLight( 0x404040 ); // soft white light
+  scene.add( light );
+
 }
 
 function log(...messages) {

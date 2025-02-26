@@ -8,19 +8,20 @@
 
 ```{BASH}
 npm init
-npm install three
-nvm install 20
-nvm use 20
+npm install
 
-# set up nodemon
-npm install nodemon -g
-nodemon mol_mod
+npm install vite
+npm install three-orbitcontrols
 ```
 
 ### Run instructions
 
 * Use VScode "Run in liveserver"
 * Navigate to [Molecular Modeler localhost][mol_mod]
+
+
+npm run dev
+
 
 ## 'mol' Format Explanation
 
@@ -62,6 +63,18 @@ nodemon mol_mod
 ## Example Software
 
 * https://molview.org/
+
+## session
+
+// handles 
+npm install vite
+vite dev
+
+
+
+git reset --hard
+git checkout
+git fetch
 
 
 [mol_mod]: http://localhost:5500/mol_mod/
