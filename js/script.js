@@ -58,6 +58,10 @@ function init(CSID) {
     scene.remove(scene.children[0]);
   }
 
+  // Display axis
+  const axesHelper = new THREE.AxesHelper( 5 );
+  scene.add( axesHelper );
+
   applyLighting();
 
   fetch("molecules/" + CSID + ".mol")
