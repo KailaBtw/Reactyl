@@ -1,7 +1,10 @@
 /**
  * Main Javascript class for Mol Mod
  */
-
+import * as THREE from "three";
+import { OrbitControls } from "OrbitControls";
+import { molFileToJSON } from "molFileToJSON";
+import { findCenter } from "findCenter";
 
 const DEBUG_MODE = true; // Set to false to disable debug logs
 
@@ -47,6 +50,8 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+const controls = new OrbitControls( camera, renderer.domElement );
+
 log("Scene and renderer initialized.");
 
 
@@ -84,6 +89,8 @@ function init(CSID) {
 function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
+
+  controls.update();
 }
 
 /**

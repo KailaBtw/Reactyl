@@ -1,4 +1,4 @@
-const findCenter = (molObject) => {
+export function findCenter(molObject) {
     //Get the first point in the molecule:  
   let firstPoint = new THREE.Vector3(
     molObject.atoms[0].position.x, 

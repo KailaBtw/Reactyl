@@ -7,9 +7,21 @@
 
     <!-- Import Map to Load Three.js Modules -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js"></script>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./js/libs/three.module.js",
+                "OrbitControls": "./js/libs/OrbitControls.js",
+                "molFileToJSON": "./js/utils/molFileToJSON.js",
+                "findCenter": "./js/utils/findCenter.js"
+            }
+        }
+        </script>
+
     <!-- import the conversion functions -->
-    <script src="js/utils/molFileToJSON.js"></script>
-    <script src="js/utils/findCenter.js"></script>
+    <!-- <script src="js/utils/molFileToJSON.js"></script>
+    <script src="js/utils/findCenter.js"></script> -->
     <style>
         body { margin: 0; }
     </style>

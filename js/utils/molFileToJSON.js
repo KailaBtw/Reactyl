@@ -1,4 +1,5 @@
-const molFileToJSON = (molFile) => {
+export function molFileToJSON(molFile) {
+// const molFileToJSON = (molFile) => {
     let molObj = {};
     const split = molFile.split('\n');
     
