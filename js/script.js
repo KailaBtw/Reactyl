@@ -83,6 +83,7 @@ function animate() {
 }
 
 
+
 /**
  * "main" execution
  */
@@ -96,7 +97,10 @@ animate();
 
 function drawMolecule(molFile) {
   const molObject = molFileToJSON(molFile);
-  //console.log(molObject);
+  //console.log("Atoms before centering:", molObject.atoms);
+
+  const center = findCenter(molObject);
+  //console.log("Computed Center:", center);
 
   for (let item of molObject.atoms) {
     // Verify a valid atom type
@@ -105,11 +109,19 @@ function drawMolecule(molFile) {
       continue;
     }
 
+    const defaultMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 }); // Gray
+    const material = moleculeMaterials[item.type] || defaultMaterial;
+
     const sphere = new THREE.Mesh(
       moleculeGeometries[item.type],
-      moleculeMaterials[item.type]
+      material
     );
-    sphere.position.set(item.position.x, item.position.y, item.position.z);
+
+    const x = parseFloat(item.position.x || 0) - (center?.x || 0);
+    const y = parseFloat(item.position.y || 0) - (center?.y || 0);
+    const z = parseFloat(item.position.z || 0) - (center?.z || 0);
+
+    sphere.position.set(x, y, z);
     scene.add(sphere);
   }
 }
