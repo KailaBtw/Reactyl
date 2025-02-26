@@ -51,6 +51,7 @@ nodemon mol_mod
 * Add code linter for static analysis
 * Make bot for fetching .mol files from ChemSpider
     * iterate over to get many
+* Export .mol
 
 ### Frontend Changes
 
@@ -58,6 +59,10 @@ nodemon mol_mod
     * https://stackoverflow.com/questions/1837261/how-to-animate-a-favicon
     * https://favicon.io/
 
+## Example Software
+
+* https://molview.org/
 
 
 [mol_mod]: http://localhost:5500/mol_mod/
+[mol_view]
