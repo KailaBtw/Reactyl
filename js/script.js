@@ -102,6 +102,8 @@ init(2424);
 // start animation loop
 animate();
 
+let moleculeGroup = new THREE.Group();
+
 
 // Define helper functions
 
@@ -130,8 +132,9 @@ function drawMolecule(molFile) {
     const z = parseFloat(item.position.z || 0) - (center?.z || 0);
 
     sphere.position.set(x, y, z);
-    scene.add(sphere);
+    moleculeGroup.add( sphere );
   }
+  scene.add( moleculeGroup );
 }
 
 function applyLighting() {
