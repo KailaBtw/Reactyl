@@ -2,6 +2,7 @@
  * Main Javascript class for Mol Mod
  */
 
+
 const DEBUG_MODE = true; // Set to false to disable debug logs
 
 // define variables
@@ -46,19 +47,19 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const geometry = new THREE.SphereGeometry(0.1, 32, 32);
-const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+log("Scene and renderer initialized.");
 
-// Define "main" code
 
 /**
  * Initialize the MolMod scene when page is opened
  */
 function init(CSID) {
+  log(`Initializing scene with molecule CSID: ${CSID}`);
   // Clear the scene when the init function is called:
   while (scene.children.length > 0) {
     scene.remove(scene.children[0]);
   }
+  log("Scene cleared.");
 
   // Display axis
   const axesHelper = new THREE.AxesHelper(5);
@@ -74,6 +75,7 @@ function init(CSID) {
 
   camera.position.set(5, 5, 5);
   camera.lookAt(0, 0, 0);
+  log("Camera positioned and oriented.");
 }
 
 /**
@@ -93,6 +95,7 @@ init(2424);
 // start animation loop
 animate();
 
+
 // Define helper functions
 
 function drawMolecule(molFile) {
@@ -101,13 +104,7 @@ function drawMolecule(molFile) {
 
   const center = findCenter(molObject);
   log("Computed Center:", center);
-  log("Using Center: (", 
-    center?.x || 0, 
-    ", ", 
-    center?.y || 0,
-    ", ",
-    center?.z || 0,
-    ")");
+  
 
   for (let item of molObject.atoms) {
     // Verify a valid atom type
