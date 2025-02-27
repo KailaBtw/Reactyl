@@ -55,6 +55,7 @@ const controls = new OrbitControls( camera, renderer.domElement );
 
 log("Scene and renderer initialized.");
 
+//scene.background = 0xFFFFFF;
 
 /**
  * Initialize the MolMod scene when page is opened
@@ -139,7 +140,7 @@ function drawMolecule(molFile) {
 }
 
 function applyLighting() {
-  const spotLight = new THREE.SpotLight(0xffffff); // White light, intensity 2
+  const spotLight = new THREE.SpotLight(0xffffff, 8); // White light, intensity 2
   spotLight.position.set(50, 200, 50); // Closer and more practical position
   //spotLight.map = new THREE.TextureLoader().load( url );
 
@@ -157,7 +158,7 @@ function applyLighting() {
 
   scene.add(spotLight);
 
-  const light = new THREE.AmbientLight( 0x404040 ); // soft white light
+  const light = new THREE.AmbientLight( 0x404040, 1); // soft white light
   scene.add( light );
 
 }

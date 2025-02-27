@@ -8,8 +8,8 @@
 
 ```{BASH}
 npm init
-npm install
 
+npm install
 npm install vite
 npm install three-orbitcontrols
 ```
@@ -19,9 +19,9 @@ npm install three-orbitcontrols
 * Use VScode "Run in liveserver"
 * Navigate to [Molecular Modeler localhost][mol_mod]
 
+### Deploy to github pages:
 
-npm run dev
-
+npm run deploy
 
 ## 'mol' Format Explanation
 
