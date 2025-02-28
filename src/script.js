@@ -48,12 +48,11 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.z = 5;
 
-const center = {
+let center = {
   x: 0,
   y: 0,
   z: 0,
 };
-
 
 // Handle Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -63,7 +62,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 document.body.appendChild(renderer.domElement);
 
 // rotation controls
-const controls = new OrbitControls( camera, renderer.domElement );
+const controls = new OrbitControls(camera, renderer.domElement);
 
 log("Scene and renderer initialized.");
 
@@ -82,20 +81,20 @@ function init(CSID) {
   const axesHelper = new THREE.AxesHelper(5);
   scene.add(axesHelper);
 
-
-
   fetch("molecules/" + CSID + ".mol")
     .then((response) => response.text())
     .then((molFile) => {
       drawMolecule(molFile);
     });
 
+  if (false && DEBUG_MODE) {
     // Create a basic shape (cube)
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green material
-  const cube = new THREE.Mesh(geometry, material);
-  cube.castShadow = true; // Cube casts shadows
-  scene.add(cube);
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green material
+    const cube = new THREE.Mesh(geometry, material);
+    cube.castShadow = true; // Cube casts shadows
+    scene.add(cube);
+  }
 
   applyLighting();
 
@@ -130,17 +129,17 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-let moleculeGroup = new THREE.Group();
-
 // Define helper functions
 
 function drawMolecule(molFile) {
   const molObject = molFileToJSON(molFile);
   log("Atoms before centering:", molObject.atoms);
 
-  const center = findCenter(molObject);
-  log("Computed Center:", center);
-  this.center = center;
+  const _center = findCenter(molObject);
+  log("Computed Center:", _center);
+  center = _center;
+
+  let moleculeGroup = new THREE.Group();
 
   for (let item of molObject.atoms) {
     // Verify a valid atom type
@@ -162,48 +161,54 @@ function drawMolecule(molFile) {
     const z = parseFloat(item.position.z || 0) - (center?.z || 0);
 
     sphere.position.set(x, y, z);
-    moleculeGroup.add( sphere );
+    moleculeGroup.add(sphere);
   }
-  scene.add( moleculeGroup );
+  scene.add(moleculeGroup);
 }
 
 function applyLighting() {
+  // Add a point light with shadows
+  if (false && DEBUG_MODE) {
+    const light = new THREE.PointLight(0xffffff, 10, 100);
+    light.position.set(center.x, center.y + 5, center.z);
+    light.castShadow = true; // Light casts shadows
+    light.shadow.mapSize.width = 1024;
+    light.shadow.mapSize.height = 1024;
+    light.shadow.camera.near = 0.1;
+    light.shadow.camera.far = 100;
+    scene.add(light);
 
-// Add a point light with shadows
-const light = new THREE.PointLight(0xffffff, 1, 100);
-light.position.set(center.x, center.y, center.z + 10);
-light.castShadow = true; // Light casts shadows
-light.shadow.mapSize.width = 1024;
-light.shadow.mapSize.height = 1024;
-light.shadow.camera.near = 0.1;
-light.shadow.camera.far = 100;
-scene.add(light);
-
-  const groundGeometry = new THREE.PlaneGeometry(500, 500);
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -10;
-  ground.receiveShadow = true;
-
-  ground.position.y = -1;
-
-  scene.add(ground);
-
-  
-
-  if(DEBUG_MODE) {
-  const shadowHelper = new THREE.CameraHelper(light.shadow.camera);
-  ///const spotLightHelper = new THREE.SpotLightHelper(spotLight);
-  scene.add(shadowHelper);
-  // scene.add(spotLightHelper);
+    const shadowHelper = new THREE.CameraHelper(light.shadow.camera);
+    scene.add(shadowHelper);
   }
 
-// Add an ambient light for softer overall lighting
-const ambientLight = new THREE.AmbientLight(0x404040);
-scene.add(ambientLight);
+  const spotLight = new THREE.SpotLight(0xffffff, 30);
+  spotLight.position.set(3, 5, 3);
+  spotLight.castShadow = true;
+  spotLight.shadow.mapSize.width = 1024;
+  spotLight.shadow.mapSize.height = 1024;
+  spotLight.shadow.camera.near = 500;
+  spotLight.shadow.camera.far = 4000;
+  spotLight.shadow.camera.fov = 30;
+  scene.add(spotLight);
 
+  // Add an ambient light for softer overall lighting
+  const light = new THREE.AmbientLight(0xffffff, 0.2); // soft white light
+  scene.add(light);
+
+  //   const groundGeometry = new THREE.PlaneGeometry(500, 500);
+  //   const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+  //   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  //   ground.rotation.x = -Math.PI / 2;
+  //  ground.position.y = -10;
+  //  ground.receiveShadow = true;
+  //  ground.position.y = -1;
+  //   scene.add(ground);
+
+  if (false && DEBUG_MODE) {
+    const spotLightHelper = new THREE.SpotLightHelper(spotLight);
+    scene.add(spotLightHelper);
+  }
 }
 
 function log(...messages) {
