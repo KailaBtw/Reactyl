@@ -84,11 +84,11 @@ function init(CSID) {
 
 
 
-  // fetch("molecules/" + CSID + ".mol")
-  //   .then((response) => response.text())
-  //   .then((molFile) => {
-  //     drawMolecule(molFile);
-  //   });
+  fetch("molecules/" + CSID + ".mol")
+    .then((response) => response.text())
+    .then((molFile) => {
+      drawMolecule(molFile);
+    });
 
     // Create a basic shape (cube)
   const geometry = new THREE.BoxGeometry(1, 1, 1);

@@ -6,9 +6,9 @@ export default defineConfig({
 
   // enable sourcemaps for useful debug messages in browser inspector
   build: {
-    outDir: './', // Output to the root of your project
+    outDir: 'dist', // Output to the root of your project
     assetsDir: 'assets', // Place assets in the 'assets' folder
-    emptyOutDir: true, // Cleans the output directory before building
+    //emptyOutDir: true, // Cleans the output directory before building
     sourcemap: true, // or 'inline', or 'hidden'
   },
 });
