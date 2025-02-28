@@ -16,12 +16,11 @@ npm install three-orbitcontrols
 
 ### Run instructions
 
-* Use VScode "Run in liveserver"
-* Navigate to [Molecular Modeler localhost][mol_mod]
+* Deploy to github pages:
 
-### Deploy to github pages:
-
+```
 npm run deploy
+```
 
 ## 'mol' Format Explanation
 

@@ -46,16 +46,26 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
+camera.position.z = 5;
 
-const renderer = new THREE.WebGLRenderer();
+const center = {
+  x: 0,
+  y: 0,
+  z: 0,
+};
+
+
+// Handle Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 document.body.appendChild(renderer.domElement);
 
+// rotation controls
 const controls = new OrbitControls( camera, renderer.domElement );
 
 log("Scene and renderer initialized.");
-
-//scene.background = 0xFFFFFF;
 
 /**
  * Initialize the MolMod scene when page is opened
@@ -72,13 +82,22 @@ function init(CSID) {
   const axesHelper = new THREE.AxesHelper(5);
   scene.add(axesHelper);
 
-  applyLighting();
 
-  fetch("molecules/" + CSID + ".mol")
-    .then((response) => response.text())
-    .then((molFile) => {
-      drawMolecule(molFile);
-    });
+
+  // fetch("molecules/" + CSID + ".mol")
+  //   .then((response) => response.text())
+  //   .then((molFile) => {
+  //     drawMolecule(molFile);
+  //   });
+
+    // Create a basic shape (cube)
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green material
+  const cube = new THREE.Mesh(geometry, material);
+  cube.castShadow = true; // Cube casts shadows
+  scene.add(cube);
+
+  applyLighting();
 
   camera.position.set(5, 5, 5);
   camera.lookAt(0, 0, 0);
@@ -104,8 +123,14 @@ init(2424);
 // start animation loop
 animate();
 
-let moleculeGroup = new THREE.Group();
+// Handle window resizing
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
 
+let moleculeGroup = new THREE.Group();
 
 // Define helper functions
 
@@ -115,7 +140,7 @@ function drawMolecule(molFile) {
 
   const center = findCenter(molObject);
   log("Computed Center:", center);
-  
+  this.center = center;
 
   for (let item of molObject.atoms) {
     // Verify a valid atom type
@@ -129,6 +154,9 @@ function drawMolecule(molFile) {
 
     const sphere = new THREE.Mesh(moleculeGeometries[item.type], material);
 
+    sphere.castShadow = true;
+    sphere.receiveShadow = true;
+
     const x = parseFloat(item.position.x || 0) - (center?.x || 0);
     const y = parseFloat(item.position.y || 0) - (center?.y || 0);
     const z = parseFloat(item.position.z || 0) - (center?.z || 0);
@@ -140,26 +168,41 @@ function drawMolecule(molFile) {
 }
 
 function applyLighting() {
-  const spotLight = new THREE.SpotLight(0xffffff, 8); // White light, intensity 2
-  spotLight.position.set(50, 200, 50); // Closer and more practical position
-  //spotLight.map = new THREE.TextureLoader().load( url );
 
-  // Softer shadows and smoother edges
-  spotLight.angle = Math.PI / 6; // 30-degree spread
-  spotLight.penumbra = 0.5; // Soft edges for realism
+// Add a point light with shadows
+const light = new THREE.PointLight(0xffffff, 1, 100);
+light.position.set(center.x, center.y, center.z + 10);
+light.castShadow = true; // Light casts shadows
+light.shadow.mapSize.width = 1024;
+light.shadow.mapSize.height = 1024;
+light.shadow.camera.near = 0.1;
+light.shadow.camera.far = 100;
+scene.add(light);
 
-  spotLight.castShadow = true;
-  spotLight.shadow.mapSize.width = 1024;
-  spotLight.shadow.mapSize.height = 1024;
+  const groundGeometry = new THREE.PlaneGeometry(500, 500);
+  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 
-  spotLight.shadow.camera.near = 500;
-  spotLight.shadow.camera.far = 4000;
-  spotLight.shadow.camera.fov = 30;
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -10;
+  ground.receiveShadow = true;
 
-  scene.add(spotLight);
+  ground.position.y = -1;
 
-  const light = new THREE.AmbientLight( 0x404040, 1); // soft white light
-  scene.add( light );
+  scene.add(ground);
+
+  
+
+  if(DEBUG_MODE) {
+  const shadowHelper = new THREE.CameraHelper(light.shadow.camera);
+  ///const spotLightHelper = new THREE.SpotLightHelper(spotLight);
+  scene.add(shadowHelper);
+  // scene.add(spotLightHelper);
+  }
+
+// Add an ambient light for softer overall lighting
+const ambientLight = new THREE.AmbientLight(0x404040);
+scene.add(ambientLight);
 
 }
 
