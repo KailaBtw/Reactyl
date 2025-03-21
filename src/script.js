@@ -40,6 +40,27 @@ const moleculeMaterials = {
   Br: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
 };
 
+// Molecule Selector
+const loadMoleculeFile = {
+  loadFile : function() { 
+      document.getElementById('fileInput').click();
+  },
+};
+const showExampleMolecules = {
+  showCaffeine : function() { 
+      getMolecule(2424);
+  },
+  showEthanol : function() { 
+      getMolecule(682);
+  },
+  showCatnip : function() { 
+      getMolecule(141747);
+  },
+  showCinnamon : function() { 
+      getMolecule(553117);
+  }
+};
+
 // create canvas element
 const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
@@ -68,6 +89,7 @@ let center = {
   z: 0,
 };
 
+// Set up auto-rotation switches
 let autoRotateX = { switch: false };
 let autoRotateY = { switch: false };
 let autoRotateZ = { switch: false };
@@ -174,16 +196,29 @@ function set_up_gui() {
   // set up gui
   const gui = new dat.GUI();
 
+  const loadMolecule = gui.addFolder('Load .mol file')
+  loadMolecule.add(loadMoleculeFile, 'loadFile').name('Load file from device');
+  loadMolecule.open();
+
+  // Molecule selector
+  const moleculeType = gui.addFolder('Molecule Selector')
+  moleculeType.add(showExampleMolecules, 'showCaffeine').name('Caffeine (Coffee, Chocolate, Tea)');
+  moleculeType.add(showExampleMolecules, 'showEthanol').name('Ethanol (Alcohol)');
+  moleculeType.add(showExampleMolecules, 'showCatnip').name('Nepetalactone (Catnip)');
+  moleculeType.add(showExampleMolecules, 'showCinnamon').name('Cinnamaldehyde (Cinnamon)');
+  moleculeType.open();
+
+  // Position Options
   const moleculePosition = gui.addFolder("Position");
   moleculePosition.add(moleculeGroup.position, "x", -10, 10);
   moleculePosition.add(moleculeGroup.position, "y", -10, 10);
   moleculePosition.add(moleculeGroup.position, "z", -10, 10);
 
+  // Rotation options
   const moleculeRotation = gui.addFolder("Rotation");
   moleculeRotation.add(moleculeGroup.rotation, "x", -Math.PI, Math.PI);
   moleculeRotation.add(moleculeGroup.rotation, "y", -Math.PI, Math.PI);
   moleculeRotation.add(moleculeGroup.rotation, "z", -Math.PI, Math.PI);
-  // Auto-rotation
   moleculeRotation.add(autoRotateX, "switch").name("Auto Rotate X");
   moleculeRotation.add(autoRotateY, "switch").name("Auto Rotate Y");
   moleculeRotation.add(autoRotateZ, "switch").name("Auto Rotate Z");
