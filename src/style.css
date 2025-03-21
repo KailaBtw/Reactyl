@@ -8,6 +8,15 @@ body {
     font-family: sans-serif; /* Default font */
   }
   
+  #fileInput {
+    opacity: 0;
+    width: 1px; /* Or 0px, but 1px might be more reliable */
+    height: 1px;
+    overflow: hidden; /* Prevent any potential visual artifacts */
+    position: absolute; /* Needed for reliable hiding */
+    z-index: -1; /* Ensure it's behind other elements if needed */
+  }
+
   #three-canvas {
     width: 100vw; /* Cover the entire viewport width */
     height: 100vh; /* Cover the entire viewport height */

@@ -204,26 +204,47 @@ function set_up_gui() {
   loadMolecule.add(loadMoleculeFile, "loadFile").name("Load file from device");
   loadMolecule.open();
 
+
+
+
+
+
+
+
   // Molecule selector
+
   const moleculeType = gui.addFolder("Molecule Selector");
-  const moleculeOptions = {
-    molecule: "Caffeine (Coffee, Chocolate, Tea)", // Default selection
-  };
+
+  // Create input element
+  const searchInput = document.createElement("input");
+  searchInput.id = "moleculeSearch";
+  searchInput.type = "text";
+  searchInput.placeholder = "Search Molecule...";
+
+  // Append input to dat.GUI folder
+  moleculeType.domElement.appendChild(searchInput);
+
+  // refactor to an enumin seperate file!
   const moleculeFunctions = {
     "Caffeine (Coffee, Chocolate, Tea)": showExampleMolecules.showCaffeine,
     "Ethanol (Alcohol)": showExampleMolecules.showEthanol,
     "Nepetalactone (Catnip)": showExampleMolecules.showCatnip,
     "Cinnamaldehyde (Cinnamon)": showExampleMolecules.showCinnamon,
   };
+  // Initialize Awesomplete
+  const awesomplete = new Awesomplete(searchInput, {
+    list: Object.keys(moleculeFunctions), // Use molecule names
+  });
+  
+  // Event listener for selection
+  searchInput.addEventListener("awesomplete-selectcomplete", (event) => {
+    const selectedMolecule = event.text.value;
+    moleculeFunctions[selectedMolecule]();
+  });
 
-  moleculeType
-    .add(moleculeOptions, "molecule", Object.keys(moleculeFunctions))
-    .name("Select Molecule")
-    .onChange((selectedMolecule) => {
-      // Call the corresponding function when the selection changes
-      moleculeFunctions[selectedMolecule]();
-    });
   moleculeType.open();
+
+
 
   // Position Options
   const moleculePosition = gui.addFolder("Position");
