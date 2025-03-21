@@ -298,6 +298,7 @@ function addMoleculeSearch(gui) {
   // Append input to dat.GUI folder
   moleculeSearch.domElement.appendChild(searchInput);
 
+  // keep in this is required (ignore unused ref warning!!)
   const awesomplete = new Awesomplete(searchInput, {
     list: Object.values(Molecules).map((molecule) => molecule.name), // Use molecule names
   });
