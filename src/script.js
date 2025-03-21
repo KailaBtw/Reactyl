@@ -2,7 +2,7 @@
  * Main Javascript class for Mol Mod
  */
 import * as THREE from "three";
-import * as dat from 'dat.gui';
+import * as dat from "dat.gui";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { molFileToJSON } from "./utils/molFileToJSON.js";
@@ -11,8 +11,6 @@ import { generateUUID } from "three/src/math/MathUtils.js";
 
 const DEBUG_MODE = true; // Set to false to disable debug logs
 const LIGHTING_DEBUG = false; // Set to false to disable lighting debug
-
-
 
 // VARIABLES
 
@@ -39,6 +37,7 @@ const moleculeMaterials = {
   Cl: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
   Br: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
 };
+const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
 // create canvas element
 const canvas = document.createElement("canvas");
@@ -51,6 +50,7 @@ let moleculeGroup = new THREE.Group();
 const clock = new THREE.Clock();
 let deltaTime = 0;
 let totalTime = 0;
+let centerOffset = 0;
 
 // Create the scene and camera
 const scene = new THREE.Scene();
@@ -75,36 +75,32 @@ let autoRotateZ = { switch: false };
 
 // Molecule Selector
 const loadMoleculeFile = {
-  loadFile : function() { 
-      document.getElementById('fileInput').click();
+  loadFile: function () {
+    document.getElementById("fileInput").click();
   },
 };
 const showExampleMolecules = {
-  showCaffeine : function() { 
-      getMolecule(2424);
+  showCaffeine: function () {
+    getMolecule(2424);
   },
-  showEthanol : function() { 
-      getMolecule(682);
+  showEthanol: function () {
+    getMolecule(682);
   },
-  showCatnip : function() { 
-      getMolecule(141747);
+  showCatnip: function () {
+    getMolecule(141747);
   },
-  showCinnamon : function() { 
-      getMolecule(553117);
-  }
+  showCinnamon: function () {
+    getMolecule(553117);
+  },
 };
-
-
-
-
-
 
 /**
  * MAIN
  */
 
 // Handle Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
@@ -112,7 +108,6 @@ document.body.appendChild(renderer.domElement);
 
 // rotation controls
 const controls = new OrbitControls(camera, renderer.domElement);
-
 log("Scene and renderer initialized.");
 
 // initialize the program
@@ -121,31 +116,25 @@ init(2424);
 // start animation loop
 animate();
 
-
-
-
 /**
  * ADD EVENT LISTENERS HERE
  */
 
 // Initialize file input
-const moleculeFileInput = document.getElementById('fileInput');
-moleculeFileInput.addEventListener('change', function(e) {
-    const file = moleculeFileInput.files[0];
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const text = reader.result;
-        drawMolecule(text);
-    };
-    reader.readAsText(file);
+const moleculeFileInput = document.getElementById("fileInput");
+moleculeFileInput.addEventListener("change", function (e) {
+  const file = moleculeFileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const text = reader.result;
+    drawMolecule(text);
+  };
+  reader.readAsText(file);
 });
 
 // Initial resize call and event listener for window resizes
 onWindowResize();
-window.addEventListener('resize', onWindowResize, false);
-
-
-
+window.addEventListener("resize", onWindowResize, false);
 
 // HELPER FUNCTIONS
 
@@ -159,14 +148,14 @@ function animate() {
   deltaTime = clock.getDelta();
   totalTime += deltaTime;
 
-  if(autoRotateX.switch){
-      moleculeGroup.rotation.x-=.5*deltaTime;
+  if (autoRotateX.switch) {
+    moleculeGroup.rotation.x -= 0.5 * deltaTime;
   }
-  if(autoRotateY.switch){
-      moleculeGroup.rotation.y-=.5*deltaTime;
+  if (autoRotateY.switch) {
+    moleculeGroup.rotation.y -= 0.5 * deltaTime;
   }
-  if(autoRotateZ.switch){
-      moleculeGroup.rotation.z-=.5*deltaTime;
+  if (autoRotateZ.switch) {
+    moleculeGroup.rotation.z -= 0.5 * deltaTime;
   }
 
   controls.update();
@@ -211,16 +200,29 @@ function set_up_gui() {
   // set up gui
   const gui = new dat.GUI();
 
-  const loadMolecule = gui.addFolder('Load .mol file')
-  loadMolecule.add(loadMoleculeFile, 'loadFile').name('Load file from device');
+  const loadMolecule = gui.addFolder("Load .mol file");
+  loadMolecule.add(loadMoleculeFile, "loadFile").name("Load file from device");
   loadMolecule.open();
 
   // Molecule selector
-  const moleculeType = gui.addFolder('Molecule Selector')
-  moleculeType.add(showExampleMolecules, 'showCaffeine').name('Caffeine (Coffee, Chocolate, Tea)');
-  moleculeType.add(showExampleMolecules, 'showEthanol').name('Ethanol (Alcohol)');
-  moleculeType.add(showExampleMolecules, 'showCatnip').name('Nepetalactone (Catnip)');
-  moleculeType.add(showExampleMolecules, 'showCinnamon').name('Cinnamaldehyde (Cinnamon)');
+  const moleculeType = gui.addFolder("Molecule Selector");
+  const moleculeOptions = {
+    molecule: "Caffeine (Coffee, Chocolate, Tea)", // Default selection
+  };
+  const moleculeFunctions = {
+    "Caffeine (Coffee, Chocolate, Tea)": showExampleMolecules.showCaffeine,
+    "Ethanol (Alcohol)": showExampleMolecules.showEthanol,
+    "Nepetalactone (Catnip)": showExampleMolecules.showCatnip,
+    "Cinnamaldehyde (Cinnamon)": showExampleMolecules.showCinnamon,
+  };
+
+  moleculeType
+    .add(moleculeOptions, "molecule", Object.keys(moleculeFunctions))
+    .name("Select Molecule")
+    .onChange((selectedMolecule) => {
+      // Call the corresponding function when the selection changes
+      moleculeFunctions[selectedMolecule]();
+    });
   moleculeType.open();
 
   // Position Options
@@ -238,6 +240,7 @@ function set_up_gui() {
   moleculeRotation.add(autoRotateY, "switch").name("Auto Rotate Y");
   moleculeRotation.add(autoRotateZ, "switch").name("Auto Rotate Z");
 
+  // Scale options
   const moleculeScale = gui.addFolder("Scale");
   const scaleX = moleculeScale
     .add(moleculeGroup.scale, "x", 0.1, 1.5)
@@ -258,7 +261,6 @@ function getMolecule(CSID) {
 }
 
 function drawMolecule(molFile) {
-
   while (moleculeGroup.children.length > 0) {
     moleculeGroup.remove(moleculeGroup.children[0]);
   }
@@ -327,6 +329,49 @@ function drawMolecule(molFile) {
     sphere.position.z = item.position.z - moleculeCenter.z;
     moleculeGroup.add(sphere);
   }
+
+  // Render atomic bonds
+  for (let bond of molObject.bonds) {
+    let index1 = Number(bond[0]) - 1;
+    let index2 = Number(bond[1]) - 1;
+
+    let atom1 = molObject.atoms[index1];
+    let atom2 = molObject.atoms[index2];
+
+    let point1 = new THREE.Vector3(
+      atom1.position.x - moleculeCenter.x,
+      atom1.position.y - moleculeCenter.y,
+      atom1.position.z - moleculeCenter.z
+    );
+    let point2 = new THREE.Vector3(
+      atom2.position.x - moleculeCenter.x,
+      atom2.position.y - moleculeCenter.y,
+      atom2.position.z - moleculeCenter.z
+    );
+
+    let distance = point1.distanceTo(point2);
+
+    let cylinderRadius = bond[2] == 1 ? 0.05 : 0.15;
+
+    const cylinderGeometry = new THREE.CylinderGeometry(
+      cylinderRadius,
+      cylinderRadius,
+      distance,
+      8
+    );
+    cylinderGeometry.translate(0, distance / 2, 0);
+    cylinderGeometry.rotateX(Math.PI / 2);
+
+    const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+    cylinder.position.x = atom1.position.x - moleculeCenter.x;
+    cylinder.position.y = atom1.position.y - moleculeCenter.y;
+    cylinder.position.z = atom1.position.z - moleculeCenter.z;
+    cylinder.lookAt(point2);
+
+    moleculeGroup.add(cylinder);
+  }
+
+  moleculeGroup.position.z = centerOffset;
   // log("Group position:" + moleculeGroup.position); TODO FIX THIS
 
   scene.add(moleculeGroup);
@@ -381,7 +426,8 @@ function applyLighting() {
 }
 
 // Handle window resizing
-function onWindowResize() {  // TODO: clean up how quick this updates?
+function onWindowResize() {
+  // TODO: clean up how quick this updates?
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);

@@ -58,8 +58,10 @@ sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
 
 ### Backend Changes
 
-# fix github pages being unable to access script.json or anything in assets
-# switch to typescript
+* Clean up Documentation and javadoc
+* Clean up readme
+* fix github pages being unable to access script.json or anything in assets
+* switch to typescript
 * Move deployment into a docker container!
 * Add prettier formatter
 * Add code linter for static analysis
