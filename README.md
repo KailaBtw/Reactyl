@@ -14,7 +14,13 @@ npm install vite
 npm install three-orbitcontrols
 ```
 
-### Run instructions
+### Local dev run instructions
+
+```
+npm run dev
+```
+
+### Live version Run instructions
 
 * Deploy to github pages:
 
@@ -46,6 +52,7 @@ npm run deploy
 
 ### Backend Changes
 
+# fix github pages being unable to access script.json or anything in assets
 # switch to typescript
 * Move deployment into a docker container!
 * Add prettier formatter
