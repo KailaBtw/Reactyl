@@ -47,6 +47,11 @@ document.body.appendChild(canvas);
 // add group to class
 let moleculeGroup = new THREE.Group();
 
+// track execution time
+const clock = new THREE.Clock();
+let deltaTime = 0;
+let totalTime = 0;
+
 // Create the scene and camera
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -62,6 +67,11 @@ let center = {
   y: 0,
   z: 0,
 };
+
+let autoRotateX = { switch: false };
+let autoRotateY = { switch: false };
+let autoRotateZ = { switch: false };
+
 
 
 
@@ -108,6 +118,19 @@ animate();
 function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
+
+  deltaTime = clock.getDelta();
+  totalTime += deltaTime;
+
+  if(autoRotateX.switch){
+      moleculeGroup.rotation.x-=.5*deltaTime;
+  }
+  if(autoRotateY.switch){
+      moleculeGroup.rotation.y-=.5*deltaTime;
+  }
+  if(autoRotateZ.switch){
+      moleculeGroup.rotation.z-=.5*deltaTime;
+  }
 
   controls.update();
 }
@@ -160,6 +183,10 @@ function set_up_gui() {
   moleculeRotation.add(moleculeGroup.rotation, "x", -Math.PI, Math.PI);
   moleculeRotation.add(moleculeGroup.rotation, "y", -Math.PI, Math.PI);
   moleculeRotation.add(moleculeGroup.rotation, "z", -Math.PI, Math.PI);
+  // Auto-rotation
+  moleculeRotation.add(autoRotateX, "switch").name("Auto Rotate X");
+  moleculeRotation.add(autoRotateY, "switch").name("Auto Rotate Y");
+  moleculeRotation.add(autoRotateZ, "switch").name("Auto Rotate Z");
 
   const moleculeScale = gui.addFolder("Scale");
   const scaleX = moleculeScale
@@ -169,7 +196,6 @@ function set_up_gui() {
     moleculeGroup.scale.y = value;
     moleculeGroup.scale.z = value;
   });
-  // gui.add(autoRotate, "switch").name("Auto Rotate");
 }
 
 // get the molecule data
