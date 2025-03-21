@@ -1,17 +1,21 @@
 /**
  * Main Javascript class for Mol Mod
  */
+
+// Package Imports
 import * as THREE from "three";
 import * as dat from "dat.gui";
 import Awesomplete from "awesomplete";
-import '../node_modules/awesomplete/awesomplete.css';
-
+import "../node_modules/awesomplete/awesomplete.css";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+// My Imports
 import { molFileToJSON } from "./utils/molFileToJSON.js";
+import { Molecules } from "./assets/molecules_enum.js";
 // import { findCenter } from "./utils/findCenter.js";
 // import { generateUUID } from "three/src/math/MathUtils.js";
 
+// Feature flags
 const DEBUG_MODE = true; // Set to false to disable debug logs
 const LIGHTING_DEBUG = false; // Set to false to disable lighting debug
 
@@ -76,24 +80,10 @@ let autoRotateX = { switch: false };
 let autoRotateY = { switch: false };
 let autoRotateZ = { switch: false };
 
-// Molecule Selector
+// .mol file selector
 const loadMoleculeFile = {
   loadFile: function () {
     document.getElementById("fileInput").click();
-  },
-};
-const showExampleMolecules = {
-  showCaffeine: function () {
-    getMolecule(2424);
-  },
-  showEthanol: function () {
-    getMolecule(682);
-  },
-  showCatnip: function () {
-    getMolecule(141747);
-  },
-  showCinnamon: function () {
-    getMolecule(553117);
   },
 };
 
@@ -208,47 +198,11 @@ function set_up_gui() {
   loadMolecule.open();
 
 
-
-
-
-
-
-
   // Molecule selector
+  addMoleculeSelector(gui);
 
-  const moleculeType = gui.addFolder("Molecule Selector");
-
-  // Create input element
-  const searchInput = document.createElement("input");
-  searchInput.id = "moleculeSearch";
-  searchInput.type = "text";
-  searchInput.placeholder = "Search Molecule...";
-
-  // Append input to dat.GUI folder
-  moleculeType.domElement.appendChild(searchInput);
-  //
-
-  // refactor to an enumin seperate file!
-  const moleculeFunctions = {
-    "Caffeine (Coffee, Chocolate, Tea)": showExampleMolecules.showCaffeine,
-    "Ethanol (Alcohol)": showExampleMolecules.showEthanol,
-    "Nepetalactone (Catnip)": showExampleMolecules.showCatnip,
-    "Cinnamaldehyde (Cinnamon)": showExampleMolecules.showCinnamon,
-  };
-  // Initialize Awesomplete
-  const awesomplete = new Awesomplete(searchInput, {
-    list: Object.keys(moleculeFunctions), // Use molecule names
-  });
-  
-  // Event listener for selection
-  searchInput.addEventListener("awesomplete-selectcomplete", (event) => {
-    const selectedMolecule = event.text.value;
-    moleculeFunctions[selectedMolecule]();
-  });
-
-  moleculeType.open();
-
-
+  // Molecule Search
+  addMoleculeSearch(gui);
 
   // Position Options
   const moleculePosition = gui.addFolder("Position");
@@ -283,6 +237,79 @@ function getMolecule(CSID) {
     .then((molFile) => {
       drawMolecule(molFile);
     });
+}
+
+// Shared event handler
+function handleMoleculeSelection(selectedMolecule) {
+  const moleculeKey = Object.keys(Molecules).find(
+    (key) => Molecules[key].name === selectedMolecule
+  );
+
+  if (moleculeKey) {
+    if (Molecules[moleculeKey].CSID) {
+      log("CSID: " + Molecules[moleculeKey].CSID);
+      getMolecule(Molecules[moleculeKey].CSID);
+    } else {
+      log("CSID not found for " + selectedMolecule);
+      log(Molecules[moleculeKey]);
+    }
+  } else {
+    log("Molecule not found: " + selectedMolecule);
+  }
+}
+
+function addMoleculeSelector(gui) {
+  const moleculeSelect = gui.addFolder("Molecule Selector");
+
+  // Create dropdown (select) element
+  const moleculeDropdown = document.createElement("select");
+  moleculeDropdown.id = "moleculeDropdown";
+
+  // Populate dropdown options
+  Object.values(Molecules).forEach((molecule) => {
+    const option = document.createElement("option");
+    option.value = molecule.name;
+    option.text = molecule.name;
+    moleculeDropdown.appendChild(option);
+  });
+
+  // Append dropdown to dat.GUI folder
+  moleculeSelect.domElement.appendChild(moleculeDropdown);
+
+  // Event listener for dropdown selection
+  moleculeDropdown.addEventListener("change", (event) => {
+    const selectedMolecule = event.target.value;
+    handleMoleculeSelection(selectedMolecule);
+    moleculeSearch.value = ""; // Clear the textbox
+  });
+
+  moleculeSelect.open();
+}
+
+function addMoleculeSearch(gui) {
+  const moleculeSearch = gui.addFolder("Molecule Search");
+
+  // Create input element
+  const searchInput = document.createElement("input");
+  searchInput.id = "moleculeSearch";
+  searchInput.type = "text";
+  searchInput.placeholder = "Search Molecule...";
+
+  // Append input to dat.GUI folder
+  moleculeSearch.domElement.appendChild(searchInput);
+
+  const awesomplete = new Awesomplete(searchInput, {
+    list: Object.values(Molecules).map((molecule) => molecule.name), // Use molecule names
+  });
+
+  // Event listener for awesomplete selection
+  searchInput.addEventListener("awesomplete-selectcomplete", (event) => {
+    const selectedMolecule = event.text.value;
+    handleMoleculeSelection(selectedMolecule);
+    moleculeDropdown.value = selectedMolecule; // Change dropdown selection
+  });
+
+  // moleculeSearch.open();
 }
 
 function drawMolecule(molFile) {
