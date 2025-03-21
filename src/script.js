@@ -67,6 +67,12 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 document.body.appendChild(renderer.domElement);
 
+// Initial resize call
+onWindowResize();
+
+// Event listener for window resize
+window.addEventListener('resize', onWindowResize, false);
+
 // rotation controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
