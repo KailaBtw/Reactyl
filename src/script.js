@@ -40,27 +40,6 @@ const moleculeMaterials = {
   Br: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
 };
 
-// Molecule Selector
-const loadMoleculeFile = {
-  loadFile : function() { 
-      document.getElementById('fileInput').click();
-  },
-};
-const showExampleMolecules = {
-  showCaffeine : function() { 
-      getMolecule(2424);
-  },
-  showEthanol : function() { 
-      getMolecule(682);
-  },
-  showCatnip : function() { 
-      getMolecule(141747);
-  },
-  showCinnamon : function() { 
-      getMolecule(553117);
-  }
-};
-
 // create canvas element
 const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
@@ -94,6 +73,27 @@ let autoRotateX = { switch: false };
 let autoRotateY = { switch: false };
 let autoRotateZ = { switch: false };
 
+// Molecule Selector
+const loadMoleculeFile = {
+  loadFile : function() { 
+      document.getElementById('fileInput').click();
+  },
+};
+const showExampleMolecules = {
+  showCaffeine : function() { 
+      getMolecule(2424);
+  },
+  showEthanol : function() { 
+      getMolecule(682);
+  },
+  showCatnip : function() { 
+      getMolecule(141747);
+  },
+  showCinnamon : function() { 
+      getMolecule(553117);
+  }
+};
+
 
 
 
@@ -110,10 +110,6 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 document.body.appendChild(renderer.domElement);
 
-// Initial resize call and event listener for window resizes
-onWindowResize();
-window.addEventListener('resize', onWindowResize, false);
-
 // rotation controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -128,6 +124,25 @@ animate();
 
 
 
+/**
+ * ADD EVENT LISTENERS HERE
+ */
+
+// Initialize file input
+const moleculeFileInput = document.getElementById('fileInput');
+moleculeFileInput.addEventListener('change', function(e) {
+    const file = moleculeFileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = reader.result;
+        drawMolecule(text);
+    };
+    reader.readAsText(file);
+});
+
+// Initial resize call and event listener for window resizes
+onWindowResize();
+window.addEventListener('resize', onWindowResize, false);
 
 
 
