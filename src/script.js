@@ -12,7 +12,10 @@ import { generateUUID } from "three/src/math/MathUtils.js";
 const DEBUG_MODE = true; // Set to false to disable debug logs
 const LIGHTING_DEBUG = false; // Set to false to disable lighting debug
 
-// define variables
+
+
+// VARIABLES
+
 const moleculeGeometries = {
   C: new THREE.SphereGeometry(0.8, 32, 32),
   H: new THREE.SphereGeometry(0.3, 32, 32),
@@ -60,6 +63,14 @@ let center = {
   z: 0,
 };
 
+
+
+
+
+/**
+ * MAIN
+ */
+
 // Handle Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -67,16 +78,39 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 document.body.appendChild(renderer.domElement);
 
-// Initial resize call
+// Initial resize call and event listener for window resizes
 onWindowResize();
-
-// Event listener for window resize
 window.addEventListener('resize', onWindowResize, false);
 
 // rotation controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
 log("Scene and renderer initialized.");
+
+// initialize the program
+const defaultCSID = 2424;
+init(2424);
+// start animation loop
+animate();
+
+
+
+
+
+
+
+
+// HELPER FUNCTIONS
+
+/**
+ * animate - called each time the scene is updated
+ */
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+
+  controls.update();
+}
 
 /**
  * Initialize the MolMod scene when page is opened
@@ -138,34 +172,7 @@ function set_up_gui() {
   // gui.add(autoRotate, "switch").name("Auto Rotate");
 }
 
-/**
- * animate - called each time the scene is updated
- */
-function animate() {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
-
-  controls.update();
-}
-
-/**
- * "main" execution
- */
-// initialize the program
-const defaultCSID = 2424;
-init(2424);
-// start animation loop
-animate();
-
-// Handle window resizing
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-// Define helper functions
-
+// get the molecule data
 function getMolecule(CSID) {
   fetch("molecules/" + CSID + ".mol")
     .then((response) => response.text())
@@ -173,7 +180,6 @@ function getMolecule(CSID) {
       drawMolecule(molFile);
     });
 }
-
 
 function drawMolecule(molFile) {
 
@@ -296,6 +302,13 @@ function applyLighting() {
     const spotLightHelper = new THREE.SpotLightHelper(spotLight);
     scene.add(spotLightHelper);
   }
+}
+
+// Handle window resizing
+function onWindowResize() {  // TODO: clean up how quick this updates?
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function log(...messages) {
