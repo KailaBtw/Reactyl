@@ -8,6 +8,7 @@ import { molFileToJSON } from "./utils/molFileToJSON.js";
 import { findCenter } from "./utils/findCenter.js";
 
 const DEBUG_MODE = true; // Set to false to disable debug logs
+const LIGHTING_DEBUG = false; // Set to false to disable lighting debug
 
 // define variables
 const moleculeGeometries = {
@@ -87,7 +88,7 @@ function init(CSID) {
       drawMolecule(molFile);
     });
 
-  if (false && DEBUG_MODE) {
+  if (LIGHTING_DEBUG) {
     // Create a basic shape (cube)
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green material
@@ -150,7 +151,6 @@ function drawMolecule(molFile) {
 
     const defaultMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 }); // Gray
     const material = moleculeMaterials[item.type] || defaultMaterial;
-
     const sphere = new THREE.Mesh(moleculeGeometries[item.type], material);
 
     sphere.castShadow = true;
@@ -168,7 +168,7 @@ function drawMolecule(molFile) {
 
 function applyLighting() {
   // Add a point light with shadows
-  if (false && DEBUG_MODE) {
+  if (LIGHTING_DEBUG) {
     const light = new THREE.PointLight(0xffffff, 10, 100);
     light.position.set(center.x, center.y + 5, center.z);
     light.castShadow = true; // Light casts shadows
@@ -196,16 +196,19 @@ function applyLighting() {
   const light = new THREE.AmbientLight(0xffffff, 0.2); // soft white light
   scene.add(light);
 
-  //   const groundGeometry = new THREE.PlaneGeometry(500, 500);
-  //   const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
-  //   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-  //   ground.rotation.x = -Math.PI / 2;
-  //  ground.position.y = -10;
-  //  ground.receiveShadow = true;
-  //  ground.position.y = -1;
-  //   scene.add(ground);
+  if (LIGHTING_DEBUG) {
+    // create generic objects for testing
+    const groundGeometry = new THREE.PlaneGeometry(500, 500);
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -10;
+    ground.receiveShadow = true;
+    ground.position.y = -1;
+    scene.add(ground);
+  }
 
-  if (false && DEBUG_MODE) {
+  if (LIGHTING_DEBUG) {
     const spotLightHelper = new THREE.SpotLightHelper(spotLight);
     scene.add(spotLightHelper);
   }
