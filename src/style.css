@@ -1,0 +1,107 @@
+/* Default CSS for Three.js applications */
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scrollbars */
+    background-color: #000; /* Default background color (black) */
+    font-family: sans-serif; /* Default font */
+  }
+  
+  #three-canvas {
+    width: 100vw; /* Cover the entire viewport width */
+    height: 100vh; /* Cover the entire viewport height */
+    display: block; /* Ensure the canvas is a block-level element */
+  }
+  
+  /* Optional: Add styles for UI elements */
+  
+  #controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 10; /* Ensure controls are on top */
+  }
+  
+  #controls button {
+    padding: 5px 10px;
+    margin: 5px;
+  }
+  
+  /* Optional: Add styles for loading indicators */
+  
+  #loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    color: white;
+    font-size: 2em;
+  }
+  
+  #loading-screen.hidden {
+    display: none;
+  }
+  
+  /* Optional: Add styles for info panels */
+  
+  #info-panel {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 10;
+  }
+  
+  /* Optional: Add styles for tooltips */
+  
+  .tooltip {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  .tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+  }
+  
+  /* Optional: Add styles for fullscreen */
+  
+  #fullscreen-button{
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 10;
+  }
+  

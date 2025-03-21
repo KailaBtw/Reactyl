@@ -5,8 +5,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "node ./src/script.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "repository": {
     "type": "git",
@@ -19,6 +23,13 @@
   },
   "homepage": "https://github.com/KailaBtw/MolMod-Molecular_Modeler#readme",
   "dependencies": {
-    "three": "^0.173.0"
+    "dat.gui": "^0.7.9",
+    "gh-pages": "^6.3.0",
+    "three": "^0.173.0",
+    "three-orbitcontrols": "^2.110.2",
+    "vite": "^6.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
   }
 }
