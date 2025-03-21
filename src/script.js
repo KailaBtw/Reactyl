@@ -3,11 +3,14 @@
  */
 import * as THREE from "three";
 import * as dat from "dat.gui";
+import Awesomplete from "awesomplete";
+import '../node_modules/awesomplete/awesomplete.css';
+
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { molFileToJSON } from "./utils/molFileToJSON.js";
-import { findCenter } from "./utils/findCenter.js";
-import { generateUUID } from "three/src/math/MathUtils.js";
+// import { findCenter } from "./utils/findCenter.js";
+// import { generateUUID } from "three/src/math/MathUtils.js";
 
 const DEBUG_MODE = true; // Set to false to disable debug logs
 const LIGHTING_DEBUG = false; // Set to false to disable lighting debug
@@ -223,6 +226,7 @@ function set_up_gui() {
 
   // Append input to dat.GUI folder
   moleculeType.domElement.appendChild(searchInput);
+  //
 
   // refactor to an enumin seperate file!
   const moleculeFunctions = {
