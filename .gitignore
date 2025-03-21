@@ -26,6 +26,3 @@ replay_pid*
 # ignore node modules
 node_modules
 dist
-
-# ignore generated index files
-#dist/assets

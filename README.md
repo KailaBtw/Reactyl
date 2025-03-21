@@ -28,6 +28,12 @@ npm run dev
 npm run deploy
 ```
 
+### Fix permissions issue
+
+```
+sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
+```
+
 ## 'mol' Format Explanation
 
 * The first three lines of a mol file contain information about the file itself
