@@ -12,6 +12,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 // My Imports
 import { molFileToJSON } from "./utils/molFileToJSON.js";
 import { Molecules } from "./assets/molecules_enum.js";
+import { MoleculeManager } from "./utils/moleculeManager.js";
 // import { findCenter } from "./utils/findCenter.js";
 // import { generateUUID } from "three/src/math/MathUtils.js";
 
@@ -51,7 +52,7 @@ const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
 
 // add group to class
-let moleculeGroup = new THREE.Group();
+const moleculeManager = new MoleculeManager();
 
 // track execution time
 const clock = new THREE.Clock();
@@ -105,9 +106,14 @@ log("Scene and renderer initialized.");
 
 // initialize the program
 const defaultCSID = 2424;
-init(2424);
+init(defaultCSID);
 // start animation loop
 animate();
+
+// issue, cant have multiple of same moleculel?
+
+// draw a second molecule
+getMolecule(682, {x: 8, y: 0, z: 4});
 
 /**
  * ADD EVENT LISTENERS HERE
@@ -140,16 +146,23 @@ function animate() {
 
   deltaTime = clock.getDelta();
   totalTime += deltaTime;
+  
+  // auto-rotate all molecules
+  moleculeManager.getAllMolecules().forEach(molecule => {
+    if (autoRotateX.switch) {
+      molecule.group.rotation.x -= 0.5 * deltaTime;
+    }
+    if (autoRotateY.switch) {
+      molecule.group.rotation.y -= 0.5 * deltaTime;
+    }
+    if (autoRotateZ.switch) {
+      molecule.group.rotation.z -= 0.5 * deltaTime;
+    }
+  });
 
-  if (autoRotateX.switch) {
-    moleculeGroup.rotation.x -= 0.5 * deltaTime;
-  }
-  if (autoRotateY.switch) {
-    moleculeGroup.rotation.y -= 0.5 * deltaTime;
-  }
-  if (autoRotateZ.switch) {
-    moleculeGroup.rotation.z -= 0.5 * deltaTime;
-  }
+  // You can now manipulate the entire waterMolecule through its group property
+// waterMolecule.group.rotation.y = Math.PI / 4;
+// waterMolecule.group.position.y = 1;
 
   controls.update();
 }
@@ -205,37 +218,39 @@ function set_up_gui() {
   addMoleculeSearch(gui);
 
   // Position Options
-  const moleculePosition = gui.addFolder("Position");
-  moleculePosition.add(moleculeGroup.position, "x", -10, 10);
-  moleculePosition.add(moleculeGroup.position, "y", -10, 10);
-  moleculePosition.add(moleculeGroup.position, "z", -10, 10);
+  // TODO add user flow (select molecule then change position/rot/scale
+
+  // const moleculePosition = gui.addFolder("Position");
+  // moleculePosition.add(moleculeGroup.position, "x", -10, 10);
+  // moleculePosition.add(moleculeGroup.position, "y", -10, 10);
+  // moleculePosition.add(moleculeGroup.position, "z", -10, 10);
 
   // Rotation options
-  const moleculeRotation = gui.addFolder("Rotation");
-  moleculeRotation.add(moleculeGroup.rotation, "x", -Math.PI, Math.PI);
-  moleculeRotation.add(moleculeGroup.rotation, "y", -Math.PI, Math.PI);
-  moleculeRotation.add(moleculeGroup.rotation, "z", -Math.PI, Math.PI);
-  moleculeRotation.add(autoRotateX, "switch").name("Auto Rotate X");
-  moleculeRotation.add(autoRotateY, "switch").name("Auto Rotate Y");
-  moleculeRotation.add(autoRotateZ, "switch").name("Auto Rotate Z");
+  // const moleculeRotation = gui.addFolder("Rotation");
+  // moleculeRotation.add(moleculeGroup.rotation, "x", -Math.PI, Math.PI);
+  // moleculeRotation.add(moleculeGroup.rotation, "y", -Math.PI, Math.PI);
+  // moleculeRotation.add(moleculeGroup.rotation, "z", -Math.PI, Math.PI);
+  // moleculeRotation.add(autoRotateX, "switch").name("Auto Rotate X");
+  // moleculeRotation.add(autoRotateY, "switch").name("Auto Rotate Y");
+  // moleculeRotation.add(autoRotateZ, "switch").name("Auto Rotate Z");
 
   // Scale options
-  const moleculeScale = gui.addFolder("Scale");
-  const scaleX = moleculeScale
-    .add(moleculeGroup.scale, "x", 0.1, 1.5)
-    .name("Scaling Factor");
-  scaleX.onChange(function (value) {
-    moleculeGroup.scale.y = value;
-    moleculeGroup.scale.z = value;
-  });
+  // const moleculeScale = gui.addFolder("Scale");
+  // const scaleX = moleculeScale
+  //   .add(moleculeGroup.scale, "x", 0.1, 1.5)
+  //   .name("Scaling Factor");
+  // scaleX.onChange(function (value) {
+  //   moleculeGroup.scale.y = value;
+  //   moleculeGroup.scale.z = value;
+  // });
 }
 
-// get the molecule data
-function getMolecule(CSID) {
+// Draw a new molecule with this CSID
+function getMolecule(CSID, position = {x:0, y:0, z:0}) {
   fetch("molecules/" + CSID + ".mol")
     .then((response) => response.text())
     .then((molFile) => {
-      drawMolecule(molFile);
+      drawMolecule(molFile, position);
     });
 }
 
@@ -313,18 +328,28 @@ function addMoleculeSearch(gui) {
   // moleculeSearch.open();
 }
 
-function drawMolecule(molFile) {
-  while (moleculeGroup.children.length > 0) {
-    moleculeGroup.remove(moleculeGroup.children[0]);
-  }
+function drawMolecule(molFile, position = { x: 0, y: 0, z: 0 }) {
+  // clear any old atoms, shouldnt be needed now (we create new one)
+  // while (moleculeGroup.children.length > 0) {
+  //   moleculeGroup.remove(moleculeGroup.children[0]);
+  // }
+
+  // JSON of the molecule itself
   const molObject = molFileToJSON(molFile);
 
+  // lets look at it
+  //console.log(molObject);
+
+  // make our new molecule group
+  const molecule = moleculeManager.newMolecule("test", position);
+
+  // Center it (for now) TODO: this is where the user last clicked (with a flag there)
   let firstPoint = new THREE.Vector3(
     molObject.atoms[0].position.x,
     molObject.atoms[0].position.y,
     molObject.atoms[0].position.z
   );
-
+  // for centering
   let limits = {
     x: {
       min: firstPoint.x,
@@ -339,7 +364,7 @@ function drawMolecule(molFile) {
       max: firstPoint.z,
     },
   };
-
+  // set up the molecule geometry
   for (let item of molObject.atoms) {
     let point = new THREE.Vector3(
       item.position.x,
@@ -366,12 +391,13 @@ function drawMolecule(molFile) {
     }
   }
 
+  // center the geometry of the molecule
   let moleculeCenter = new THREE.Vector3(
     (Number(limits.x.min) + Number(limits.x.max)) / 2,
     (Number(limits.y.min) + Number(limits.y.max)) / 2,
     (Number(limits.z.min) + Number(limits.z.max)) / 2
   );
-
+  //
   for (let item of molObject.atoms) {
     const sphere = new THREE.Mesh(
       moleculeGeometries[item.type],
@@ -380,10 +406,10 @@ function drawMolecule(molFile) {
     sphere.position.x = item.position.x - moleculeCenter.x;
     sphere.position.y = item.position.y - moleculeCenter.y;
     sphere.position.z = item.position.z - moleculeCenter.z;
-    moleculeGroup.add(sphere);
+    molecule.add(sphere);
   }
 
-  // Render atomic bonds
+  // Add bond geometry
   for (let bond of molObject.bonds) {
     let index1 = Number(bond[0]) - 1;
     let index2 = Number(bond[1]) - 1;
@@ -421,13 +447,14 @@ function drawMolecule(molFile) {
     cylinder.position.z = atom1.position.z - moleculeCenter.z;
     cylinder.lookAt(point2);
 
-    moleculeGroup.add(cylinder);
+    molecule.add(cylinder);
   }
 
-  moleculeGroup.position.z = centerOffset;
-  // log("Group position:" + moleculeGroup.position); TODO FIX THIS
+  molecule.position.z = centerOffset;
+  // set the molecules group position (using three group)
+  molecule.group.position.copy(new THREE.Vector3(position.x, position.y, position.z));
 
-  scene.add(moleculeGroup);
+  scene.add(molecule.group);
 }
 
 function applyLighting() {
