@@ -13,12 +13,15 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { molFileToJSON } from "./utils/molFileToJSON.js";
 import { Molecules } from "./assets/molecules_enum.js";
 import { MoleculeManager } from "./utils/moleculeManager.js";
+import { LightingControls } from "./utils/lightingControls.js";
 // import { findCenter } from "./utils/findCenter.js";
 // import { generateUUID } from "three/src/math/MathUtils.js";
 
 // Feature flags
+
 const DEBUG_MODE = true; // Set to false to disable debug logs
-const LIGHTING_DEBUG = false; // Set to false to disable lighting debug
+
+
 
 // VARIABLES
 
@@ -47,10 +50,6 @@ const moleculeMaterials = {
 };
 const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-// create canvas element
-const canvas = document.createElement("canvas");
-document.body.appendChild(canvas);
-
 // add group to class
 const moleculeManager = new MoleculeManager();
 
@@ -70,11 +69,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.z = 5;
 
-let center = {
-  x: 0,
-  y: 0,
-  z: 0,
-};
+const center = new THREE.Vector3(); // Initialize your center
 
 // Set up auto-rotation switches
 let autoRotateX = { switch: false };
@@ -87,6 +82,12 @@ const loadMoleculeFile = {
     document.getElementById("fileInput").click();
   },
 };
+
+// set up constructor?
+const lightingController = new LightingControls(scene, center, camera);
+
+
+
 
 /**
  * MAIN
@@ -135,6 +136,15 @@ moleculeFileInput.addEventListener("change", function (e) {
 onWindowResize();
 window.addEventListener("resize", onWindowResize, false);
 
+// Set up my objects
+
+
+
+
+
+
+
+
 // HELPER FUNCTIONS
 
 /**
@@ -142,7 +152,7 @@ window.addEventListener("resize", onWindowResize, false);
  */
 function animate() {
   requestAnimationFrame(animate);
-  renderer.render(scene, camera);
+
 
   deltaTime = clock.getDelta();
   totalTime += deltaTime;
@@ -160,9 +170,15 @@ function animate() {
     }
   });
 
+  //lightingController.updateSpotlightPosition();
+
+  renderer.render(scene, camera);
   // You can now manipulate the entire waterMolecule through its group property
 // waterMolecule.group.rotation.y = Math.PI / 4;
 // waterMolecule.group.position.y = 1;
+
+  // move spotlight with 
+  //updateSpotlightPosition(camera);
 
   controls.update();
 }
@@ -186,16 +202,9 @@ function init(CSID) {
   getMolecule(CSID);
   set_up_gui();
 
-  if (LIGHTING_DEBUG) {
-    // Create a basic shape (cube)
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green material
-    const cube = new THREE.Mesh(geometry, material);
-    cube.castShadow = true; // Cube casts shadows
-    scene.add(cube);
-  }
 
-  applyLighting();
+
+  lightingController.applyLighting();
 
   camera.position.set(5, 5, 5);
   camera.lookAt(0, 0, 0);
@@ -455,54 +464,6 @@ function drawMolecule(molFile, position = { x: 0, y: 0, z: 0 }) {
   molecule.group.position.copy(new THREE.Vector3(position.x, position.y, position.z));
 
   scene.add(molecule.group);
-}
-
-function applyLighting() {
-  // Add a point light with shadows
-  if (LIGHTING_DEBUG) {
-    const light = new THREE.PointLight(0xffffff, 10, 100);
-    light.position.set(center.x, center.y + 5, center.z);
-    light.castShadow = true; // Light casts shadows
-    light.shadow.mapSize.width = 1024;
-    light.shadow.mapSize.height = 1024;
-    light.shadow.camera.near = 0.1;
-    light.shadow.camera.far = 100;
-    scene.add(light);
-
-    const shadowHelper = new THREE.CameraHelper(light.shadow.camera);
-    scene.add(shadowHelper);
-  }
-
-  const spotLight = new THREE.SpotLight(0xffffff, 30);
-  spotLight.position.set(3, 5, 3);
-  spotLight.castShadow = true;
-  spotLight.shadow.mapSize.width = 1024;
-  spotLight.shadow.mapSize.height = 1024;
-  spotLight.shadow.camera.near = 500;
-  spotLight.shadow.camera.far = 4000;
-  spotLight.shadow.camera.fov = 30;
-  scene.add(spotLight);
-
-  // Add an ambient light for softer overall lighting
-  const light = new THREE.AmbientLight(0xffffff, 0.2); // soft white light
-  scene.add(light);
-
-  if (LIGHTING_DEBUG) {
-    // create generic objects for testing
-    const groundGeometry = new THREE.PlaneGeometry(500, 500);
-    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -10;
-    ground.receiveShadow = true;
-    ground.position.y = -1;
-    scene.add(ground);
-  }
-
-  if (LIGHTING_DEBUG) {
-    const spotLightHelper = new THREE.SpotLightHelper(spotLight);
-    scene.add(spotLightHelper);
-  }
 }
 
 // Handle window resizing
