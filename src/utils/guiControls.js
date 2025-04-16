@@ -4,6 +4,9 @@ import * as THREE from "three";
 import Awesomplete from "awesomplete";
 
 import { Molecules } from "../assets/molecules_enum.js";
+import { getMolecule } from "./moleculeDrawer.js";
+import { log } from "./debug.js";
+import { createMoleculeManager } from "./moleculeManager.js";
 
 const center = new THREE.Vector3(); // Initialize your center
 
@@ -17,7 +20,7 @@ const loadMoleculeFile = {
   },
 };
 
-export function set_up_gui() {
+export function set_up_gui(moleculeManager, scene) {
   // set up gui
   const gui = new dat.GUI();
 
@@ -26,10 +29,10 @@ export function set_up_gui() {
   loadMolecule.open();
 
   // Molecule selector
-  addMoleculeSelector(gui);
+  addMoleculeSelector(gui, moleculeManager, scene);
 
   // Molecule Search
-  addMoleculeSearch(gui);
+  addMoleculeSearch(gui, moleculeManager, scene);
 
   // Position Options
   // TODO add user flow (select molecule then change position/rot/scale
@@ -60,7 +63,7 @@ export function set_up_gui() {
 }
 
 // Shared event handler
-function handleMoleculeSelection(selectedMolecule, Molecules) {
+function handleMoleculeSelection(selectedMolecule, Molecules, moleculeManager, scene) {
   const moleculeKey = Object.keys(Molecules).find(
     (key) => Molecules[key].name === selectedMolecule
   );
@@ -68,7 +71,7 @@ function handleMoleculeSelection(selectedMolecule, Molecules) {
   if (moleculeKey) {
     if (Molecules[moleculeKey].CSID) {
       log("CSID: " + Molecules[moleculeKey].CSID);
-      getMolecule(Molecules[moleculeKey].CSID);
+      getMolecule(Molecules[moleculeKey].CSID, moleculeManager, scene);
     } else {
       log("CSID not found for " + selectedMolecule);
       log(Molecules[moleculeKey]);
@@ -78,7 +81,7 @@ function handleMoleculeSelection(selectedMolecule, Molecules) {
   }
 }
 
-function addMoleculeSelector(gui) {
+function addMoleculeSelector(gui, moleculeManager, scene) {
   const moleculeSelect = gui.addFolder("Molecule Selector");
 
   // Create dropdown (select) element
@@ -99,14 +102,14 @@ function addMoleculeSelector(gui) {
   // Event listener for dropdown selection
   moleculeDropdown.addEventListener("change", (event) => {
     const selectedMolecule = event.target.value;
-    handleMoleculeSelection(selectedMolecule, Molecules);
-    moleculeSearch.value = ""; // Clear the textbox
+    handleMoleculeSelection(selectedMolecule, Molecules, moleculeManager, scene);
+    //moleculeSearch.value = ""; // Clear the textbox
   });
 
   moleculeSelect.open();
 }
 
-function addMoleculeSearch(gui) {
+function addMoleculeSearch(gui, moleculeManager, scene) {
   const moleculeSearch = gui.addFolder("Molecule Search");
 
   // Create input element
@@ -126,7 +129,7 @@ function addMoleculeSearch(gui) {
   // Event listener for awesomplete selection
   searchInput.addEventListener("awesomplete-selectcomplete", (event) => {
     const selectedMolecule = event.text.value;
-    handleMoleculeSelection(selectedMolecule);
+    handleMoleculeSelection(selectedMolecule, Molecules, moleculeManager, scene);
     moleculeDropdown.value = selectedMolecule; // Change dropdown selection
   });
 
