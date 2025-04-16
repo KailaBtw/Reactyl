@@ -31,11 +31,20 @@ let centerOffset = 0;
 // Draw a new molecule with this CSID
 import { molFileToJSON } from "./molFileToJSON.js";
 
-export function getMolecule(CSID, moleculeManager, scene, position = { x: 0, y: 0, z: 0 }) {
+export function getMolecule(CSID, moleculeManager, scene, position) {
+  // Set default position to a random value between -50 and 50 if not provided
+  const defaultPosition = {
+    x: Math.floor(Math.random() * 51) - 25, // Random integer between -50 and 50
+    y: Math.floor(Math.random() * 51) - 25,
+    z: Math.floor(Math.random() * 51) - 25,
+  };
+
+  const finalPosition = position === undefined ? defaultPosition : position;
+
     fetch("molecules/" + CSID + ".mol")
       .then((response) => response.text())
       .then((molFile) => {
-        drawMolecule(molFile, moleculeManager, scene, position, "replace with csid name enum");
+        drawMolecule(molFile, moleculeManager, scene, finalPosition, "replace with csid name enum");
       });
   }
   

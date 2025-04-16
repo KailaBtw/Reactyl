@@ -60,10 +60,6 @@ init(defaultCSID);
 // start animation loop
 animate();
 
-// issue, cant have multiple of same moleculel?
-
-// draw a second molecule
-getMolecule(682, moleculeManager, scene, { x: 8, y: 0, z: 4 });
 
 /**
  * ADD EVENT LISTENERS HERE
@@ -139,6 +135,15 @@ function init(CSID) {
   }
 
   getMolecule(CSID, moleculeManager, scene);
+  // draw a second molecule
+  getMolecule(682, moleculeManager, scene);
+  getMolecule(682, moleculeManager, scene);
+
+  getMolecule(682, moleculeManager, scene);
+
+  getMolecule(682, moleculeManager, scene);
+
+
   set_up_gui(moleculeManager, scene);
   applyLighting(scene);
   addObjectDebug(scene);
