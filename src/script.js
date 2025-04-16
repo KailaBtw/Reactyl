@@ -10,7 +10,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 // My Imports
 import { molFileToJSON } from "./utils/molFileToJSON.js";
-import { MoleculeManager } from "./utils/moleculeManager.js";
+import { createMoleculeManager } from "./utils/moleculeManager.js";
 import {
   applyLighting,
   updateSpotlightPosition,
@@ -47,8 +47,8 @@ const moleculeMaterials = {
 };
 const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-// add group to class
-const moleculeManager = new MoleculeManager();
+// make new molecule manager from factory
+const moleculeManager = createMoleculeManager();
 
 // track execution time
 const clock = new THREE.Clock();
@@ -103,8 +103,8 @@ moleculeFileInput.addEventListener("change", function (e) {
   const file = moleculeFileInput.files[0];
   const reader = new FileReader();
   reader.onload = function (e) {
-    const text = reader.result;
-    drawMolecule(text);
+    const path = reader.result;
+    drawMolecule(path, "test", {x: 0, y: 0, z: 0});  // change position later
   };
   reader.readAsText(file);
 });
@@ -181,11 +181,11 @@ function getMolecule(CSID, position = { x: 0, y: 0, z: 0 }) {
   fetch("molecules/" + CSID + ".mol")
     .then((response) => response.text())
     .then((molFile) => {
-      drawMolecule(molFile, position);
+      drawMolecule(molFile, "replace with csid name enum", position);
     });
 }
 
-function drawMolecule(molFile, position = { x: 0, y: 0, z: 0 }) {
+function drawMolecule(molFile, name, position = { x: 0, y: 0, z: 0 }) {
   // clear any old atoms, shouldnt be needed now (we create new one)
   // while (moleculeGroup.children.length > 0) {
   //   moleculeGroup.remove(moleculeGroup.children[0]);
@@ -198,7 +198,10 @@ function drawMolecule(molFile, position = { x: 0, y: 0, z: 0 }) {
   //console.log(molObject);
 
   // make our new molecule group
-  const molecule = moleculeManager.newMolecule("test", position);
+  const molecule = moleculeManager.newMolecule({name}, { x: 10, y: 0, z: 0 });
+  //const molecule2 = moleculeManager.newMolecule("Methane", { x: -10, y: 0, z: 0 });
+  
+  //drawMolecule(molecule1);
 
   // Center it (for now) TODO: this is where the user last clicked (with a flag there)
   let firstPoint = new THREE.Vector3(
