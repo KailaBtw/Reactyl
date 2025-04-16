@@ -13,13 +13,10 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { molFileToJSON } from "./utils/molFileToJSON.js";
 import { Molecules } from "./assets/molecules_enum.js";
 import { MoleculeManager } from "./utils/moleculeManager.js";
-import { applyLighting, updateSpotlightPosition } from "./utils/lightingControls.js";
+import { applyLighting, updateSpotlightPosition, updateSkyLightPosition } from "./utils/lightingControls.js";
+import { log, DEBUG_MODE } from "./utils/debug.js"
 // import { findCenter } from "./utils/findCenter.js";
 // import { generateUUID } from "three/src/math/MathUtils.js";
-
-// Feature flags
-
-const DEBUG_MODE = true; // Set to false to disable debug logs
 
 // VARIABLES
 
@@ -162,15 +159,13 @@ function animate() {
     }
   });
 
-  updateSpotlightPosition(camera, scene);
+  updateSpotlightPosition(camera);
+  updateSkyLightPosition(camera);
 
   renderer.render(scene, camera);
   // You can now manipulate the entire waterMolecule through its group property
-// waterMolecule.group.rotation.y = Math.PI / 4;
-// waterMolecule.group.position.y = 1;
-
-  // move spotlight with 
-  //updateSpotlightPosition(camera);
+  // waterMolecule.group.rotation.y = Math.PI / 4;
+  // waterMolecule.group.position.y = 1;
 
   controls.update();
 }
@@ -463,8 +458,4 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function log(...messages) {
-  if (DEBUG_MODE) {
-    console.log("[DEBUG]: ", ...messages);
-  }
-}
+
