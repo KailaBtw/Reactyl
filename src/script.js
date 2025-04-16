@@ -4,19 +4,21 @@
 
 // Package Imports
 import * as THREE from "three";
-import * as dat from "dat.gui";
-import Awesomplete from "awesomplete";
 import "../node_modules/awesomplete/awesomplete.css";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+// import { generateUUID } from "three/src/math/MathUtils.js";
 
 // My Imports
 import { molFileToJSON } from "./utils/molFileToJSON.js";
-import { Molecules } from "./assets/molecules_enum.js";
 import { MoleculeManager } from "./utils/moleculeManager.js";
-import { applyLighting, updateSpotlightPosition, updateSkyLightPosition } from "./utils/lightingControls.js";
-import { log, DEBUG_MODE } from "./utils/debug.js"
+import {
+  applyLighting,
+  updateSpotlightPosition,
+  updateSkyLightPosition,
+} from "./utils/lightingControls.js";
+import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug.js";
+import { set_up_gui, autoRotate } from "./utils/guiControls.js";
 // import { findCenter } from "./utils/findCenter.js";
-// import { generateUUID } from "three/src/math/MathUtils.js";
 
 // VARIABLES
 
@@ -64,20 +66,6 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.z = 5;
 
-const center = new THREE.Vector3(); // Initialize your center
-
-// Set up auto-rotation switches
-let autoRotateX = { switch: false };
-let autoRotateY = { switch: false };
-let autoRotateZ = { switch: false };
-
-// .mol file selector
-const loadMoleculeFile = {
-  loadFile: function () {
-    document.getElementById("fileInput").click();
-  },
-};
-
 /**
  * MAIN
  */
@@ -103,7 +91,7 @@ animate();
 // issue, cant have multiple of same moleculel?
 
 // draw a second molecule
-getMolecule(682, {x: 8, y: 0, z: 4});
+getMolecule(682, { x: 8, y: 0, z: 4 });
 
 /**
  * ADD EVENT LISTENERS HERE
@@ -127,13 +115,6 @@ window.addEventListener("resize", onWindowResize, false);
 
 // Set up my objects
 
-
-
-
-
-
-
-
 // HELPER FUNCTIONS
 
 /**
@@ -142,19 +123,18 @@ window.addEventListener("resize", onWindowResize, false);
 function animate() {
   requestAnimationFrame(animate);
 
-
   deltaTime = clock.getDelta();
   totalTime += deltaTime;
-  
+
   // auto-rotate all molecules
-  moleculeManager.getAllMolecules().forEach(molecule => {
-    if (autoRotateX.switch) {
+  moleculeManager.getAllMolecules().forEach((molecule) => {
+    if (autoRotate.x.switch) {
       molecule.group.rotation.x -= 0.5 * deltaTime;
     }
-    if (autoRotateY.switch) {
+    if (autoRotate.y.switch) {
       molecule.group.rotation.y -= 0.5 * deltaTime;
     }
-    if (autoRotateZ.switch) {
+    if (autoRotate.z.switch) {
       molecule.group.rotation.z -= 0.5 * deltaTime;
     }
   });
@@ -189,136 +169,20 @@ function init(CSID) {
   getMolecule(CSID);
   set_up_gui();
   applyLighting(scene);
+  addObjectDebug(scene);
 
   camera.position.set(5, 5, 5);
   camera.lookAt(0, 0, 0);
   log("Camera positioned and oriented.");
 }
 
-function set_up_gui() {
-  // set up gui
-  const gui = new dat.GUI();
-
-  const loadMolecule = gui.addFolder("Load .mol file");
-  loadMolecule.add(loadMoleculeFile, "loadFile").name("Load file from device");
-  loadMolecule.open();
-
-
-  // Molecule selector
-  addMoleculeSelector(gui);
-
-  // Molecule Search
-  addMoleculeSearch(gui);
-
-  // Position Options
-  // TODO add user flow (select molecule then change position/rot/scale
-
-  // const moleculePosition = gui.addFolder("Position");
-  // moleculePosition.add(moleculeGroup.position, "x", -10, 10);
-  // moleculePosition.add(moleculeGroup.position, "y", -10, 10);
-  // moleculePosition.add(moleculeGroup.position, "z", -10, 10);
-
-  // Rotation options
-  // const moleculeRotation = gui.addFolder("Rotation");
-  // moleculeRotation.add(moleculeGroup.rotation, "x", -Math.PI, Math.PI);
-  // moleculeRotation.add(moleculeGroup.rotation, "y", -Math.PI, Math.PI);
-  // moleculeRotation.add(moleculeGroup.rotation, "z", -Math.PI, Math.PI);
-  // moleculeRotation.add(autoRotateX, "switch").name("Auto Rotate X");
-  // moleculeRotation.add(autoRotateY, "switch").name("Auto Rotate Y");
-  // moleculeRotation.add(autoRotateZ, "switch").name("Auto Rotate Z");
-
-  // Scale options
-  // const moleculeScale = gui.addFolder("Scale");
-  // const scaleX = moleculeScale
-  //   .add(moleculeGroup.scale, "x", 0.1, 1.5)
-  //   .name("Scaling Factor");
-  // scaleX.onChange(function (value) {
-  //   moleculeGroup.scale.y = value;
-  //   moleculeGroup.scale.z = value;
-  // });
-}
-
 // Draw a new molecule with this CSID
-function getMolecule(CSID, position = {x:0, y:0, z:0}) {
+function getMolecule(CSID, position = { x: 0, y: 0, z: 0 }) {
   fetch("molecules/" + CSID + ".mol")
     .then((response) => response.text())
     .then((molFile) => {
       drawMolecule(molFile, position);
     });
-}
-
-// Shared event handler
-function handleMoleculeSelection(selectedMolecule) {
-  const moleculeKey = Object.keys(Molecules).find(
-    (key) => Molecules[key].name === selectedMolecule
-  );
-
-  if (moleculeKey) {
-    if (Molecules[moleculeKey].CSID) {
-      log("CSID: " + Molecules[moleculeKey].CSID);
-      getMolecule(Molecules[moleculeKey].CSID);
-    } else {
-      log("CSID not found for " + selectedMolecule);
-      log(Molecules[moleculeKey]);
-    }
-  } else {
-    log("Molecule not found: " + selectedMolecule);
-  }
-}
-
-function addMoleculeSelector(gui) {
-  const moleculeSelect = gui.addFolder("Molecule Selector");
-
-  // Create dropdown (select) element
-  const moleculeDropdown = document.createElement("select");
-  moleculeDropdown.id = "moleculeDropdown";
-
-  // Populate dropdown options
-  Object.values(Molecules).forEach((molecule) => {
-    const option = document.createElement("option");
-    option.value = molecule.name;
-    option.text = molecule.name;
-    moleculeDropdown.appendChild(option);
-  });
-
-  // Append dropdown to dat.GUI folder
-  moleculeSelect.domElement.appendChild(moleculeDropdown);
-
-  // Event listener for dropdown selection
-  moleculeDropdown.addEventListener("change", (event) => {
-    const selectedMolecule = event.target.value;
-    handleMoleculeSelection(selectedMolecule);
-    moleculeSearch.value = ""; // Clear the textbox
-  });
-
-  moleculeSelect.open();
-}
-
-function addMoleculeSearch(gui) {
-  const moleculeSearch = gui.addFolder("Molecule Search");
-
-  // Create input element
-  const searchInput = document.createElement("input");
-  searchInput.id = "moleculeSearch";
-  searchInput.type = "text";
-  searchInput.placeholder = "Search Molecule...";
-
-  // Append input to dat.GUI folder
-  moleculeSearch.domElement.appendChild(searchInput);
-
-  // keep in this is required (ignore unused ref warning!!)
-  const awesomplete = new Awesomplete(searchInput, {
-    list: Object.values(Molecules).map((molecule) => molecule.name), // Use molecule names
-  });
-
-  // Event listener for awesomplete selection
-  searchInput.addEventListener("awesomplete-selectcomplete", (event) => {
-    const selectedMolecule = event.text.value;
-    handleMoleculeSelection(selectedMolecule);
-    moleculeDropdown.value = selectedMolecule; // Change dropdown selection
-  });
-
-  // moleculeSearch.open();
 }
 
 function drawMolecule(molFile, position = { x: 0, y: 0, z: 0 }) {
@@ -445,7 +309,9 @@ function drawMolecule(molFile, position = { x: 0, y: 0, z: 0 }) {
 
   molecule.position.z = centerOffset;
   // set the molecules group position (using three group)
-  molecule.group.position.copy(new THREE.Vector3(position.x, position.y, position.z));
+  molecule.group.position.copy(
+    new THREE.Vector3(position.x, position.y, position.z)
+  );
 
   scene.add(molecule.group);
 }
@@ -457,5 +323,3 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
-
-
