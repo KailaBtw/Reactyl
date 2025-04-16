@@ -58,6 +58,10 @@ sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
 
 ## Todo List
 
+**User can enter moler concentrations of inputs, and reaction rate makes the finished one
+
+
+
 ### Backend Changes
 
 - Clean up Documentation and javadoc
