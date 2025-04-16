@@ -13,15 +13,13 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { molFileToJSON } from "./utils/molFileToJSON.js";
 import { Molecules } from "./assets/molecules_enum.js";
 import { MoleculeManager } from "./utils/moleculeManager.js";
-import { LightingControls } from "./utils/lightingControls.js";
+import { applyLighting, updateSpotlightPosition } from "./utils/lightingControls.js";
 // import { findCenter } from "./utils/findCenter.js";
 // import { generateUUID } from "three/src/math/MathUtils.js";
 
 // Feature flags
 
 const DEBUG_MODE = true; // Set to false to disable debug logs
-
-
 
 // VARIABLES
 
@@ -82,12 +80,6 @@ const loadMoleculeFile = {
     document.getElementById("fileInput").click();
   },
 };
-
-// set up constructor?
-const lightingController = new LightingControls(scene, center, camera);
-
-
-
 
 /**
  * MAIN
@@ -170,7 +162,7 @@ function animate() {
     }
   });
 
-  //lightingController.updateSpotlightPosition();
+  updateSpotlightPosition(camera, scene);
 
   renderer.render(scene, camera);
   // You can now manipulate the entire waterMolecule through its group property
@@ -201,10 +193,7 @@ function init(CSID) {
 
   getMolecule(CSID);
   set_up_gui();
-
-
-
-  lightingController.applyLighting();
+  applyLighting(scene);
 
   camera.position.set(5, 5, 5);
   camera.lookAt(0, 0, 0);
