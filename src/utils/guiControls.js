@@ -11,7 +11,7 @@ import { createMoleculeManager } from "./moleculeManager.js";
 const center = new THREE.Vector3(); // Initialize your center
 
 // Set up auto-rotation switches
-export let autoRotate = { x: false, y: false, z: false}
+export const autoRotate = { x: false, y: false, z: false}
 
 // .mol file selector
 const loadMoleculeFile = {
@@ -43,13 +43,13 @@ export function set_up_gui(moleculeManager, scene) {
   // moleculePosition.add(moleculeGroup.position, "z", -10, 10);
 
   // Rotation options
-  // const moleculeRotation = gui.addFolder("Rotation");
+  const moleculeRotation = gui.addFolder("Rotation");
   // moleculeRotation.add(moleculeGroup.rotation, "x", -Math.PI, Math.PI);
   // moleculeRotation.add(moleculeGroup.rotation, "y", -Math.PI, Math.PI);
   // moleculeRotation.add(moleculeGroup.rotation, "z", -Math.PI, Math.PI);
-  // moleculeRotation.add(autoRotateX, "switch").name("Auto Rotate X");
-  // moleculeRotation.add(autoRotateY, "switch").name("Auto Rotate Y");
-  // moleculeRotation.add(autoRotateZ, "switch").name("Auto Rotate Z");
+  // moleculeRotation.add(autoRotate.x, "switch").name("Auto Rotate X");
+  // moleculeRotation.add(autoRotate.y, "switch").name("Auto Rotate Y");
+  // moleculeRotation.add(autoRotate.z, "switch").name("Auto Rotate Z");
 
   // Scale options
   // const moleculeScale = gui.addFolder("Scale");
