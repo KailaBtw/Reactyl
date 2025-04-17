@@ -60,7 +60,6 @@ init(defaultCSID);
 // start animation loop
 animate();
 
-
 /**
  * ADD EVENT LISTENERS HERE
  */
@@ -72,7 +71,7 @@ moleculeFileInput.addEventListener("change", function (e) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const path = reader.result;
-    drawMolecule(molFile, moleculeManager, scene, {x: 0, y: 0, z: 0}, "test");  // change position later
+    drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, "test"); // change position later
   };
   reader.readAsText(file);
 });
@@ -84,7 +83,6 @@ window.addEventListener("resize", onWindowResize, false);
 // Set up my objects
 
 // HELPER FUNCTIONS
-
 /**
  * animate - called each time the scene is updated
  */
@@ -106,6 +104,28 @@ function animate() {
       molecule.group.rotation.z -= 0.5 * deltaTime;
     }
   });
+  // only one object is moving at a time
+  // move all the molecules based on their velocities
+  for (const moleculeObject of moleculeManager.getAllMolecules()) {
+    // log(moleculeManager.getAllMolecules());
+    // get the THREE.Group object
+    const group = moleculeObject.getGroup();
+    const randomForceStrength = 5;
+
+    // Apply a small random force (change in velocity)
+    const randomForce = new THREE.Vector3(
+      Math.random() * randomForceStrength,
+      Math.random() * randomForceStrength,
+      Math.random() * randomForceStrength
+    );
+    moleculeObject.velocity.addScaledVector(randomForce, deltaTime);
+
+    // Apply some damping to prevent infinite speed increase (optional)
+    moleculeObject.velocity.multiplyScalar(0.99);
+
+    // update position
+    group.position.addScaledVector(moleculeObject.velocity, deltaTime);
+  }
 
   updateSpotlightPosition(camera);
   updateSkyLightPosition(camera);
@@ -135,25 +155,21 @@ function init(CSID) {
   }
 
   getMolecule(CSID, moleculeManager, scene);
-  // draw a second molecule
   getMolecule(682, moleculeManager, scene);
+  getMolecule(CSID, moleculeManager, scene);
   getMolecule(682, moleculeManager, scene);
+  getMolecule(CSID, moleculeManager, scene);
 
-  getMolecule(682, moleculeManager, scene);
-
-  getMolecule(682, moleculeManager, scene);
-
+  log(moleculeManager.getAllMolecules());
 
   set_up_gui(moleculeManager, scene);
   applyLighting(scene);
   addObjectDebug(scene);
 
-  camera.position.set(5, 5, 5);
+  camera.position.set(10, 10, 10);
   camera.lookAt(0, 0, 0);
   log("Camera positioned and oriented.");
 }
-
-
 
 // Handle window resizing
 function onWindowResize() {
