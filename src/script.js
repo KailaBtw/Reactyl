@@ -1,100 +1,176 @@
 /**
- * Main Javascript class for Mol Mod
+ * Main Javascript class for Mol Mod - A 3D Molecular Visualization Application
+ * ----------------------------------------------------------------------
+ * Mol Mod is a web-based application built using Three.js for visualizing and
+ * interacting with 3D molecular structures.  It allows users to load, display,
+ * and manipulate molecules in a 3D environment.
  */
 
 // Package Imports
-import * as THREE from "three";
-import "../node_modules/awesomplete/awesomplete.css";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-// import { generateUUID } from "three/src/math/MathUtils.js";
+import * as THREE from "three"; // Import the Three.js library.
+import "../node_modules/awesomplete/awesomplete.css"; // Import CSS for autocompletion (if used).  // TODO: Check if used
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; // Import OrbitControls for interactive camera movement.
+// import { generateUUID } from "three/src/math/MathUtils.js";  // Import for generating unique IDs (not currently used).
 
-// My Imports
-import { createMoleculeManager } from "./utils/moleculeManager.js";
+// My Imports - Application-Specific Modules
+import { createMoleculeManager } from "./utils/moleculeManager.js"; // Import the MoleculeManager factory.
 import {
   applyLighting,
   updateSpotlightPosition,
   updateSkyLightPosition,
-} from "./utils/lightingControls.js";
-import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug.js";
-import { set_up_gui, autoRotate } from "./utils/guiControls.js";
-import { getMolecule, drawMolecule } from "./utils/moleculeDrawer.js";
-// import { findCenter } from "./utils/findCenter.js";
+} from "./utils/lightingControls.js"; // Import functions for managing scene lighting.
+import { checkCollision, handleCollision } from "./utils/vectorHelper.js"; // Import functions for collision detection and handling.
+import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug.js"; // Import debugging utilities.
+import { set_up_gui, autoRotate } from "./utils/guiControls.js"; // Import functions for setting up the graphical user interface.
+import { getMolecule, drawMolecule } from "./utils/moleculeDrawer.js"; // Import functions for fetching and drawing molecules.
+// import { findCenter } from "./utils/findCenter.js";  // Import for finding molecule center (not currently used).
 
-// make new molecule manager from factory
-const moleculeManager = createMoleculeManager();
-
-// track execution time
-const clock = new THREE.Clock();
-let deltaTime = 0;
-let totalTime = 0;
-
-// Create the scene and camera
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-camera.position.z = 5;
+// ===============================
+//  Module-Level Variables
+// ===============================
 
 /**
- * MAIN
+ * Creates and manages molecule objects.  The MoleculeManager handles the creation,
+ * storage, and retrieval of molecule data.  It is instantiated once for the
+ * entire application.
+ * @type {object}
  */
+const moleculeManager = createMoleculeManager();
 
-// Handle Renderer
+/**
+ * A Three.js Clock object used to track time elapsed between frames.  This is
+ * used for animation and physics calculations (e.g., updating molecule positions
+ * based on velocity).
+ * @type {THREE.Clock}
+ */
+const clock = new THREE.Clock();
+
+/**
+ * Stores the time elapsed since the last frame.  Updated in the `animate` function.
+ * @type {number}
+ */
+let deltaTime = 0;
+
+/**
+ * Stores the total time the application has been running.  Updated in the `animate` function.
+ * @type {number}
+ */
+let totalTime = 0;
+
+// ===============================
+//  Scene Setup
+// ===============================
+
+/**
+ * The main Three.js scene where all 3D objects (molecules, lights, etc.) are rendered.
+ * @type {THREE.Scene}
+ */
+const scene = new THREE.Scene();
+
+/**
+ * The camera used to view the scene.  A PerspectiveCamera provides a 3D perspective.
+ * @type {THREE.PerspectiveCamera}
+ */
+const camera = new THREE.PerspectiveCamera(
+  75, // Field of view
+  window.innerWidth / window.innerHeight, // Aspect ratio
+  0.1, // Near clipping plane
+  1000 // Far clipping plane
+);
+camera.position.z = 5; // Initial camera position.
+
+// ===============================
+//  Renderer Setup
+// ===============================
+
+/**
+ * The WebGL renderer responsible for drawing the scene onto the canvas.
+ * @type {THREE.WebGLRenderer}
+ */
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setClearColor(0x000000, 0);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
-document.body.appendChild(renderer.domElement);
+renderer.setClearColor(0x000000, 0); // Set background color to transparent.
+renderer.setSize(window.innerWidth, window.innerHeight); // Set renderer size to window dimensions.
+renderer.shadowMap.enabled = true; // Enable shadow mapping for realistic lighting.
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Use soft shadows.
+document.body.appendChild(renderer.domElement); // Add the renderer's canvas to the DOM.
 
-// rotation controls
+// ===============================
+//  Controls Setup
+// ===============================
+
+/**
+ * OrbitControls allow the user to rotate and pan the scene using the mouse.
+ * @type {THREE.OrbitControls}
+ */
 const controls = new OrbitControls(camera, renderer.domElement);
 log("Scene and renderer initialized.");
 
-// initialize the program
+// ===============================
+//  Initialization and Animation
+// ===============================
+
+/**
+ * The default Chemical Structure ID (CSID) to load on initial startup.
+ * @type {number}
+ */
 const defaultCSID = 2424;
+
+// Initialize the application.
 init(defaultCSID);
-// start animation loop
+
+// Start the animation loop.
 animate();
 
+// ===============================
+//  Event Listeners
+// ===============================
 
 /**
- * ADD EVENT LISTENERS HERE
+ * Handles file input for loading molecule data from a .mol file.
+ * This event listener is attached to the file input element.
  */
-
-// Initialize file input
-const moleculeFileInput = document.getElementById("fileInput");
+const moleculeFileInput = document.getElementById("fileInput"); // Get the file input element.
 moleculeFileInput.addEventListener("change", function (e) {
-  const file = moleculeFileInput.files[0];
-  const reader = new FileReader();
+  const file = moleculeFileInput.files[0]; // Get the selected file.
+  const reader = new FileReader(); // Create a FileReader to read the file content.
   reader.onload = function (e) {
-    const path = reader.result;
-    drawMolecule(molFile, moleculeManager, scene, {x: 0, y: 0, z: 0}, "test");  // change position later
+    const molFile = reader.result; // Get the file content as text.
+    drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, "test"); // Draw the molecule.  // TODO:  Fix position.
   };
-  reader.readAsText(file);
+  reader.readAsText(file); // Read the file as text.
 });
 
-// Initial resize call and event listener for window resizes
+/**
+ * Handles window resize events.  Updates the camera aspect ratio and renderer size
+ * to match the new window dimensions.
+ */
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight; // Update camera aspect.
+  camera.updateProjectionMatrix(); // Update the projection matrix.
+  renderer.setSize(window.innerWidth, window.innerHeight); // Update renderer size.
+}
+
+// Initial resize call.
 onWindowResize();
+
+// Event listener for window resize.
 window.addEventListener("resize", onWindowResize, false);
 
-// Set up my objects
-
-// HELPER FUNCTIONS
+// ===============================
+//  Helper Functions
+// ===============================
 
 /**
- * animate - called each time the scene is updated
+ * The main animation loop.  This function is called repeatedly by the browser's
+ * requestAnimationFrame() function, resulting in a continuous animation.
  */
 function animate() {
-  requestAnimationFrame(animate);
+  requestAnimationFrame(animate); // Request the next animation frame.
 
-  deltaTime = clock.getDelta();
-  totalTime += deltaTime;
+  deltaTime = clock.getDelta(); // Get the time elapsed since the last frame.
+  totalTime += deltaTime; // Update the total time.
 
-  // auto-rotate all molecules
+  // Rotate all molecules based on the autoRotate settings from the GUI.
   moleculeManager.getAllMolecules().forEach((molecule) => {
     if (autoRotate.x.switch) {
       molecule.group.rotation.x -= 0.5 * deltaTime;
@@ -107,58 +183,86 @@ function animate() {
     }
   });
 
+  // Move all the molecules based on their velocities and handle collisions.
+  for (const moleculeObject of moleculeManager.getAllMolecules()) {
+    const group = moleculeObject.getGroup(); // Get the Three.js Group.
+    const randomForceStrength = 20;
+
+    // Apply a small random force (change in velocity).
+    const randomForce = new THREE.Vector3(
+      (Math.random() * randomForceStrength) + moleculeObject.velocity.x,
+      (Math.random() * randomForceStrength) + moleculeObject.velocity.y,
+      (Math.random() * randomForceStrength) + moleculeObject.velocity.z
+    );
+    // moleculeObject.velocity.addScaledVector(randomForce, deltaTime); // Removed:  No random force
+
+    // Apply some damping to prevent infinite speed increase (optional).
+    moleculeObject.velocity.multiplyScalar(0.999);
+
+    // Update molecule position based on velocity and time.
+    group.position.addScaledVector(moleculeObject.velocity, deltaTime);
+
+    // Check for collisions with other molecules and handle them.
+    for (const moleculeObject2 of moleculeManager.getAllMolecules()) {
+      if (moleculeObject != moleculeObject2 && checkCollision(moleculeObject, moleculeObject2)) {
+        handleCollision(moleculeObject, moleculeObject2);
+      }
+    }
+  }
+
+  // Update the positions of the spotlight and skylight based on the camera.
   updateSpotlightPosition(camera);
   updateSkyLightPosition(camera);
 
-  renderer.render(scene, camera);
-  // You can now manipulate the entire waterMolecule through its group property
-  // waterMolecule.group.rotation.y = Math.PI / 4;
-  // waterMolecule.group.position.y = 1;
-
-  controls.update();
+  renderer.render(scene, camera); // Render the scene.
+  controls.update(); // Update the OrbitControls.
 }
 
 /**
- * Initialize the MolMod scene when page is opened
+ * Initializes the MolMod scene.  This function is called when the page is loaded
+ * or when the scene needs to be reset.  It sets up the initial molecule,
+ * lighting, and GUI.
+ *
+ * @param {number} CSID - The Chemical Structure ID (CSID) of the molecule to load
+ * initially.
  */
 function init(CSID) {
   log(`Initializing scene with molecule CSID: ${CSID}`);
-  // Clear the scene when the init function is called:
+
+  // Clear the scene:
   while (scene.children.length > 0) {
     scene.remove(scene.children[0]);
   }
   log("Scene cleared.");
 
+  // Add a Three.js AxesHelper for debugging if DEBUG_MODE is enabled.
   if (DEBUG_MODE) {
     const axesHelper = new THREE.AxesHelper(5);
     scene.add(axesHelper);
   }
 
-  getMolecule(CSID, moleculeManager, scene);
-  // draw a second molecule
-  getMolecule(682, moleculeManager, scene);
-  getMolecule(682, moleculeManager, scene);
+  // Load and draw the initial molecules.
+  getMolecule(CSID, moleculeManager, scene, "a");
+  getMolecule(682, moleculeManager, scene, "b");
+  getMolecule(CSID, moleculeManager, scene, "c");
+  getMolecule(682, moleculeManager, scene, "d");
+  getMolecule(CSID, moleculeManager, scene, "e");
+  getMolecule(682, moleculeManager, scene, "f");
+  getMolecule(CSID, moleculeManager, scene, "g");
 
-  getMolecule(682, moleculeManager, scene);
+  //log(moleculeManager.getAllMolecules());
 
-  getMolecule(682, moleculeManager, scene);
-
-
+  // Set up the GUI controls.
   set_up_gui(moleculeManager, scene);
+
+  // Apply lighting to the scene.
   applyLighting(scene);
+
+  // Add debug objects to the scene if DEBUG_MODE is enabled.
   addObjectDebug(scene);
 
-  camera.position.set(5, 5, 5);
+  // Position and orient the camera.
+  camera.position.set(10, 10, 10);
   camera.lookAt(0, 0, 0);
   log("Camera positioned and oriented.");
-}
-
-
-
-// Handle window resizing
-function onWindowResize() {
-  // TODO: clean up how quick this updates?
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
 }

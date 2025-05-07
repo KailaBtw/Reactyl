@@ -1,92 +1,124 @@
-
 import * as THREE from "three";
 
-export const DEBUG_MODE = true; // Set to false to disable debug log messages
-export const LIGHTING_DEBUG = false;
-const OBJECT_DEBUG = false;
-
-const light = new THREE.PointLight(0xffffff, 1, 100);
+/**
+ * Global flag to enable or disable debug log messages.
+ * Set to false to prevent log messages from being printed to the console.
+ * @type {boolean}
+ */
+export const DEBUG_MODE = true;
 
 /**
- * Call this method to log information about the program
- * Prints to console.log()
- * 
- * TODO: Save to a shared log files parameter. 
- * 
- * @param  {...any} messages 
- * @returns 
+ * Global flag to enable or disable lighting debug helpers.
+ * Set to true to show visual aids for lights (e.g., spot light cones, directional light directions).
+ * @type {boolean}
+ */
+export const LIGHTING_DEBUG = false;
+
+/**
+ * Global flag to enable or disable object debug.
+ * @type {boolean}
+ */
+const OBJECT_DEBUG = false;
+
+/**
+ * A point light used for shadow debugging.  It's created here but only used
+ * if SHADOW_DEBUG is enabled within the `addLightingDebug` function.
+ * @type {THREE.PointLight}
+ */
+const light = new THREE.PointLight(0xffffff, 1, 100); // White light, intensity 1, range 100
+
+/**
+ * Logs information about the program to the console.
+ *
+ * This function takes any number of arguments and prints them to the console,
+ * prefixed with "[DEBUG]: ".  It only prints if the `DEBUG_MODE` flag is true.
+ *
+ * @param {...any} messages - Any number of values to be logged to the console.
+ * These can be strings, numbers, objects, etc.
+ * @returns {void}
  */
 export function log(...messages) {
-    if (!DEBUG_MODE) return;
+  if (!DEBUG_MODE) return; // If DEBUG_MODE is false, do nothing.
 
-    console.log("[DEBUG]: ", ...messages);
-  }
-
-  /**
-   * 
-   * @param {*} scene 
-   * @returns 
-   */
-export function addObjectDebug(scene) {
-        const GROUND_DEBUG = false;
-        const SHAPE_DEBUG = true;
-
-        if(!OBJECT_DEBUG) return;
-
-        if (GROUND_DEBUG) {
-            const groundGeometry = new THREE.PlaneGeometry(500, 500);
-            const groundMaterial = new THREE.MeshStandardMaterial({
-              color: 0x555555,
-            });
-            // ground plane
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -1;
-            ground.receiveShadow = true;
-            scene.add(ground);
-          }
-      // Create a basic shape (cube)
-      if(SHAPE_DEBUG) {
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green material
-        const cube = new THREE.Mesh(geometry, material);
-        cube.castShadow = true; // Cube casts shadows
-        scene.add(cube);
-      }
+  console.log("[DEBUG]: ", ...messages); // Log the messages to the console.
 }
 
 /**
- * 
- * @param {*} scene 
- * @param {*} spotLightHelper 
- * @param {*} directionalLightHelper 
- * @returns 
+ * Adds debugging objects to the scene, such as a ground plane and a cube.
+ *
+ * This function adds visual aids to the scene to help with debugging.  The specific
+ * objects added are controlled by internal flags (`GROUND_DEBUG`, `SHAPE_DEBUG`).
+ *
+ * @param {THREE.Scene} scene - The Three.js scene to add the debug objects to.
+ * @returns {void}
+ */
+export function addObjectDebug(scene) {
+  const GROUND_DEBUG = false;  // Flag to enable/disable ground plane debug.
+  const SHAPE_DEBUG = true;   // Flag to enable/disable shape (cube) debug.
+
+  if (!OBJECT_DEBUG) return; // If OBJECT_DEBUG is false, do nothing.
+
+  if (GROUND_DEBUG) {
+    const groundGeometry = new THREE.PlaneGeometry(500, 500); // Large plane.
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0x555555, // Dark gray.
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal.
+    ground.position.y = -1;             // Position slightly below the origin.
+    ground.receiveShadow = true;       // Ground can receive shadows.
+    scene.add(ground);                  // Add to the scene.
+  }
+
+  // Create a basic shape (cube)
+  if (SHAPE_DEBUG) {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green.
+    const cube = new THREE.Mesh(geometry, material);
+    cube.castShadow = true;           // Cube casts shadows.
+    scene.add(cube);                  // Add to the scene.
+  }
+}
+
+/**
+ * Adds lighting debug helpers to the scene.
+ *
+ * This function adds visual aids to help visualize the position and direction
+ * of lights in the scene.  The specific helpers added are controlled by internal
+ * flags (`SHADOW_DEBUG`, `SPOTLIGHT_DEBUG`, `DIRECTIONAL_LIGHT_DEBUG`).
+ *
+ * @param {THREE.Scene} scene - The Three.js scene to add the helpers to.
+ * @param {THREE.SpotLightHelper} spotLightHelper - The helper for the spot light.
+ * @param {THREE.DirectionalLightHelper} directionalLightHelper - The helper for the directional light.
+ * @returns {void}
  */
 export function addLightingDebug(scene, spotLightHelper, directionalLightHelper) {
-    const SHADOW_DEBUG = false;
-    const SPOTLIGHT_DEBUG = true;
-    const DIRECTIONAL_LIGHT_DEBUG = false;
+  const SHADOW_DEBUG = false;           // Flag to enable/disable shadow debugging.
+  const SPOTLIGHT_DEBUG = true;        // Flag to enable/disable spot light helper.
+  const DIRECTIONAL_LIGHT_DEBUG = false; // Flag for directional light
 
-    if(!LIGHTING_DEBUG) return;
-    
-    if(SHADOW_DEBUG) {
-      const shadowHelper = new THREE.CameraHelper(this.light.shadow.camera);
-      this.scene.add(shadowHelper);
-  
-      // Add a point light with shadows
-      light.position.set(0, 0, 0);
-      light.castShadow = true;
-      light.shadow.mapSize.width = 1024;
-      light.shadow.mapSize.height = 1024;
-      light.shadow.camera.near = 0.1;
-      light.shadow.camera.far = 100;
-      scene.add(light);
-    }
-    if (SPOTLIGHT_DEBUG) {
-      scene.add(spotLightHelper);
-    }
-    if(DIRECTIONAL_LIGHT_DEBUG) {
-      //Add a DirectionalLightHelper to visualize the light's direction
-      scene.add(directionalLightHelper);
-    }
+  if (!LIGHTING_DEBUG) return; // If LIGHTING_DEBUG is false, do nothing.
+
+  if (SHADOW_DEBUG) {
+    const shadowHelper = new THREE.CameraHelper(light.shadow.camera); // 'this' is undefined here, potential error.
+    scene.add(shadowHelper);
+
+    // Add a point light with shadows
+    light.position.set(0, 0, 0);
+    light.castShadow = true;
+    light.shadow.mapSize.width = 1024;
+    light.shadow.mapSize.height = 1024;
+    light.shadow.camera.near = 0.1;
+    light.shadow.camera.far = 100;
+    scene.add(light);
   }
+
+  if (SPOTLIGHT_DEBUG) {
+    scene.add(spotLightHelper); // Add the spot light helper to the scene.
+  }
+
+  if (DIRECTIONAL_LIGHT_DEBUG) {
+    // Add a DirectionalLightHelper to visualize the light's direction
+    scene.add(directionalLightHelper);
+  }
+}
