@@ -1,47 +1,39 @@
 import * as THREE from "three";
 
-export { MoleculeManager };
+// MoleculeGroup factory function
+export const createMoleculeGroup = (name, position = { x: 0, y: 0, z: 0 }) => {
+  const group = new THREE.Group();
+  return {
+    name,
+    position,
+    group,
+    add: (mesh) => {
+      group.add(mesh);
+    },
+    // If needed, a way to get the group for adding to the scene later
+    getGroup: () => group,
+  };
+};
 
-class MoleculeGroup {
-    constructor(name, position = { x: 0, y: 0, z: 0 }) {
-      this.position = position;
-      this.name = name;
-      this.group = new THREE.Group();
-      //this.mesh = new THREE.Mesh(geometry, material);
-      //this.group.add(this.mesh);
-    }
-    add(mesh) {
-      this.group.add(mesh);
-    }
+// MoleculeManager factory function (using a closure to manage molecules)
+export const createMoleculeManager = () => {
+  let molecules = {}; // Private state managed by the closure
 
-  }
-
-class MoleculeManager {
-    constructor() {
-      this.molecules = {}; // object (dictionary) to store molecules
-    }
-  
-    newMolecule(name, position = { x: 0, y: 0, z: 0 }) {
-      const newMolecule = new MoleculeGroup(name, position);
-      this.molecules[name] = newMolecule; // Store by name for easy access (change to CSID?)
+  return {
+    newMolecule: (name, position = { x: 0, y: 0, z: 0 }) => {
+      const newMolecule = createMoleculeGroup(name, position);
+      molecules = { ...molecules, [name]: newMolecule }; // Create a new object with the added molecule
       return newMolecule;
-    }
-    // can change lookup later
-    getMolecule(name) {
-      return this.molecules[name];
-    }
-  
-    getAllMolecules() {
-      return Object.values(this.molecules); // Get an array of all molecule objects
-    }
-  
-    // remove a molecule
-    removeMolecule(name) {
-      if (this.molecules[name]) {
-        delete this.molecules[name];
+    },
+    getMolecule: (name) => molecules[name],
+    getAllMolecules: () => Object.values(molecules),
+    removeMolecule: (name) => {
+      if (molecules[name]) {
+        const { [name]: removed, ...rest } = molecules; // Destructure to remove
+        molecules = rest; // Update the molecules object immutably
         return true;
       }
       return false;
-    }
-  }
-  
+    },
+  };
+};

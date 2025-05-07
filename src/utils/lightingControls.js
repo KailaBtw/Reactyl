@@ -1,7 +1,5 @@
 import * as THREE from "three";
-import { log, addLightingDebug } from "./debug.js";
-
-const LIGHTING_DEBUG = true; // Set to false to disable lighting debug
+import { log, addLightingDebug, LIGHTING_DEBUG } from "./debug.js";
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 const spotLight = new THREE.SpotLight(0xffffff, 50);
@@ -21,12 +19,10 @@ const spotlightOffset = new THREE.Vector3(2, 4, -4); // Right, Up, Behind (relat
  * @param {THREE.scene} scene
  */
 export function applyLighting(scene) {
-  if (LIGHTING_DEBUG) {
-    addLightingDebug(scene, spotLightHelper, directionalLightHelper);
-  }
   addAmbientLight(scene);
   addSpotLight(scene);
   addDirectionalLight(scene);
+  addLightingDebug(scene, spotLightHelper, directionalLightHelper);
   log("Finished Initializing Lighting");
 }
 
