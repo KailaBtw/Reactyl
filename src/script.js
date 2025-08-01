@@ -19,7 +19,16 @@ import {
   updateSpotlightPosition,
   updateSkyLightPosition,
 } from "./utils/lightingControls.js"; // Import functions for managing scene lighting.
-import { checkCollision, handleCollision } from "./utils/vectorHelper.js"; // Import functions for collision detection and handling.
+import { 
+  checkCollision, 
+  handleCollision, 
+  initializeSpatialGrid, 
+  updateSpatialGrid, 
+  checkCollisionsWithSpatialGrid,
+  getSpatialGridStats,
+  resetSpatialGridStats,
+  debugVisualizeSpatialGrid
+} from "./utils/vectorHelper.js"; // Import functions for collision detection and handling.
 import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug.js"; // Import debugging utilities.
 import { set_up_gui, autoRotate } from "./utils/guiControls.js"; // Import functions for setting up the graphical user interface.
 import { getMolecule, drawMolecule } from "./utils/moleculeDrawer.js"; // Import functions for fetching and drawing molecules.
@@ -183,8 +192,12 @@ function animate() {
     }
   });
 
+  // Update spatial grid with current molecule positions
+  const allMolecules = moleculeManager.getAllMolecules();
+  updateSpatialGrid(allMolecules);
+
   // Move all the molecules based on their velocities and handle collisions.
-  for (const moleculeObject of moleculeManager.getAllMolecules()) {
+  for (const moleculeObject of allMolecules) {
     const group = moleculeObject.getGroup(); // Get the Three.js Group.
     const randomForceStrength = 20;
 
@@ -202,11 +215,10 @@ function animate() {
     // Update molecule position based on velocity and time.
     group.position.addScaledVector(moleculeObject.velocity, deltaTime);
 
-    // Check for collisions with other molecules and handle them.
-    for (const moleculeObject2 of moleculeManager.getAllMolecules()) {
-      if (moleculeObject != moleculeObject2 && checkCollision(moleculeObject, moleculeObject2)) {
-        handleCollision(moleculeObject, moleculeObject2);
-      }
+    // Check for collisions with other molecules using spatial partitioning
+    const collidingMolecules = checkCollisionsWithSpatialGrid(moleculeObject, allMolecules);
+    for (const collidingMolecule of collidingMolecules) {
+      handleCollision(moleculeObject, collidingMolecule);
     }
   }
 
@@ -228,6 +240,10 @@ function animate() {
  */
 function init(CSID) {
   log(`Initializing scene with molecule CSID: ${CSID}`);
+
+  // Initialize spatial grid for collision detection
+  initializeSpatialGrid(6, 1000); // cellSize = 6, maxMolecules = 1000
+  log("Spatial grid initialized for collision detection");
 
   // Clear the scene:
   while (scene.children.length > 0) {

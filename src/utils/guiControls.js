@@ -5,6 +5,11 @@ import { Molecules } from "../assets/molecules_enum.js"; // Import the Molecules
 import { getMolecule } from "./moleculeDrawer.js"; // Import the getMolecule function.
 import { log } from "./debug.js"; // Import the log function.
 import { createMoleculeManager } from "./moleculeManager.js"; // Import the createMoleculeManager.js
+import { 
+  getSpatialGridStats, 
+  resetSpatialGridStats, 
+  debugVisualizeSpatialGrid 
+} from "./vectorHelper.js"; // Import spatial grid functions
 
 /**
  * Main Javascript class for setting up GUI
@@ -77,6 +82,9 @@ export function set_up_gui(moleculeManager, scene) {
   //   moleculeGroup.scale.y = value;
   //   moleculeGroup.scale.z = value;
   // });
+
+  // --- Spatial Grid Debug Controls ---
+  addSpatialGridControls(gui, scene);
 }
 
 /**
@@ -179,4 +187,80 @@ function addMoleculeSearch(gui, moleculeManager, scene) {
   });
 
   // moleculeSearch.open();
+}
+
+/**
+ * Adds spatial grid debug controls to the GUI
+ * @param {object} gui - The dat.GUI instance
+ * @param {THREE.Scene} scene - The Three.js scene object
+ */
+function addSpatialGridControls(gui, scene) {
+  const spatialGridFolder = gui.addFolder("Spatial Grid Debug");
+  
+  // Performance stats display
+  const statsDisplay = {
+    totalCells: 0,
+    moleculesInGrid: 0,
+    totalChecks: 0,
+    actualCollisions: 0
+  };
+
+  // Add stats display (read-only)
+  spatialGridFolder.add(statsDisplay, "totalCells").name("Total Cells").listen();
+  spatialGridFolder.add(statsDisplay, "moleculesInGrid").name("Molecules in Grid").listen();
+  spatialGridFolder.add(statsDisplay, "totalChecks").name("Total Checks (Cumulative)").listen();
+  spatialGridFolder.add(statsDisplay, "actualCollisions").name("Actual Collisions (Cumulative)").listen();
+
+  // Add average molecules per cell as a separate display
+  const avgDisplay = { value: "0.00" };
+  spatialGridFolder.add(avgDisplay, "value").name("Avg Molecules/Cell").listen();
+
+  // Update stats every frame
+  function updateStats() {
+    const stats = getSpatialGridStats();
+    if (stats) {
+      statsDisplay.totalCells = stats.totalCells;
+      statsDisplay.moleculesInGrid = stats.moleculesInGrid;
+      avgDisplay.value = stats.averageMoleculesPerCell.toFixed(2);
+      statsDisplay.totalChecks = stats.totalChecks;
+      statsDisplay.actualCollisions = stats.actualCollisions;
+    }
+    requestAnimationFrame(updateStats);
+  }
+  updateStats();
+
+  // Reset stats button
+  spatialGridFolder.add({
+    resetStats: function() {
+      resetSpatialGridStats();
+      log("Spatial grid statistics reset");
+    }
+  }, "resetStats").name("Reset Stats");
+
+  // Toggle grid visualization
+  let showGrid = false;
+  spatialGridFolder.add({
+    toggleGrid: function() {
+      showGrid = !showGrid;
+      if (showGrid) {
+        log("Spatial grid visualization enabled");
+      } else {
+        // Remove grid visualization objects
+        const gridObjects = scene.children.filter(child => child.userData.isGridDebug);
+        gridObjects.forEach(obj => scene.remove(obj));
+        log("Spatial grid visualization disabled");
+      }
+    }
+  }, "toggleGrid").name("Show Grid");
+
+  // Update grid visualization each frame when enabled
+  function updateGridVisualization() {
+    if (showGrid) {
+      debugVisualizeSpatialGrid(scene);
+    }
+    requestAnimationFrame(updateGridVisualization);
+  }
+  updateGridVisualization();
+
+  spatialGridFolder.open();
 }

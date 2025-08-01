@@ -82,6 +82,7 @@ sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
 
 <details><summary>Backend Changes (click to expand)</summary>
 
+- move to gitlab? Use a sync task to keep both updated?
 - Clean up Documentation and javadoc
 - Clean up readme
 - fix github pages being unable to access script.json or anything in assets
