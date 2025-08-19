@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { molFileToJSON } from "./molFileToJSON.js";
 import { log } from "./debug.js";
+import { createBoundingBox } from "./boundingBox.js";
 
 // ===============================
 //  Global Variables
@@ -117,7 +118,13 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
   const molObject = molFileToJSON(molFile); // Parse the .mol file content into a JavaScript object.
 
   const molecule = moleculeManager.newMolecule(name); // Create a new molecule group using the manager.
-  // lets look at it //console.log(molObject);
+  
+  // Debug: Log the first few atoms to see the data structure
+  log(`Molecule ${name} has ${molObject.atoms.length} atoms`);
+  if (molObject.atoms.length > 0) {
+    const firstAtom = molObject.atoms[0];
+    log(`First atom: type=${firstAtom.type}, pos=(${firstAtom.position.x}, ${firstAtom.position.y}, ${firstAtom.position.z})`);
+  }
 
 
   // ### Handle Molecule Shapes ###
@@ -158,6 +165,17 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
     (Number(limits.y.min) + Number(limits.y.max)) / 2,
     (Number(limits.z.min) + Number(limits.z.max)) / 2
   );
+
+  // Create accurate bounding box for collision detection
+  const boundingBox = createBoundingBox(molObject, moleculeCenter, 'AABB');
+  molecule.boundingBox = boundingBox;
+  molecule.molObject = molObject; // Store molecule data for future updates
+  
+  // Set the molecule group position to the specified position
+  molecule.group.position.set(position.x, position.y, position.z);
+  
+  // Log bounding box creation for debugging
+  log(`Created bounding box for ${name}: size=${boundingBox.size.x.toFixed(2)}x${boundingBox.size.y.toFixed(2)}x${boundingBox.size.z.toFixed(2)}`);
 
   // Create and position the atom spheres.
   for (let item of molObject.atoms) {

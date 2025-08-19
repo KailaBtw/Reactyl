@@ -64,7 +64,7 @@ export class SpatialHashGrid {
     const pos = molecule.group.position;
     const radius = molecule.radius || 3;
     
-    // Calculate grid bounds for molecule's bounding box
+    // Calculate grid bounds for molecule's radius
     const minX = Math.floor((pos.x - radius) / this.cellSize);
     const maxX = Math.floor((pos.x + radius) / this.cellSize);
     const minY = Math.floor((pos.y - radius) / this.cellSize);

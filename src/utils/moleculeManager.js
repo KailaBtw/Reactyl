@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { log } from "./debug";
 import { getNormalizedVectorAB } from "./vectorHelper";
+import { createBoundingBox, updateBoundingBox } from "./boundingBox.js";
 
 /**
  * Factory function to create a molecule group.  A molecule group is a Three.js Group
@@ -30,6 +31,8 @@ export const createMoleculeGroup = (name, position = { x: 0, y: 0, z: 0 }, radiu
     getGroup: () => group, // Method to get the Three.js Group.
     velocity: new THREE.Vector3(0, 0, 0), // The molecule's velocity (as a THREE.Vector3).
     radius: radius, // The molecule's radius for collision detection.
+    boundingBox: null, // The molecule's bounding box for accurate collision detection.
+    molObject: null, // Store the parsed molecule data for bounding box calculations.
   };
 };
 

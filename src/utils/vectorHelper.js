@@ -47,15 +47,12 @@ export function getNormalizedVectorAB(a, b) {
 /**
  * Checks for a collision between two molecules represented by their molecule objects.
  *
- * This function determines if two molecules are colliding by comparing the
- * squared distance between their centers to the squared sum of their radii.
- * This avoids the expensive square root operation.  It assumes that the
- * molecule objects have a 'group' property which is a THREE.Group, and a
- * 'radius' property.
+ * This function uses bounding boxes for more accurate collision detection.
+ * It first checks if the bounding boxes intersect, then falls back to radius-based
+ * detection if bounding boxes are not available.
  *
- * @param {object} molA - The first molecule object.  Expected to have a 'group'
- * (THREE.Group) with a 'position' (THREE.Vector3) and a 'radius' (number) property.
- * @param {object} molB - The second molecule object, with the same structure as molA.
+ * @param {object} molA - The first molecule object.
+ * @param {object} molB - The second molecule object.
  * @returns {boolean} - True if the molecules are colliding, false otherwise.
  */
 export function checkCollision(molA, molB) {

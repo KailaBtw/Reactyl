@@ -242,7 +242,8 @@ function init(CSID) {
   log(`Initializing scene with molecule CSID: ${CSID}`);
 
   // Initialize spatial grid for collision detection
-  initializeSpatialGrid(6, 1000); // cellSize = 6, maxMolecules = 1000
+  // Cell size should be ~2x the largest molecule radius for optimal performance
+  initializeSpatialGrid(4, 1000); // cellSize = 4, maxMolecules = 1000
   log("Spatial grid initialized for collision detection");
 
   // Clear the scene:

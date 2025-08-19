@@ -10,6 +10,7 @@ import {
   resetSpatialGridStats, 
   debugVisualizeSpatialGrid 
 } from "./vectorHelper.js"; // Import spatial grid functions
+import { visualizeBoundingBox, visualizeAllBoundingBoxes } from "./boundingBox.js"; // Import bounding box visualization
 
 /**
  * Main Javascript class for setting up GUI
@@ -84,7 +85,7 @@ export function set_up_gui(moleculeManager, scene) {
   // });
 
   // --- Spatial Grid Debug Controls ---
-  addSpatialGridControls(gui, scene);
+  addSpatialGridControls(gui, scene, moleculeManager);
 }
 
 /**
@@ -193,8 +194,9 @@ function addMoleculeSearch(gui, moleculeManager, scene) {
  * Adds spatial grid debug controls to the GUI
  * @param {object} gui - The dat.GUI instance
  * @param {THREE.Scene} scene - The Three.js scene object
+ * @param {object} moleculeManager - The molecule manager instance
  */
-function addSpatialGridControls(gui, scene) {
+function addSpatialGridControls(gui, scene, moleculeManager) {
   const spatialGridFolder = gui.addFolder("Spatial Grid Debug");
   
   // Performance stats display
@@ -215,6 +217,10 @@ function addSpatialGridControls(gui, scene) {
   const avgDisplay = { value: "0.00" };
   spatialGridFolder.add(avgDisplay, "value").name("Avg Molecules/Cell").listen();
 
+  // Add efficiency ratio display
+  const efficiencyDisplay = { value: "0.00" };
+  spatialGridFolder.add(efficiencyDisplay, "value").name("Collision Efficiency %").listen();
+
   // Update stats every frame
   function updateStats() {
     const stats = getSpatialGridStats();
@@ -224,6 +230,12 @@ function addSpatialGridControls(gui, scene) {
       avgDisplay.value = stats.averageMoleculesPerCell.toFixed(2);
       statsDisplay.totalChecks = stats.totalChecks;
       statsDisplay.actualCollisions = stats.actualCollisions;
+      
+      // Calculate efficiency (lower is better - fewer unnecessary checks)
+      if (stats.totalChecks > 0) {
+        const efficiency = ((stats.actualCollisions / stats.totalChecks) * 100).toFixed(1);
+        efficiencyDisplay.value = efficiency;
+      }
     }
     requestAnimationFrame(updateStats);
   }
@@ -252,6 +264,50 @@ function addSpatialGridControls(gui, scene) {
       }
     }
   }, "toggleGrid").name("Show Grid");
+
+  // Toggle bounding box visualization
+  let showBoundingBoxes = false;
+  spatialGridFolder.add({
+    toggleBoundingBoxes: function() {
+      showBoundingBoxes = !showBoundingBoxes;
+      if (showBoundingBoxes) {
+        log("Bounding box visualization enabled");
+      } else {
+        // Remove bounding box visualization objects
+        const boxObjects = scene.children.filter(child => child.userData.isBoundingBoxViz);
+        boxObjects.forEach(obj => scene.remove(obj));
+        log("Bounding box visualization disabled");
+      }
+    }
+  }, "toggleBoundingBoxes").name("Show Bounding Boxes");
+
+  // Update bounding box visualization each frame when enabled
+  function updateBoundingBoxVisualization() {
+    if (showBoundingBoxes) {
+      // Get all molecules and visualize their bounding boxes
+      const molecules = moleculeManager.getAllMolecules();
+      const boundingBoxes = [];
+      
+      for (const molecule of molecules) {
+        if (molecule.boundingBox) {
+          // Create a temporary bounding box at the molecule's current position
+          const pos = molecule.group.position;
+          const tempBox = {
+            min: molecule.boundingBox.min.clone().add(pos),
+            max: molecule.boundingBox.max.clone().add(pos),
+            center: molecule.boundingBox.center.clone().add(pos),
+            size: molecule.boundingBox.size.clone()
+          };
+          boundingBoxes.push(tempBox);
+        }
+      }
+      
+      // Visualize all bounding boxes at once
+      visualizeAllBoundingBoxes(boundingBoxes, scene, 0xff0000); // Red color for bounding boxes
+    }
+    requestAnimationFrame(updateBoundingBoxVisualization);
+  }
+  updateBoundingBoxVisualization();
 
   // Update grid visualization each frame when enabled
   function updateGridVisualization() {
