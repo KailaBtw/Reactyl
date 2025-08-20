@@ -1,31 +1,57 @@
 import * as THREE from "three";
-import { log } from "./debug";
 import { getNormalizedVectorAB } from "./vectorHelper";
-import { createBoundingBox, updateBoundingBox } from "./boundingBox.js";
+
+// Type definitions
+interface Position {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface MoleculeGroup {
+  name: string;
+  position: Position;
+  group: THREE.Group;
+  add: (mesh: THREE.Mesh) => void;
+  getGroup: () => THREE.Group;
+  velocity: THREE.Vector3;
+  radius: number;
+  boundingBox: any; // TODO: Define proper bounding box type
+  molObject: any; // TODO: Define proper molecule object type
+}
+
+interface MoleculeManager {
+  newMolecule: (name: string, position?: Position) => MoleculeGroup;
+  getMolecule: (name: string) => MoleculeGroup | undefined;
+  getAllMolecules: () => MoleculeGroup[];
+  removeMolecule: (name: string) => boolean;
+  debugMolecules: () => void;
+  setInitialVelocities: (initialSpeed?: number) => void;
+  setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed?: number) => void;
+}
 
 /**
  * Factory function to create a molecule group.  A molecule group is a Three.js Group
  * that represents a molecule.  It contains the molecule's visual representation
  * (meshes) and associated data like position, velocity, and radius.
  *
- * @param {string} name - The name of the molecule.  This should be unique.
- * @param {object} [position={x: 0, y: 0, z: 0}] - The initial position of the molecule.
- * Defaults to the origin (0, 0, 0).
- * @property {number} x
- * @property {number} y
- * @property {number} z
- * @param {number} radius - The radius of the molecule for collision detection.
- * @returns {object} - An object representing the molecule group with methods
- * to manage its properties.
+ * @param name - The name of the molecule.  This should be unique.
+ * @param position - The initial position of the molecule. Defaults to the origin (0, 0, 0).
+ * @param radius - The radius of the molecule for collision detection.
+ * @returns An object representing the molecule group with methods to manage its properties.
  */
-export const createMoleculeGroup = (name, position = { x: 0, y: 0, z: 0 }, radius) => {
+export const createMoleculeGroup = (
+  name: string, 
+  position: Position = { x: 0, y: 0, z: 0 }, 
+  radius: number
+): MoleculeGroup => {
   const group = new THREE.Group();
 
   return {
     name, // The name of the molecule.
     position, // store position here
     group, // The Three.js Group representing the molecule.
-    add: (mesh) => {
+    add: (mesh: THREE.Mesh) => {
       group.add(mesh); // Method to add a mesh (visual representation) to the group.
     },
     getGroup: () => group, // Method to get the Three.js Group.
@@ -42,26 +68,23 @@ export const createMoleculeGroup = (name, position = { x: 0, y: 0, z: 0 }, radiu
  * to create, retrieve, remove, and debug molecules.  Using a closure allows us to
  * keep the `molecules` object private, preventing direct external modification.
  *
- * @returns {object} - An object representing the molecule manager.
+ * @returns An object representing the molecule manager.
  */
-export const createMoleculeManager = () => {
-  let molecules = {}; // Private object to store molecules, keyed by their names.
+export const createMoleculeManager = (): MoleculeManager => {
+  let molecules: Record<string, MoleculeGroup> = {}; // Private object to store molecules, keyed by their names.
   //  The values are molecule objects created by createMoleculeGroup().
   return {
     /**
      * Creates a new molecule and adds it to the manager.
      *
-     * @param {string} name - The name of the new molecule.  Must be unique.
-     * @param {object} [position] - The initial position of the molecule. Optional.
+     * @param name - The name of the new molecule.  Must be unique.
+     * @param position - The initial position of the molecule. Optional.
      * If not provided, a random position is assigned.
-     * @property {number} x
-     * @property {number} y
-     * @property {number} z
-     * @returns {object} - The newly created molecule object.
+     * @returns The newly created molecule object.
      */
-    newMolecule: (name, position) => {
+    newMolecule: (name: string, position?: Position): MoleculeGroup => {
       // Default position if none is provided.
-      const defaultPosition = position === undefined ? {
+      const defaultPosition: Position = position === undefined ? {
         x: Math.random() * 20 - 10,
         y: Math.random() * 20 - 10,
         z: Math.random() * 20 - 10,
@@ -75,23 +98,23 @@ export const createMoleculeManager = () => {
     /**
      * Retrieves a molecule by its name.
      *
-     * @param {string} name - The name of the molecule to retrieve.
-     * @returns {object|undefined} - The molecule object if found, otherwise undefined.
+     * @param name - The name of the molecule to retrieve.
+     * @returns The molecule object if found, otherwise undefined.
      */
-    getMolecule: (name) => molecules[name],
+    getMolecule: (name: string): MoleculeGroup | undefined => molecules[name],
     /**
    * Retrieves all molecules in the manager.
    *
-   * @returns {object[]} - An array of all molecule objects.
+   * @returns An array of all molecule objects.
    */
-    getAllMolecules: () => Object.values(molecules),
+    getAllMolecules: (): MoleculeGroup[] => Object.values(molecules),
     /**
    * Removes a molecule from the manager by its name.
    *
-   * @param {string} name - The name of the molecule to remove.
-   * @returns {boolean} - True if the molecule was removed, false otherwise.
+   * @param name - The name of the molecule to remove.
+   * @returns True if the molecule was removed, false otherwise.
    */
-    removeMolecule: (name) => {
+    removeMolecule: (name: string): boolean => {
       if (molecules[name]) {
         const { [name]: removed, ...rest } = molecules; // Destructure to remove
         molecules = rest; // Update the molecules object immutably
@@ -103,16 +126,15 @@ export const createMoleculeManager = () => {
    * Logs the current state of the molecules object to the console for debugging.
    * This is helpful for inspecting the molecules being managed.
    */
-    debugMolecules: () => { // Add this method
+    debugMolecules: (): void => { // Add this method
       console.log("[DEBUG] The 'molecules' object:", molecules);
     },
     /**
    * Sets the initial velocities of all molecules in the manager to random values.
    *
-   * @param {number} [initialSpeed=10] - The initial speed of the molecules.
-   * Defaults to 10.
+   * @param initialSpeed - The initial speed of the molecules. Defaults to 10.
    */
-    setInitialVelocities: (initialSpeed = 10) => {
+    setInitialVelocities: (initialSpeed: number = 10): void => {
       for (const molecule of Object.values(molecules)) {
         molecule.velocity.set(
           (Math.random() * 2 - 1) * initialSpeed, // Range -initialSpeed to +initialSpeed
@@ -126,11 +148,11 @@ export const createMoleculeManager = () => {
      * Sets the initial velocity of a molecule to point it towards a specified quadrant
      * relative to a target world position.
      *
-     * @param {string} moleculeName - The name of the molecule to set the velocity for.
-     * @param {THREE.Vector3} targetPosition - The world position to point towards.
-     * @param {number} speed - The speed of the initial velocity.
+     * @param moleculeName - The name of the molecule to set the velocity for.
+     * @param targetPosition - The world position to point towards.
+     * @param speed - The speed of the initial velocity.
      */
-    setMoleculeVelocity: (moleculeName, targetPosition, speed = 2) => {
+    setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed: number = 2): void => {
       const molecule = molecules[moleculeName];
       if (!molecule) {
         console.warn(`Molecule with name "${moleculeName}" not found.`);
@@ -151,4 +173,4 @@ export const createMoleculeManager = () => {
       );
     },
   };
-};
+}; 

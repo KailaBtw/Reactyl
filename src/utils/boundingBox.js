@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { log } from "./debug.js";
+import { log } from "./debug";
 
 /**
  * Bounding Box System for Molecules

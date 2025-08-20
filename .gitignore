@@ -26,3 +26,5 @@ replay_pid*
 # ignore node modules
 node_modules
 dist
+
+.cursor

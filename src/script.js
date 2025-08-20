@@ -13,12 +13,12 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; //
 // import { generateUUID } from "three/src/math/MathUtils.js";  // Import for generating unique IDs (not currently used).
 
 // My Imports - Application-Specific Modules
-import { createMoleculeManager } from "./utils/moleculeManager.js"; // Import the MoleculeManager factory.
+import { createMoleculeManager } from "./utils/moleculeManager"; // Import the MoleculeManager factory.
 import {
   applyLighting,
   updateSpotlightPosition,
   updateSkyLightPosition,
-} from "./utils/lightingControls.js"; // Import functions for managing scene lighting.
+} from "./utils/lightingControls"; // Import functions for managing scene lighting.
 import { 
   checkCollision, 
   handleCollision, 
@@ -28,10 +28,10 @@ import {
   getSpatialGridStats,
   resetSpatialGridStats,
   debugVisualizeSpatialGrid
-} from "./utils/vectorHelper.js"; // Import functions for collision detection and handling.
-import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug.js"; // Import debugging utilities.
-import { set_up_gui, autoRotate } from "./utils/guiControls.js"; // Import functions for setting up the graphical user interface.
-import { getMolecule, drawMolecule } from "./utils/moleculeDrawer.js"; // Import functions for fetching and drawing molecules.
+} from "./utils/vectorHelper"; // Import functions for collision detection and handling.
+import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug"; // Import debugging utilities.
+import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
+import { getMolecule, drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
 // import { findCenter } from "./utils/findCenter.js";  // Import for finding molecule center (not currently used).
 
 // ===============================

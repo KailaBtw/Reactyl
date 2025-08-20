@@ -1,16 +1,16 @@
 import * as dat from "dat.gui";
 import * as THREE from "three";
 import Awesomplete from "awesomplete"; // Import the Awesomplete library.
-import { Molecules } from "../assets/molecules_enum.js"; // Import the Molecules enum.
-import { getMolecule } from "./moleculeDrawer.js"; // Import the getMolecule function.
-import { log } from "./debug.js"; // Import the log function.
-import { createMoleculeManager } from "./moleculeManager.js"; // Import the createMoleculeManager.js
+import { Molecules } from "../assets/molecules_enum"; // Import the Molecules enum.
+import { getMolecule } from "./moleculeDrawer"; // Import the getMolecule function.
+import { log } from "./debug"; // Import the log function.
+import { createMoleculeManager } from "./moleculeManager"; // Import the createMoleculeManager
 import { 
   getSpatialGridStats, 
   resetSpatialGridStats, 
   debugVisualizeSpatialGrid 
-} from "./vectorHelper.js"; // Import spatial grid functions
-import { visualizeBoundingBox, visualizeAllBoundingBoxes } from "./boundingBox.js"; // Import bounding box visualization
+} from "./vectorHelper"; // Import spatial grid functions
+import { visualizeBoundingBox, visualizeAllBoundingBoxes } from "./boundingBox"; // Import bounding box visualization
 
 /**
  * Main Javascript class for setting up GUI

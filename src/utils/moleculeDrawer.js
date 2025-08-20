@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { molFileToJSON } from "./molFileToJSON.js";
-import { log } from "./debug.js";
-import { createBoundingBox } from "./boundingBox.js";
+import { molFileToJSON } from "./molFileToJSON";
+import { log } from "./debug";
+import { createBoundingBox } from "./boundingBox";
 
 // ===============================
 //  Global Variables

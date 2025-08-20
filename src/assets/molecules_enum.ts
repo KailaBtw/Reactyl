@@ -1,5 +1,17 @@
+// Type definitions
+interface Molecule {
+  CSID: number;
+  name: string;
+}
 
-const Molecules = {
+interface MoleculesEnum {
+  CAFFEINE: Molecule;
+  ETHANOL: Molecule;
+  NEPETALACTONE: Molecule;
+  CINNAMALDEHYDE: Molecule;
+}
+
+const Molecules: MoleculesEnum = {
     CAFFEINE: {
       CSID: 2424,
       name: "Caffeine (Coffee, Chocolate, Tea)",
@@ -18,4 +30,4 @@ const Molecules = {
     },
   };
   
-  export { Molecules }; // Export the enum
+  export { Molecules }; // Export the enum 

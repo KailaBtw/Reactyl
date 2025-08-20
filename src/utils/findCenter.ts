@@ -1,5 +1,24 @@
 import * as THREE from "three";
 
+// Type definitions
+interface Atom {
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+}
+
+interface MolObject {
+  atoms: Atom[];
+}
+
+interface Limits {
+  x: { min: number; max: number };
+  y: { min: number; max: number };
+  z: { min: number; max: number };
+}
+
 /**
  * Calculates the geometric center of a molecule represented by a molObject.
  *
@@ -7,13 +26,12 @@ import * as THREE from "three";
  * and calculates the center point of the molecule by finding the average of
  * the x, y, and z coordinates of all the atoms.
  *
- * @param {object} molObject - An object representing the molecule.  It is expected
- * to have an 'atoms' property, which is an array of atom objects.  Each atom
+ * @param molObject - An object representing the molecule. It is expected
+ * to have an 'atoms' property, which is an array of atom objects. Each atom
  * object is expected to have a 'position' property with x, y, and z coordinates.
- * @returns {THREE.Vector3} - A THREE.Vector3 object representing the calculated
- * center point of the molecule.
+ * @returns A THREE.Vector3 object representing the calculated center point of the molecule.
  */
-export function findCenter(molObject) {
+export function findCenter(molObject: MolObject): THREE.Vector3 {
     // Get the first point in the molecule.
     let firstPoint = new THREE.Vector3(
         molObject.atoms[0].position.x,
@@ -21,9 +39,9 @@ export function findCenter(molObject) {
         molObject.atoms[0].position.z
     );
 
-    // Set the initial limits to the first point.  These limits will be expanded
+    // Set the initial limits to the first point. These limits will be expanded
     // to encompass the entire molecule.
-    let limits = {
+    let limits: Limits = {
         x: { min: firstPoint.x, max: firstPoint.x },
         y: { min: firstPoint.y, max: firstPoint.y },
         z: { min: firstPoint.z, max: firstPoint.z },
@@ -66,4 +84,4 @@ export function findCenter(molObject) {
     );
 
     return moleculeCenter; // Return the calculated center point.
-}
+} 

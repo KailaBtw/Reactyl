@@ -3,41 +3,36 @@ import * as THREE from "three";
 /**
  * Global flag to enable or disable debug log messages.
  * Set to false to prevent log messages from being printed to the console.
- * @type {boolean}
  */
-export const DEBUG_MODE = true;
+export const DEBUG_MODE: boolean = true;
 
 /**
  * Global flag to enable or disable lighting debug helpers.
  * Set to true to show visual aids for lights (e.g., spot light cones, directional light directions).
- * @type {boolean}
  */
-export const LIGHTING_DEBUG = false;
+export const LIGHTING_DEBUG: boolean = false;
 
 /**
  * Global flag to enable or disable object debug.
- * @type {boolean}
  */
-const OBJECT_DEBUG = false;
+const OBJECT_DEBUG: boolean = false;
 
 /**
- * A point light used for shadow debugging.  It's created here but only used
+ * A point light used for shadow debugging. It's created here but only used
  * if SHADOW_DEBUG is enabled within the `addLightingDebug` function.
- * @type {THREE.PointLight}
  */
-const light = new THREE.PointLight(0xffffff, 1, 100); // White light, intensity 1, range 100
+const light: THREE.PointLight = new THREE.PointLight(0xffffff, 1, 100); // White light, intensity 1, range 100
 
 /**
  * Logs information about the program to the console.
  *
  * This function takes any number of arguments and prints them to the console,
- * prefixed with "[DEBUG]: ".  It only prints if the `DEBUG_MODE` flag is true.
+ * prefixed with "[DEBUG]: ". It only prints if the `DEBUG_MODE` flag is true.
  *
- * @param {...any} messages - Any number of values to be logged to the console.
+ * @param messages - Any number of values to be logged to the console.
  * These can be strings, numbers, objects, etc.
- * @returns {void}
  */
-export function log(...messages) {
+export function log(...messages: any[]): void {
   if (!DEBUG_MODE) return; // If DEBUG_MODE is false, do nothing.
 
   console.log("[DEBUG]: ", ...messages); // Log the messages to the console.
@@ -46,15 +41,14 @@ export function log(...messages) {
 /**
  * Adds debugging objects to the scene, such as a ground plane and a cube.
  *
- * This function adds visual aids to the scene to help with debugging.  The specific
+ * This function adds visual aids to the scene to help with debugging. The specific
  * objects added are controlled by internal flags (`GROUND_DEBUG`, `SHAPE_DEBUG`).
  *
- * @param {THREE.Scene} scene - The Three.js scene to add the debug objects to.
- * @returns {void}
+ * @param scene - The Three.js scene to add the debug objects to.
  */
-export function addObjectDebug(scene) {
-  const GROUND_DEBUG = false;  // Flag to enable/disable ground plane debug.
-  const SHAPE_DEBUG = true;   // Flag to enable/disable shape (cube) debug.
+export function addObjectDebug(scene: THREE.Scene): void {
+  const GROUND_DEBUG: boolean = false;  // Flag to enable/disable ground plane debug.
+  const SHAPE_DEBUG: boolean = true;   // Flag to enable/disable shape (cube) debug.
 
   if (!OBJECT_DEBUG) return; // If OBJECT_DEBUG is false, do nothing.
 
@@ -84,18 +78,21 @@ export function addObjectDebug(scene) {
  * Adds lighting debug helpers to the scene.
  *
  * This function adds visual aids to help visualize the position and direction
- * of lights in the scene.  The specific helpers added are controlled by internal
+ * of lights in the scene. The specific helpers added are controlled by internal
  * flags (`SHADOW_DEBUG`, `SPOTLIGHT_DEBUG`, `DIRECTIONAL_LIGHT_DEBUG`).
  *
- * @param {THREE.Scene} scene - The Three.js scene to add the helpers to.
- * @param {THREE.SpotLightHelper} spotLightHelper - The helper for the spot light.
- * @param {THREE.DirectionalLightHelper} directionalLightHelper - The helper for the directional light.
- * @returns {void}
+ * @param scene - The Three.js scene to add the helpers to.
+ * @param spotLightHelper - The helper for the spot light.
+ * @param directionalLightHelper - The helper for the directional light.
  */
-export function addLightingDebug(scene, spotLightHelper, directionalLightHelper) {
-  const SHADOW_DEBUG = false;           // Flag to enable/disable shadow debugging.
-  const SPOTLIGHT_DEBUG = true;        // Flag to enable/disable spot light helper.
-  const DIRECTIONAL_LIGHT_DEBUG = false; // Flag for directional light
+export function addLightingDebug(
+  scene: THREE.Scene, 
+  spotLightHelper: THREE.SpotLightHelper, 
+  directionalLightHelper: THREE.DirectionalLightHelper
+): void {
+  const SHADOW_DEBUG: boolean = false;           // Flag to enable/disable shadow debugging.
+  const SPOTLIGHT_DEBUG: boolean = true;        // Flag to enable/disable spot light helper.
+  const DIRECTIONAL_LIGHT_DEBUG: boolean = false; // Flag for directional light
 
   if (!LIGHTING_DEBUG) return; // If LIGHTING_DEBUG is false, do nothing.
 
@@ -121,4 +118,4 @@ export function addLightingDebug(scene, spotLightHelper, directionalLightHelper)
     // Add a DirectionalLightHelper to visualize the light's direction
     scene.add(directionalLightHelper);
   }
-}
+} 
