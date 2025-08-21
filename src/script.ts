@@ -20,37 +20,17 @@ import {
   updateSkyLightPosition,
 } from "./utils/lightingControls"; // Import functions for managing scene lighting.
 import { 
-  checkCollision, 
   handleCollision, 
   initializeSpatialGrid, 
   updateSpatialGrid, 
-  checkCollisionsWithSpatialGrid,
-  getSpatialGridStats,
-  resetSpatialGridStats,
-  debugVisualizeSpatialGrid
+  checkCollisionsWithSpatialGrid
 } from "./utils/vectorHelper"; // Import functions for collision detection and handling.
 import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug"; // Import debugging utilities.
 import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
 import { getMolecule, drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
 // import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
 
-// Type definitions
-interface MoleculeGroup {
-  name: string;
-  group: THREE.Group;
-  getGroup: () => THREE.Group;
-  velocity: THREE.Vector3;
-}
-
-interface MoleculeManager {
-  getAllMolecules: () => MoleculeGroup[];
-}
-
-interface AutoRotateSettings {
-  x: { switch?: boolean };
-  y: { switch?: boolean };
-  z: { switch?: boolean };
-}
+import { MoleculeGroup, MoleculeManager, AutoRotate } from "./types";
 
 // ===============================
 //  Module-Level Variables
@@ -154,10 +134,10 @@ if (moleculeFileInput) {
     const file = target.files?.[0]; // Get the selected file.
     if (file) {
       const reader = new FileReader(); // Create a FileReader to read the file content.
-      reader.onload = function (e: ProgressEvent<FileReader>) {
-        const molFile = reader.result as string; // Get the file content as text.
-        drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, "test"); // Draw the molecule. // TODO: Fix position.
-      };
+        reader.onload = function () {
+    const molFile = reader.result as string; // Get the file content as text.
+    drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, "test"); // Draw the molecule. // TODO: Fix position.
+  };
       reader.readAsText(file); // Read the file as text.
     }
   });
@@ -195,7 +175,7 @@ function animate(): void {
 
   // Rotate all molecules based on the autoRotate settings from the GUI.
   moleculeManager.getAllMolecules().forEach((molecule: MoleculeGroup) => {
-    const rotateSettings = autoRotate as AutoRotateSettings;
+    const rotateSettings = autoRotate as AutoRotate;
     if (rotateSettings.x.switch) {
       molecule.group.rotation.x -= 0.5 * deltaTime;
     }
@@ -214,14 +194,15 @@ function animate(): void {
   // Move all the molecules based on their velocities and handle collisions.
   for (const moleculeObject of allMolecules) {
     const group = moleculeObject.getGroup(); // Get the Three.js Group.
-    const randomForceStrength = 20;
+    // const randomForceStrength = 20; // Unused variable
 
     // Apply a small random force (change in velocity).
-    const randomForce = new THREE.Vector3(
-      (Math.random() * randomForceStrength) + moleculeObject.velocity.x,
-      (Math.random() * randomForceStrength) + moleculeObject.velocity.y,
-      (Math.random() * randomForceStrength) + moleculeObject.velocity.z
-    );
+    // Random force calculation (commented out - no random force applied)
+    // const randomForce = new THREE.Vector3(
+    //   (Math.random() * randomForceStrength) + moleculeObject.velocity.x,
+    //   (Math.random() * randomForceStrength) + moleculeObject.velocity.y,
+    //   (Math.random() * randomForceStrength) + moleculeObject.velocity.z
+    // );
     // moleculeObject.velocity.addScaledVector(randomForce, deltaTime); // Removed: No random force
 
     // Apply some damping to prevent infinite speed increase (optional).

@@ -1,34 +1,6 @@
 import * as THREE from "three";
 import { getNormalizedVectorAB } from "./vectorHelper";
-
-// Type definitions
-interface Position {
-  x: number;
-  y: number;
-  z: number;
-}
-
-interface MoleculeGroup {
-  name: string;
-  position: Position;
-  group: THREE.Group;
-  add: (mesh: THREE.Mesh) => void;
-  getGroup: () => THREE.Group;
-  velocity: THREE.Vector3;
-  radius: number;
-  boundingBox: any; // TODO: Define proper bounding box type
-  molObject: any; // TODO: Define proper molecule object type
-}
-
-interface MoleculeManager {
-  newMolecule: (name: string, position?: Position) => MoleculeGroup;
-  getMolecule: (name: string) => MoleculeGroup | undefined;
-  getAllMolecules: () => MoleculeGroup[];
-  removeMolecule: (name: string) => boolean;
-  debugMolecules: () => void;
-  setInitialVelocities: (initialSpeed?: number) => void;
-  setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed?: number) => void;
-}
+import { Position, MoleculeGroup, MoleculeManager } from "../types";
 
 /**
  * Factory function to create a molecule group.  A molecule group is a Three.js Group

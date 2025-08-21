@@ -1,25 +1,10 @@
 import * as THREE from "three";
 import { log } from "./debug"; // Assuming this is your debug logging utility
 import { SpatialHashGrid } from "./spatialPartitioning";
+import { MoleculeGroup, GridStats } from "../types";
 
-// Type definitions
-interface MoleculeGroup {
-  name: string;
-  position: { x: number; y: number; z: number };
-  group: THREE.Group;
-  add: (mesh: THREE.Mesh) => void;
-  getGroup: () => THREE.Group;
-  velocity: THREE.Vector3;
-  radius: number;
-  boundingBox: any; // TODO: Define proper bounding box type
-  molObject: any; // TODO: Define proper molecule object type
-}
-
-interface SpatialGridStats {
-  totalChecks: number;
-  actualCollisions: number;
-  [key: string]: any;
-}
+// Type alias for backward compatibility
+type SpatialGridStats = GridStats;
 
 // Global spatial grid instance
 let spatialGrid: SpatialHashGrid | null = null;

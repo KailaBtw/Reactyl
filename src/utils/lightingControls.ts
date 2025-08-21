@@ -130,7 +130,7 @@ export function updateSkyLightPosition(camera: THREE.Camera): void {
     camera.position.z
   );
   directionalLight.target.position.copy(targetPosition); // Set the target's position.
-  directionalLight.target.updateWorldMatrix(); // Important: Update the target's matrix.
+  directionalLight.target.updateWorldMatrix(true, false); // Important: Update the target's matrix.
 
   if (directionalLightHelper) {
     directionalLightHelper.update(); // Update the helper.

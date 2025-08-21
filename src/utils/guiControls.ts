@@ -4,70 +4,32 @@ import Awesomplete from "awesomplete"; // Import the Awesomplete library.
 import { Molecules } from "../assets/molecules_enum"; // Import the Molecules enum.
 import { getMolecule } from "./moleculeDrawer"; // Import the getMolecule function.
 import { log } from "./debug"; // Import the log function.
-import { createMoleculeManager } from "./moleculeManager"; // Import the createMoleculeManager
 import { 
   getSpatialGridStats, 
   resetSpatialGridStats, 
   debugVisualizeSpatialGrid 
 } from "./vectorHelper"; // Import spatial grid functions
-import { visualizeBoundingBox, visualizeAllBoundingBoxes } from "./boundingBox"; // Import bounding box visualization
-
-// Type definitions
-interface AutoRotate {
-  x: boolean;
-  y: boolean;
-  z: boolean;
-}
-
-interface LoadMoleculeFile {
-  loadFile: () => void;
-}
-
-interface MoleculeManager {
-  getAllMolecules: () => MoleculeGroup[];
-}
-
-interface MoleculeGroup {
-  name: string;
-  group: THREE.Group;
-  boundingBox?: {
-    min: THREE.Vector3;
-    max: THREE.Vector3;
-    center: THREE.Vector3;
-    size: THREE.Vector3;
-  };
-}
-
-interface Molecule {
-  name: string;
-  CSID: string;
-}
-
-interface StatsDisplay {
-  totalCells: number;
-  moleculesInGrid: number;
-  totalChecks: number;
-  actualCollisions: number;
-}
-
-interface ValueDisplay {
-  value: string;
-}
+import { visualizeAllBoundingBoxes } from "./boundingBox"; // Import bounding box visualization
+import { 
+  MoleculeManager, 
+  Molecule, 
+  StatsDisplay, 
+  ValueDisplay,
+  LoadMoleculeFile,
+  AutoRotate
+} from "../types";
 
 /**
  * Main TypeScript class for setting up GUI
  */
 
-/**
- * Global variable for the center point of the scene.
- */
-const center: THREE.Vector3 = new THREE.Vector3(); // Initialize your center
+
 
 /**
  * Object to hold auto-rotation switch states for X, Y, and Z axes.
  * These are used to control automatic rotation of molecules in the scene.
  */
-export const autoRotate: AutoRotate = { x: false, y: false, z: false };
+export const autoRotate: AutoRotate = { x: { switch: false }, y: { switch: false }, z: { switch: false } };
 
 /**
  * Defines an object used to trigger file input for loading molecule files.
@@ -145,7 +107,7 @@ export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene)
  */
 function handleMoleculeSelection(
   selectedMolecule: string, 
-  Molecules: Record<string, Molecule>, 
+  Molecules: any, 
   moleculeManager: MoleculeManager, 
   scene: THREE.Scene
 ): void {
@@ -227,7 +189,7 @@ function addMoleculeSearch(gui: dat.GUI, moleculeManager: MoleculeManager, scene
   moleculeSearch.domElement.appendChild(searchInput);
 
   // Initialize Awesomplete with the molecule names from the Molecules enum.
-  const awesomplete = new Awesomplete(searchInput, {
+  new Awesomplete(searchInput, {
     list: Object.values(Molecules).map((molecule: Molecule) => molecule.name), // Use molecule names for the autocomplete list.
   });
 
@@ -343,7 +305,7 @@ function addSpatialGridControls(gui: dat.GUI, scene: THREE.Scene, moleculeManage
       const boundingBoxes: any[] = [];
       
       for (const molecule of molecules) {
-        if (molecule.boundingBox) {
+        if (molecule.boundingBox && (molecule.boundingBox.type === 'AABB' || molecule.boundingBox.type === 'OBB')) {
           // Create a temporary bounding box at the molecule's current position
           const pos = molecule.group.position;
           const tempBox = {

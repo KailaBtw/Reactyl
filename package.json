@@ -31,6 +31,8 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@types/awesomplete": "^1.1.16",
+    "@types/dat.gui": "^0.7.13",
     "@types/three": "^0.179.0",
     "typescript": "^5.8.2"
   }
