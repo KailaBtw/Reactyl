@@ -1,16 +1,16 @@
 /**
- * Main Javascript class for Mol Mod - A 3D Molecular Visualization Application
+ * Main TypeScript file for Mol Mod - A 3D Molecular Visualization Application
  * ----------------------------------------------------------------------
  * Mol Mod is a web-based application built using Three.js for visualizing and
- * interacting with 3D molecular structures.  It allows users to load, display,
+ * interacting with 3D molecular structures. It allows users to load, display,
  * and manipulate molecules in a 3D environment.
  */
 
 // Package Imports
 import * as THREE from "three"; // Import the Three.js library.
-import "../node_modules/awesomplete/awesomplete.css"; // Import CSS for autocompletion (if used).  // TODO: Check if used
+import "../node_modules/awesomplete/awesomplete.css"; // Import CSS for autocompletion (if used). // TODO: Check if used
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; // Import OrbitControls for interactive camera movement.
-// import { generateUUID } from "three/src/math/MathUtils.js";  // Import for generating unique IDs (not currently used).
+// import { generateUUID } from "three/src/math/MathUtils.js"; // Import for generating unique IDs (not currently used).
 
 // My Imports - Application-Specific Modules
 import { createMoleculeManager } from "./utils/moleculeManager"; // Import the MoleculeManager factory.
@@ -32,39 +32,53 @@ import {
 import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug"; // Import debugging utilities.
 import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
 import { getMolecule, drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
-// import { findCenter } from "./utils/findCenter.js";  // Import for finding molecule center (not currently used).
+// import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
+
+// Type definitions
+interface MoleculeGroup {
+  name: string;
+  group: THREE.Group;
+  getGroup: () => THREE.Group;
+  velocity: THREE.Vector3;
+}
+
+interface MoleculeManager {
+  getAllMolecules: () => MoleculeGroup[];
+}
+
+interface AutoRotateSettings {
+  x: { switch?: boolean };
+  y: { switch?: boolean };
+  z: { switch?: boolean };
+}
 
 // ===============================
 //  Module-Level Variables
 // ===============================
 
 /**
- * Creates and manages molecule objects.  The MoleculeManager handles the creation,
- * storage, and retrieval of molecule data.  It is instantiated once for the
+ * Creates and manages molecule objects. The MoleculeManager handles the creation,
+ * storage, and retrieval of molecule data. It is instantiated once for the
  * entire application.
- * @type {object}
  */
-const moleculeManager = createMoleculeManager();
+const moleculeManager: MoleculeManager = createMoleculeManager();
 
 /**
- * A Three.js Clock object used to track time elapsed between frames.  This is
+ * A Three.js Clock object used to track time elapsed between frames. This is
  * used for animation and physics calculations (e.g., updating molecule positions
  * based on velocity).
- * @type {THREE.Clock}
  */
-const clock = new THREE.Clock();
+const clock: THREE.Clock = new THREE.Clock();
 
 /**
- * Stores the time elapsed since the last frame.  Updated in the `animate` function.
- * @type {number}
+ * Stores the time elapsed since the last frame. Updated in the `animate` function.
  */
-let deltaTime = 0;
+let deltaTime: number = 0;
 
 /**
- * Stores the total time the application has been running.  Updated in the `animate` function.
- * @type {number}
+ * Stores the total time the application has been running. Updated in the `animate` function.
  */
-let totalTime = 0;
+let totalTime: number = 0;
 
 // ===============================
 //  Scene Setup
@@ -72,15 +86,13 @@ let totalTime = 0;
 
 /**
  * The main Three.js scene where all 3D objects (molecules, lights, etc.) are rendered.
- * @type {THREE.Scene}
  */
-const scene = new THREE.Scene();
+const scene: THREE.Scene = new THREE.Scene();
 
 /**
- * The camera used to view the scene.  A PerspectiveCamera provides a 3D perspective.
- * @type {THREE.PerspectiveCamera}
+ * The camera used to view the scene. A PerspectiveCamera provides a 3D perspective.
  */
-const camera = new THREE.PerspectiveCamera(
+const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(
   75, // Field of view
   window.innerWidth / window.innerHeight, // Aspect ratio
   0.1, // Near clipping plane
@@ -94,9 +106,8 @@ camera.position.z = 5; // Initial camera position.
 
 /**
  * The WebGL renderer responsible for drawing the scene onto the canvas.
- * @type {THREE.WebGLRenderer}
  */
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setClearColor(0x000000, 0); // Set background color to transparent.
 renderer.setSize(window.innerWidth, window.innerHeight); // Set renderer size to window dimensions.
 renderer.shadowMap.enabled = true; // Enable shadow mapping for realistic lighting.
@@ -109,9 +120,8 @@ document.body.appendChild(renderer.domElement); // Add the renderer's canvas to 
 
 /**
  * OrbitControls allow the user to rotate and pan the scene using the mouse.
- * @type {THREE.OrbitControls}
  */
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls: OrbitControls = new OrbitControls(camera, renderer.domElement);
 log("Scene and renderer initialized.");
 
 // ===============================
@@ -120,9 +130,8 @@ log("Scene and renderer initialized.");
 
 /**
  * The default Chemical Structure ID (CSID) to load on initial startup.
- * @type {number}
  */
-const defaultCSID = 2424;
+const defaultCSID: number = 2424;
 
 // Initialize the application.
 init(defaultCSID);
@@ -138,22 +147,27 @@ animate();
  * Handles file input for loading molecule data from a .mol file.
  * This event listener is attached to the file input element.
  */
-const moleculeFileInput = document.getElementById("fileInput"); // Get the file input element.
-moleculeFileInput.addEventListener("change", function (e) {
-  const file = moleculeFileInput.files[0]; // Get the selected file.
-  const reader = new FileReader(); // Create a FileReader to read the file content.
-  reader.onload = function (e) {
-    const molFile = reader.result; // Get the file content as text.
-    drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, "test"); // Draw the molecule.  // TODO:  Fix position.
-  };
-  reader.readAsText(file); // Read the file as text.
-});
+const moleculeFileInput = document.getElementById("fileInput") as HTMLInputElement;
+if (moleculeFileInput) {
+  moleculeFileInput.addEventListener("change", function (e: Event) {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0]; // Get the selected file.
+    if (file) {
+      const reader = new FileReader(); // Create a FileReader to read the file content.
+      reader.onload = function (e: ProgressEvent<FileReader>) {
+        const molFile = reader.result as string; // Get the file content as text.
+        drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, "test"); // Draw the molecule. // TODO: Fix position.
+      };
+      reader.readAsText(file); // Read the file as text.
+    }
+  });
+}
 
 /**
- * Handles window resize events.  Updates the camera aspect ratio and renderer size
+ * Handles window resize events. Updates the camera aspect ratio and renderer size
  * to match the new window dimensions.
  */
-function onWindowResize() {
+function onWindowResize(): void {
   camera.aspect = window.innerWidth / window.innerHeight; // Update camera aspect.
   camera.updateProjectionMatrix(); // Update the projection matrix.
   renderer.setSize(window.innerWidth, window.innerHeight); // Update renderer size.
@@ -170,24 +184,25 @@ window.addEventListener("resize", onWindowResize, false);
 // ===============================
 
 /**
- * The main animation loop.  This function is called repeatedly by the browser's
+ * The main animation loop. This function is called repeatedly by the browser's
  * requestAnimationFrame() function, resulting in a continuous animation.
  */
-function animate() {
+function animate(): void {
   requestAnimationFrame(animate); // Request the next animation frame.
 
   deltaTime = clock.getDelta(); // Get the time elapsed since the last frame.
   totalTime += deltaTime; // Update the total time.
 
   // Rotate all molecules based on the autoRotate settings from the GUI.
-  moleculeManager.getAllMolecules().forEach((molecule) => {
-    if (autoRotate.x.switch) {
+  moleculeManager.getAllMolecules().forEach((molecule: MoleculeGroup) => {
+    const rotateSettings = autoRotate as AutoRotateSettings;
+    if (rotateSettings.x.switch) {
       molecule.group.rotation.x -= 0.5 * deltaTime;
     }
-    if (autoRotate.y.switch) {
+    if (rotateSettings.y.switch) {
       molecule.group.rotation.y -= 0.5 * deltaTime;
     }
-    if (autoRotate.z.switch) {
+    if (rotateSettings.z.switch) {
       molecule.group.rotation.z -= 0.5 * deltaTime;
     }
   });
@@ -207,7 +222,7 @@ function animate() {
       (Math.random() * randomForceStrength) + moleculeObject.velocity.y,
       (Math.random() * randomForceStrength) + moleculeObject.velocity.z
     );
-    // moleculeObject.velocity.addScaledVector(randomForce, deltaTime); // Removed:  No random force
+    // moleculeObject.velocity.addScaledVector(randomForce, deltaTime); // Removed: No random force
 
     // Apply some damping to prevent infinite speed increase (optional).
     moleculeObject.velocity.multiplyScalar(0.999);
@@ -231,14 +246,13 @@ function animate() {
 }
 
 /**
- * Initializes the MolMod scene.  This function is called when the page is loaded
- * or when the scene needs to be reset.  It sets up the initial molecule,
+ * Initializes the MolMod scene. This function is called when the page is loaded
+ * or when the scene needs to be reset. It sets up the initial molecule,
  * lighting, and GUI.
  *
- * @param {number} CSID - The Chemical Structure ID (CSID) of the molecule to load
- * initially.
+ * @param CSID - The Chemical Structure ID (CSID) of the molecule to load initially.
  */
-function init(CSID) {
+function init(CSID: number): void {
   log(`Initializing scene with molecule CSID: ${CSID}`);
 
   // Initialize spatial grid for collision detection
@@ -259,13 +273,13 @@ function init(CSID) {
   }
 
   // Load and draw the initial molecules.
-  getMolecule(CSID, moleculeManager, scene, "a");
-  getMolecule(682, moleculeManager, scene, "b");
-  getMolecule(CSID, moleculeManager, scene, "c");
-  getMolecule(682, moleculeManager, scene, "d");
-  getMolecule(CSID, moleculeManager, scene, "e");
-  getMolecule(682, moleculeManager, scene, "f");
-  getMolecule(CSID, moleculeManager, scene, "g");
+  getMolecule(CSID.toString(), moleculeManager, scene, "a");
+  getMolecule("682", moleculeManager, scene, "b");
+  getMolecule(CSID.toString(), moleculeManager, scene, "c");
+  getMolecule("682", moleculeManager, scene, "d");
+  getMolecule(CSID.toString(), moleculeManager, scene, "e");
+  getMolecule("682", moleculeManager, scene, "f");
+  getMolecule(CSID.toString(), moleculeManager, scene, "g");
 
   //log(moleculeManager.getAllMolecules());
 

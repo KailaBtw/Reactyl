@@ -3,16 +3,54 @@ import { molFileToJSON } from "./molFileToJSON";
 import { log } from "./debug";
 import { createBoundingBox } from "./boundingBox";
 
+// Type definitions
+interface Position {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface MoleculeGroup {
+  name: string;
+  position: Position;
+  group: THREE.Group;
+  add: (mesh: THREE.Mesh) => void;
+  getGroup: () => THREE.Group;
+  velocity: THREE.Vector3;
+  radius: number;
+  boundingBox: any; // TODO: Define proper bounding box type
+  molObject: any; // TODO: Define proper molecule object type
+}
+
+interface MoleculeManager {
+  newMolecule: (name: string, position?: Position) => MoleculeGroup;
+  setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed?: number) => void;
+}
+
+interface MolObject {
+  atoms: Array<{
+    position: { x: string; y: string; z: string };
+    type: string;
+  }>;
+  bonds: Array<[string, string, string?]>;
+}
+
+interface Limits {
+  x: { min: number; max: number };
+  y: { min: number; max: number };
+  z: { min: number; max: number };
+}
+
 // ===============================
 //  Global Variables
 // ===============================
 
 /**
- * Predefined geometries for different atom types.  Using constants for performance
- * and to avoid re-creating geometries unnecessarily.  These are used to create
+ * Predefined geometries for different atom types. Using constants for performance
+ * and to avoid re-creating geometries unnecessarily. These are used to create
  * spheres representing atoms in the molecule.
  */
-const moleculeGeometries = {
+const moleculeGeometries: Record<string, THREE.SphereGeometry> = {
   C: new THREE.SphereGeometry(0.8, 32, 32), // Carbon
   H: new THREE.SphereGeometry(0.3, 32, 32), // Hydrogen
   O: new THREE.SphereGeometry(0.5, 32, 32), // Oxygen
@@ -26,11 +64,11 @@ const moleculeGeometries = {
 };
 
 /**
- * Predefined materials for different atom types.  Similar to geometries,
- * these are constants for efficiency.  Using MeshStandardMaterial for
+ * Predefined materials for different atom types. Similar to geometries,
+ * these are constants for efficiency. Using MeshStandardMaterial for
  * realistic lighting.
  */
-const moleculeMaterials = {
+const moleculeMaterials: Record<string, THREE.MeshStandardMaterial> = {
   C: new THREE.MeshStandardMaterial({ color: 0x333333 }), // Dark Gray
   H: new THREE.MeshStandardMaterial({ color: 0xffffff }), // White
   O: new THREE.MeshStandardMaterial({ color: 0xff0000 }), // Red
@@ -44,7 +82,7 @@ const moleculeMaterials = {
 };
 
 /**
- * Material for the bonds (cylinders) connecting the atoms.  Using MeshBasicMaterial
+ * Material for the bonds (cylinders) connecting the atoms. Using MeshBasicMaterial
  * for simplicity and performance.
  */
 const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });  // White
@@ -56,26 +94,28 @@ let moleculeCount = 0; // Global counter for the number of molecules drawn
 //  Functions
 // ===============================
 
-
 /**
  * Fetches a molecule's .mol file, parses it, and draws the molecule in the scene.
  * This function orchestrates the process of loading and visualizing a molecule
  * from its file representation.
  *
- * @param {string} CSID - The Chemical Structure ID (CSID) of the molecule.  Used to
+ * @param CSID - The Chemical Structure ID (CSID) of the molecule. Used to
  * construct the file path (e.g., "molecules/CSID.mol").
- * @param {object} moleculeManager - The MoleculeManager instance responsible for
+ * @param moleculeManager - The MoleculeManager instance responsible for
  * managing the molecules.
- * @param {THREE.Scene} scene - The Three.js scene to add the molecule to.
- * @param {string} [name] - An optional name for the molecule.  Defaults to "unknown".
- * @param {object} [position] - The initial position of the molecule. Optional.
- * @property {number} x
- * @property {number} y
- * @property {number} z
+ * @param scene - The Three.js scene to add the molecule to.
+ * @param name - An optional name for the molecule. Defaults to "unknown".
+ * @param position - The initial position of the molecule. Optional.
  */
-export function getMolecule(CSID, moleculeManager, scene, name, position) {
+export function getMolecule(
+  CSID: string, 
+  moleculeManager: MoleculeManager, 
+  scene: THREE.Scene, 
+  name?: string, 
+  position?: Position
+): void {
   // Set default position to a random value between -25 and 25 if not provided
-  const defaultPosition = {
+  const defaultPosition: Position = {
     x: Math.floor(Math.random() * 51) - 25, // Random integer between -50 and 50
     y: Math.floor(Math.random() * 51) - 25,
     z: Math.floor(Math.random() * 51) - 25,
@@ -85,7 +125,7 @@ export function getMolecule(CSID, moleculeManager, scene, name, position) {
 
   moleculeCount++; // unused, could be used for passing in automatic naming later!!!
 
-  // Fetch the .mol file.  Handles the asynchronous nature of file loading.
+  // Fetch the .mol file. Handles the asynchronous nature of file loading.
   fetch("molecules/" + CSID + ".mol")
     .then((response) => response.text()) // Get the file content as text.
     .then((molFile) => {
@@ -104,18 +144,21 @@ export function getMolecule(CSID, moleculeManager, scene, name, position) {
  * creating the Three.js objects (spheres for atoms, cylinders for bonds)
  * to represent the molecule visually.
  *
- * @param {string} molFile - The content of the .mol file as a string.
- * @param {object} moleculeManager - The MoleculeManager instance.
- * @param {THREE.Scene} scene - The Three.js scene to add the molecule to.
- * @param {object} [position={x: 0, y: 0, z: 0}] - The position to draw the molecule.
- * @property {number} x
- * @property {number} y
- * @property {number} z
- * @param {string} [name="unknown"] - The name of the molecule.
+ * @param molFile - The content of the .mol file as a string.
+ * @param moleculeManager - The MoleculeManager instance.
+ * @param scene - The Three.js scene to add the molecule to.
+ * @param position - The position to draw the molecule.
+ * @param name - The name of the molecule.
  */
-export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0, y: 0, z: 0 }, name = "unknown") {
+export function drawMolecule(
+  molFile: string, 
+  moleculeManager: MoleculeManager, 
+  scene: THREE.Scene, 
+  position: Position = { x: 0, y: 0, z: 0 }, 
+  name: string = "unknown"
+): void {
 
-  const molObject = molFileToJSON(molFile); // Parse the .mol file content into a JavaScript object.
+  const molObject: MolObject = molFileToJSON(molFile); // Parse the .mol file content into a JavaScript object.
 
   const molecule = moleculeManager.newMolecule(name); // Create a new molecule group using the manager.
   
@@ -126,18 +169,17 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
     log(`First atom: type=${firstAtom.type}, pos=(${firstAtom.position.x}, ${firstAtom.position.y}, ${firstAtom.position.z})`);
   }
 
-
   // ### Handle Molecule Shapes ###
 
   // Determine the center of the molecule for proper positioning.
   let firstPoint = new THREE.Vector3(
-    molObject.atoms[0].position.x,
-    molObject.atoms[0].position.y,
-    molObject.atoms[0].position.z
+    parseFloat(molObject.atoms[0].position.x),
+    parseFloat(molObject.atoms[0].position.y),
+    parseFloat(molObject.atoms[0].position.z)
   );
 
   // Initialize the limits for finding the bounding box of the molecule.
-  let limits = {
+  let limits: Limits = {
     x: { min: firstPoint.x, max: firstPoint.x },
     y: { min: firstPoint.y, max: firstPoint.y },
     z: { min: firstPoint.z, max: firstPoint.z },
@@ -146,9 +188,9 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
   // Iterate through the atoms to find the bounding box.
   for (let item of molObject.atoms) {
     let point = new THREE.Vector3(
-      item.position.x,
-      item.position.y,
-      item.position.z
+      parseFloat(item.position.x),
+      parseFloat(item.position.y),
+      parseFloat(item.position.z)
     );
     // Update the limits if we find a more extreme point.
     if (Number(point.x) < Number(limits.x.min)) limits.x.min = point.x;
@@ -175,18 +217,22 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
   molecule.group.position.set(position.x, position.y, position.z);
   
   // Log bounding box creation for debugging
-  log(`Created bounding box for ${name}: size=${boundingBox.size.x.toFixed(2)}x${boundingBox.size.y.toFixed(2)}x${boundingBox.size.z.toFixed(2)}`);
+  if (boundingBox.type === 'AABB' || boundingBox.type === 'OBB') {
+    log(`Created bounding box for ${name}: size=${boundingBox.size.x.toFixed(2)}x${boundingBox.size.y.toFixed(2)}x${boundingBox.size.z.toFixed(2)}`);
+  } else {
+    log(`Created convex hull for ${name} with ${boundingBox.vertices.length} vertices`);
+  }
 
   // Create and position the atom spheres.
   for (let item of molObject.atoms) {
-    const sphere = new THREE.Mesh(
-      moleculeGeometries[item.type], // Use the geometry for the atom type.
-      moleculeMaterials[item.type]  // Use the material for the atom type.
-    );
+    const geometry = moleculeGeometries[item.type] || moleculeGeometries['C']; // Default to Carbon if type not found
+    const material = moleculeMaterials[item.type] || moleculeMaterials['C']; // Default to Carbon if type not found
+    
+    const sphere = new THREE.Mesh(geometry, material);
     // Position the sphere relative to the molecule's center.
-    sphere.position.x = item.position.x - moleculeCenter.x;
-    sphere.position.y = item.position.y - moleculeCenter.y;
-    sphere.position.z = item.position.z - moleculeCenter.z;
+    sphere.position.x = parseFloat(item.position.x) - moleculeCenter.x;
+    sphere.position.y = parseFloat(item.position.y) - moleculeCenter.y;
+    sphere.position.z = parseFloat(item.position.z) - moleculeCenter.z;
     molecule.add(sphere); // Add the sphere to the molecule group.
   }
 
@@ -202,18 +248,18 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
 
     // Get the positions of the atoms relative to the molecule's center.
     let point1 = new THREE.Vector3(
-      atom1.position.x - moleculeCenter.x,
-      atom1.position.y - moleculeCenter.y,
-      atom1.position.z - moleculeCenter.z
+      parseFloat(atom1.position.x) - moleculeCenter.x,
+      parseFloat(atom1.position.y) - moleculeCenter.y,
+      parseFloat(atom1.position.z) - moleculeCenter.z
     );
     let point2 = new THREE.Vector3(
-      atom2.position.x - moleculeCenter.x,
-      atom2.position.y - moleculeCenter.y,
-      atom2.position.z - moleculeCenter.z
+      parseFloat(atom2.position.x) - moleculeCenter.x,
+      parseFloat(atom2.position.y) - moleculeCenter.y,
+      parseFloat(atom2.position.z) - moleculeCenter.z
     );
 
     let distance = point1.distanceTo(point2); // Calculate the distance between the atoms.
-    let cylinderRadius = bond[2] == 1 ? 0.05 : 0.15; // Bond order determines radius.
+    let cylinderRadius = bond[2] === '1' ? 0.05 : 0.15; // Bond order determines radius.
 
     // Create the cylinder geometry.
     const cylinderGeometry = new THREE.CylinderGeometry(
@@ -226,14 +272,13 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
     cylinderGeometry.rotateX(Math.PI / 2); // Rotate to align with the bond.
 
     const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial); // Create the cylinder mesh.
-    cylinder.position.x = atom1.position.x - moleculeCenter.x; // Position at the first atom.
-    cylinder.position.y = atom1.position.y - moleculeCenter.y;
-    cylinder.position.z = atom1.position.z - moleculeCenter.z;
+    cylinder.position.x = parseFloat(atom1.position.x) - moleculeCenter.x; // Position at the first atom.
+    cylinder.position.y = parseFloat(atom1.position.y) - moleculeCenter.y;
+    cylinder.position.z = parseFloat(atom1.position.z) - moleculeCenter.z;
     cylinder.lookAt(point2); // Make the cylinder point at the second atom.
     molecule.add(cylinder); // Add the cylinder to the molecule group.
   }
   molecule.group.position.z = centerOffset; // Apply the global z offset (currently unused).
-
 
   // ### Handle Initial Positions and Velocities ###
 
@@ -250,4 +295,4 @@ export function drawMolecule(molFile, moleculeManager, scene, position = { x: 0,
 
   // add the molecule to the scene
   scene.add(molecule.group);
-}
+} 

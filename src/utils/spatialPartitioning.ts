@@ -1,6 +1,28 @@
 import * as THREE from "three";
 import { log } from "./debug";
 
+// Type definitions
+interface MoleculeGroup {
+  name: string;
+  position: { x: number; y: number; z: number };
+  group: THREE.Group;
+  add: (mesh: THREE.Mesh) => void;
+  getGroup: () => THREE.Group;
+  velocity: THREE.Vector3;
+  radius: number;
+  boundingBox: any; // TODO: Define proper bounding box type
+  molObject: any; // TODO: Define proper molecule object type
+}
+
+interface GridStats {
+  totalChecks: number;
+  actualCollisions: number;
+  cellsChecked: number;
+  moleculesInGrid: number;
+}
+
+
+
 /**
  * Spatial Hash Grid for efficient collision detection
  * 
@@ -12,14 +34,18 @@ import { log } from "./debug";
  * Performance: Reduces collision checks from O(n²) to O(n) average case
  */
 export class SpatialHashGrid {
+  private cellSize: number;
+  private grid: Map<string, Set<MoleculeGroup>>;
+  private moleculeToCells: Map<MoleculeGroup, Set<string>>;
+  public stats: GridStats;
+
   /**
    * Creates a new spatial hash grid
-   * @param {number} cellSize - Size of each grid cell (should be >= 2 * max molecule radius)
-   * @param {number} maxMolecules - Maximum number of molecules to track
+   * @param cellSize - Size of each grid cell (should be >= 2 * max molecule radius)
+   * @param _maxMolecules - Maximum number of molecules to track (unused parameter, kept for API compatibility)
    */
-  constructor(cellSize = 6, maxMolecules = 1000) {
+  constructor(cellSize: number = 6, _maxMolecules: number = 1000) {
     this.cellSize = cellSize;
-    this.maxMolecules = maxMolecules;
     this.grid = new Map(); // cellKey -> Set of molecules
     this.moleculeToCells = new Map(); // molecule -> Set of cell keys
     this.stats = {
@@ -32,35 +58,24 @@ export class SpatialHashGrid {
 
   /**
    * Generates a unique key for a grid cell based on its coordinates
-   * @param {number} x - X coordinate of cell
-   * @param {number} y - Y coordinate of cell  
-   * @param {number} z - Z coordinate of cell
-   * @returns {string} Unique cell key
+   * @param x - X coordinate of cell
+   * @param y - Y coordinate of cell  
+   * @param z - Z coordinate of cell
+   * @returns Unique cell key
    */
-  _getCellKey(x, y, z) {
+  private _getCellKey(x: number, y: number, z: number): string {
     return `${x},${y},${z}`;
   }
 
-  /**
-   * Converts world position to grid cell coordinates
-   * @param {THREE.Vector3} position - World position
-   * @returns {object} Grid cell coordinates {x, y, z}
-   */
-  _worldToGrid(position) {
-    return {
-      x: Math.floor(position.x / this.cellSize),
-      y: Math.floor(position.y / this.cellSize),
-      z: Math.floor(position.z / this.cellSize)
-    };
-  }
+
 
   /**
    * Gets all grid cells that a molecule might occupy based on its position and radius
-   * @param {object} molecule - Molecule object with position and radius
-   * @returns {Set} Set of cell keys
+   * @param molecule - Molecule object with position and radius
+   * @returns Set of cell keys
    */
-  _getMoleculeCells(molecule) {
-    const cells = new Set();
+  private _getMoleculeCells(molecule: MoleculeGroup): Set<string> {
+    const cells = new Set<string>();
     const pos = molecule.group.position;
     const radius = molecule.radius || 3;
     
@@ -86,9 +101,9 @@ export class SpatialHashGrid {
 
   /**
    * Inserts a molecule into the spatial grid
-   * @param {object} molecule - Molecule object to insert
+   * @param molecule - Molecule object to insert
    */
-  insert(molecule) {
+  insert(molecule: MoleculeGroup): void {
     if (!molecule || !molecule.group) {
       log("Warning: Attempted to insert invalid molecule into spatial grid");
       return;
@@ -101,7 +116,7 @@ export class SpatialHashGrid {
       if (!this.grid.has(cellKey)) {
         this.grid.set(cellKey, new Set());
       }
-      this.grid.get(cellKey).add(molecule);
+      this.grid.get(cellKey)!.add(molecule);
     }
 
     // Track which cells this molecule occupies
@@ -111,9 +126,9 @@ export class SpatialHashGrid {
 
   /**
    * Removes a molecule from the spatial grid
-   * @param {object} molecule - Molecule object to remove
+   * @param molecule - Molecule object to remove
    */
-  remove(molecule) {
+  remove(molecule: MoleculeGroup): void {
     const cells = this.moleculeToCells.get(molecule);
     if (!cells) return;
 
@@ -134,9 +149,9 @@ export class SpatialHashGrid {
 
   /**
    * Updates a molecule's position in the spatial grid
-   * @param {object} molecule - Molecule object to update
+   * @param molecule - Molecule object to update
    */
-  update(molecule) {
+  update(molecule: MoleculeGroup): void {
     const oldCells = this.moleculeToCells.get(molecule);
     const newCells = this._getMoleculeCells(molecule);
 
@@ -163,7 +178,7 @@ export class SpatialHashGrid {
       if (!this.grid.has(cellKey)) {
         this.grid.set(cellKey, new Set());
       }
-      this.grid.get(cellKey).add(molecule);
+      this.grid.get(cellKey)!.add(molecule);
     }
 
     this.moleculeToCells.set(molecule, newCells);
@@ -171,11 +186,11 @@ export class SpatialHashGrid {
 
   /**
    * Gets all molecules that could potentially collide with the given molecule
-   * @param {object} molecule - Molecule to check for potential collisions
-   * @returns {Set} Set of molecules to check for collisions
+   * @param molecule - Molecule to check for potential collisions
+   * @returns Set of molecules to check for collisions
    */
-  getNearby(molecule) {
-    const nearby = new Set();
+  getNearby(molecule: MoleculeGroup): Set<MoleculeGroup> {
+    const nearby = new Set<MoleculeGroup>();
     const cells = this._getMoleculeCells(molecule);
 
     for (const cellKey of cells) {
@@ -194,9 +209,9 @@ export class SpatialHashGrid {
 
   /**
    * Updates all molecules in the grid (call this each frame)
-   * @param {Array} molecules - Array of all molecules to update
+   * @param molecules - Array of all molecules to update
    */
-  updateAll(molecules) {
+  updateAll(molecules: MoleculeGroup[]): void {
     // Clear old data
     this.grid.clear();
     this.moleculeToCells.clear();
@@ -210,11 +225,11 @@ export class SpatialHashGrid {
 
   /**
    * Compares two Sets for equality
-   * @param {Set} set1 - First set
-   * @param {Set} set2 - Second set
-   * @returns {boolean} True if sets are equal
+   * @param set1 - First set
+   * @param set2 - Second set
+   * @returns True if sets are equal
    */
-  _setsEqual(set1, set2) {
+  private _setsEqual(set1: Set<string>, set2: Set<string>): boolean {
     if (set1.size !== set2.size) return false;
     for (const item of set1) {
       if (!set2.has(item)) return false;
@@ -224,9 +239,9 @@ export class SpatialHashGrid {
 
   /**
    * Gets performance statistics
-   * @returns {object} Statistics object
+   * @returns Statistics object
    */
-  getStats() {
+  getStats(): GridStats & { totalCells: number; averageMoleculesPerCell: number } {
     return {
       ...this.stats,
       totalCells: this.grid.size,
@@ -237,7 +252,7 @@ export class SpatialHashGrid {
   /**
    * Resets performance statistics
    */
-  resetStats() {
+  resetStats(): void {
     this.stats = {
       totalChecks: 0,
       actualCollisions: 0,
@@ -248,15 +263,15 @@ export class SpatialHashGrid {
 
   /**
    * Debug: Visualizes the spatial grid (for development only)
-   * @param {THREE.Scene} scene - Three.js scene to add debug objects
+   * @param scene - Three.js scene to add debug objects
    */
-  debugVisualize(scene) {
+  debugVisualize(scene: THREE.Scene): void {
     // Remove existing debug objects
     const existingDebug = scene.children.filter(child => child.userData.isGridDebug);
     existingDebug.forEach(obj => scene.remove(obj));
 
     // Track which cells we've already visualized to avoid duplicates
-    const visualizedCells = new Set();
+    const visualizedCells = new Set<string>();
 
     // Add new debug visualization
     for (const [cellKey, molecules] of this.grid) {
@@ -276,8 +291,7 @@ export class SpatialHashGrid {
           color: 0x00ff00,
           wireframe: true,
           transparent: true,
-          opacity: 0.5,
-          linewidth: 2
+          opacity: 0.5
         });
         const box = new THREE.Mesh(geometry, material);
         box.position.copy(center);

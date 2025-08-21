@@ -1,6 +1,52 @@
 import * as THREE from "three";
 import { log } from "./debug";
 
+// Type definitions
+interface Atom {
+  position: {
+    x: string;
+    y: string;
+    z: string;
+  };
+  type: string;
+}
+
+interface MolObject {
+  atoms: Atom[];
+}
+
+interface AABB {
+  min: THREE.Vector3;
+  max: THREE.Vector3;
+  center: THREE.Vector3;
+  size: THREE.Vector3;
+  type: 'AABB';
+  containsPoint: (point: THREE.Vector3) => boolean;
+  intersectsBox: (otherBox: AABB) => boolean;
+  getRadius: () => number;
+}
+
+interface OBB {
+  min: THREE.Vector3;
+  max: THREE.Vector3;
+  center: THREE.Vector3;
+  size: THREE.Vector3;
+  rotation: THREE.Vector3;
+  type: 'OBB';
+  containsPoint: (point: THREE.Vector3) => boolean;
+  intersectsBox: (otherBox: AABB) => boolean;
+  getRadius: () => number;
+}
+
+interface ConvexHull {
+  vertices: THREE.Vector3[];
+  center: THREE.Vector3;
+  type: 'ConvexHull';
+  simplified: boolean;
+}
+
+type BoundingBox = AABB | OBB | ConvexHull;
+
 /**
  * Bounding Box System for Molecules
  * 
@@ -14,7 +60,7 @@ import { log } from "./debug";
  * Atom radius mapping based on atom type
  * These values are approximate van der Waals radii in Angstroms
  */
-const ATOM_RADII = {
+const ATOM_RADII: Record<string, number> = {
   H: 1.2,   // Hydrogen
   C: 1.7,   // Carbon
   N: 1.55,  // Nitrogen
@@ -34,22 +80,52 @@ const DEFAULT_ATOM_RADIUS = 1.5;
 
 /**
  * Calculates the radius for a given atom type
- * @param {string} atomType - The atom type (e.g., "C", "O", "N")
- * @returns {number} The atom radius in Angstroms
+ * @param atomType - The atom type (e.g., "C", "O", "N")
+ * @returns The atom radius in Angstroms
  */
-function getAtomRadius(atomType) {
+function getAtomRadius(atomType: string): number {
   return ATOM_RADII[atomType] || DEFAULT_ATOM_RADIUS;
+}
+
+/**
+ * Creates a fallback bounding box when calculation fails
+ * @returns Simple fallback bounding box
+ */
+function createFallbackBoundingBox(): AABB {
+  const center = new THREE.Vector3(0, 0, 0);
+  const size = new THREE.Vector3(3, 3, 3); // Default size
+  
+  return {
+    min: new THREE.Vector3(-1.5, -1.5, -1.5),
+    max: new THREE.Vector3(1.5, 1.5, 1.5),
+    center: center,
+    size: size,
+    type: 'AABB',
+    containsPoint: function(point: THREE.Vector3): boolean {
+      return this.min.x <= point.x && point.x <= this.max.x &&
+             this.min.y <= point.y && point.y <= this.max.y &&
+             this.min.z <= point.z && point.z <= this.max.z;
+    },
+    intersectsBox: function(otherBox: AABB): boolean {
+      return this.min.x <= otherBox.max.x && this.max.x >= otherBox.min.x &&
+             this.min.y <= otherBox.max.y && this.max.y >= otherBox.min.y &&
+             this.min.z <= otherBox.max.z && this.max.z >= otherBox.min.z;
+    },
+    getRadius: function(): number {
+      return 1.5;
+    }
+  };
 }
 
 /**
  * Calculates an Axis-Aligned Bounding Box (AABB) for a molecule
  * This is the fastest collision detection method
  * 
- * @param {object} molObject - Parsed molecule object from molFileToJSON
- * @param {THREE.Vector3} moleculeCenter - Center of the molecule
- * @returns {object} AABB with min, max, center, and size properties
+ * @param molObject - Parsed molecule object from molFileToJSON
+ * @param _moleculeCenter - Center of the molecule (unused parameter, kept for API compatibility)
+ * @returns AABB with min, max, center, and size properties
  */
-export function calculateAABB(molObject, moleculeCenter) {
+export function calculateAABB(molObject: MolObject, _moleculeCenter: THREE.Vector3): AABB | null {
   if (!molObject || !molObject.atoms || molObject.atoms.length === 0) {
     log("Warning: Invalid molecule object for AABB calculation");
     return null;
@@ -111,12 +187,26 @@ export function calculateAABB(molObject, moleculeCenter) {
     maxZ - minZ
   );
 
-  const boundingBox = {
+  const boundingBox: AABB = {
     min: new THREE.Vector3(minX, minY, minZ),
     max: new THREE.Vector3(maxX, maxY, maxZ),
     center: center,
     size: size,
-    type: 'AABB'
+    type: 'AABB',
+    containsPoint: function(point: THREE.Vector3): boolean {
+      return this.min.x <= point.x && point.x <= this.max.x &&
+             this.min.y <= point.y && point.y <= this.max.y &&
+             this.min.z <= point.z && point.z <= this.max.z;
+    },
+    intersectsBox: function(otherBox: AABB): boolean {
+      return this.min.x <= otherBox.max.x && this.max.x >= otherBox.min.x &&
+             this.min.y <= otherBox.max.y && this.max.y >= otherBox.min.y &&
+             this.min.z <= otherBox.max.z && this.max.z >= otherBox.min.z;
+    },
+    getRadius: function(): number {
+      // Return the radius of a sphere that would contain this bounding box
+      return this.size.length() / 2;
+    }
   };
 
   // Debug logging
@@ -129,12 +219,12 @@ export function calculateAABB(molObject, moleculeCenter) {
  * Calculates a more accurate bounding box that accounts for molecule rotation
  * This creates an Oriented Bounding Box (OBB) approximation
  * 
- * @param {object} molObject - Parsed molecule object
- * @param {THREE.Vector3} moleculeCenter - Center of the molecule
- * @param {THREE.Vector3} rotation - Current rotation of the molecule
- * @returns {object} OBB with min, max, center, size, and rotation properties
+ * @param molObject - Parsed molecule object
+ * @param moleculeCenter - Center of the molecule
+ * @param rotation - Current rotation of the molecule
+ * @returns OBB with min, max, center, size, and rotation properties
  */
-export function calculateOBB(molObject, moleculeCenter, rotation = new THREE.Vector3(0, 0, 0)) {
+export function calculateOBB(molObject: MolObject, moleculeCenter: THREE.Vector3, rotation: THREE.Vector3 = new THREE.Vector3(0, 0, 0)): OBB | null {
   const aabb = calculateAABB(molObject, moleculeCenter);
   if (!aabb) return null;
 
@@ -151,17 +241,17 @@ export function calculateOBB(molObject, moleculeCenter, rotation = new THREE.Vec
  * Calculates a convex hull bounding volume for the most accurate collision detection
  * This is more expensive but provides the best approximation of molecule shape
  * 
- * @param {object} molObject - Parsed molecule object
- * @param {THREE.Vector3} moleculeCenter - Center of the molecule
- * @returns {object} Convex hull with vertices and faces
+ * @param molObject - Parsed molecule object
+ * @param moleculeCenter - Center of the molecule
+ * @returns Convex hull with vertices and faces
  */
-export function calculateConvexHull(molObject, moleculeCenter) {
+export function calculateConvexHull(molObject: MolObject, moleculeCenter: THREE.Vector3): ConvexHull | null {
   if (!molObject || !molObject.atoms || molObject.atoms.length === 0) {
     return null;
   }
 
   // Create points for convex hull calculation
-  const points = [];
+  const points: THREE.Vector3[] = [];
   
   for (const atom of molObject.atoms) {
     const radius = getAtomRadius(atom.type);
@@ -185,7 +275,7 @@ export function calculateConvexHull(molObject, moleculeCenter) {
   
   return {
     vertices: points,
-    center: aabb.center,
+    center: aabb!.center,
     type: 'ConvexHull',
     simplified: true
   };
@@ -193,13 +283,13 @@ export function calculateConvexHull(molObject, moleculeCenter) {
 
 /**
  * Creates a bounding box object that can be used for collision detection
- * @param {object} molObject - Parsed molecule object
- * @param {THREE.Vector3} moleculeCenter - Center of the molecule
- * @param {string} type - Type of bounding box ('AABB', 'OBB', 'ConvexHull')
- * @returns {object} Bounding box object with collision detection methods
+ * @param molObject - Parsed molecule object
+ * @param moleculeCenter - Center of the molecule
+ * @param type - Type of bounding box ('AABB', 'OBB', 'ConvexHull')
+ * @returns Bounding box object with collision detection methods
  */
-export function createBoundingBox(molObject, moleculeCenter, type = 'AABB') {
-  let boundingBox = null;
+export function createBoundingBox(molObject: MolObject, moleculeCenter: THREE.Vector3, type: string = 'AABB'): BoundingBox {
+  let boundingBox: BoundingBox | null = null;
 
   switch (type) {
     case 'AABB':
@@ -220,65 +310,17 @@ export function createBoundingBox(molObject, moleculeCenter, type = 'AABB') {
     return createFallbackBoundingBox();
   }
 
-  // Add collision detection methods
-  boundingBox.containsPoint = function(point) {
-    return this.min.x <= point.x && point.x <= this.max.x &&
-           this.min.y <= point.y && point.y <= this.max.y &&
-           this.min.z <= point.z && point.z <= this.max.z;
-  };
-
-  boundingBox.intersectsBox = function(otherBox) {
-    return this.min.x <= otherBox.max.x && this.max.x >= otherBox.min.x &&
-           this.min.y <= otherBox.max.y && this.max.y >= otherBox.min.y &&
-           this.min.z <= otherBox.max.z && this.max.z >= otherBox.min.z;
-  };
-
-  boundingBox.getRadius = function() {
-    // Return the radius of a sphere that would contain this bounding box
-    return this.size.length() / 2;
-  };
-
   return boundingBox;
 }
 
 /**
- * Creates a fallback bounding box when calculation fails
- * @returns {object} Simple fallback bounding box
- */
-function createFallbackBoundingBox() {
-  const center = new THREE.Vector3(0, 0, 0);
-  const size = new THREE.Vector3(3, 3, 3); // Default size
-  
-  return {
-    min: new THREE.Vector3(-1.5, -1.5, -1.5),
-    max: new THREE.Vector3(1.5, 1.5, 1.5),
-    center: center,
-    size: size,
-    type: 'Fallback',
-    containsPoint: function(point) {
-      return this.min.x <= point.x && point.x <= this.max.x &&
-             this.min.y <= point.y && point.y <= this.max.y &&
-             this.min.z <= point.z && point.z <= this.max.z;
-    },
-    intersectsBox: function(otherBox) {
-      return this.min.x <= otherBox.max.x && this.max.x >= otherBox.min.x &&
-             this.min.y <= otherBox.max.y && this.max.y >= otherBox.min.y &&
-             this.min.z <= otherBox.max.z && this.max.z >= otherBox.min.z;
-    },
-    getRadius: function() {
-      return 1.5;
-    }
-  };
-}
-
-/**
  * Updates a bounding box for a molecule that has moved or rotated
- * @param {object} boundingBox - Existing bounding box
- * @param {THREE.Vector3} newPosition - New position of the molecule
- * @param {THREE.Vector3} newRotation - New rotation of the molecule
- * @returns {object} Updated bounding box
+ * @param boundingBox - Existing bounding box
+ * @param newPosition - New position of the molecule
+ * @param _newRotation - New rotation of the molecule (unused parameter, kept for API compatibility)
+ * @returns Updated bounding box
  */
-export function updateBoundingBox(boundingBox, newPosition, newRotation) {
+export function updateBoundingBox(boundingBox: AABB | null, newPosition: THREE.Vector3, _newRotation: THREE.Vector3): AABB | null {
   if (!boundingBox) return null;
 
   // For AABB, we need to recalculate based on the new position
@@ -294,11 +336,11 @@ export function updateBoundingBox(boundingBox, newPosition, newRotation) {
 
 /**
  * Creates a visual representation of a bounding box for debugging
- * @param {object} boundingBox - The bounding box to visualize
- * @param {THREE.Scene} scene - Three.js scene to add the visualization
- * @param {number} color - Color for the wireframe (default: 0x00ff00)
+ * @param boundingBox - The bounding box to visualize
+ * @param scene - Three.js scene to add the visualization
+ * @param color - Color for the wireframe (default: 0x00ff00)
  */
-export function visualizeBoundingBox(boundingBox, scene, color = 0x00ff00) {
+export function visualizeBoundingBox(boundingBox: AABB, scene: THREE.Scene, color: number = 0x00ff00): void {
   if (!boundingBox || !scene) return;
 
   // Create wireframe box
@@ -323,11 +365,11 @@ export function visualizeBoundingBox(boundingBox, scene, color = 0x00ff00) {
 
 /**
  * Creates visual representations of multiple bounding boxes for debugging
- * @param {Array} boundingBoxes - Array of bounding box objects
- * @param {THREE.Scene} scene - Three.js scene to add the visualizations
- * @param {number} color - Color for the wireframes (default: 0xff0000)
+ * @param boundingBoxes - Array of bounding box objects
+ * @param scene - Three.js scene to add the visualizations
+ * @param color - Color for the wireframes (default: 0xff0000)
  */
-export function visualizeAllBoundingBoxes(boundingBoxes, scene, color = 0xff0000) {
+export function visualizeAllBoundingBoxes(boundingBoxes: AABB[], scene: THREE.Scene, color: number = 0xff0000): void {
   if (!scene) return;
 
   // Remove existing bounding box visualizations

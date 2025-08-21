@@ -12,27 +12,72 @@ import {
 } from "./vectorHelper"; // Import spatial grid functions
 import { visualizeBoundingBox, visualizeAllBoundingBoxes } from "./boundingBox"; // Import bounding box visualization
 
+// Type definitions
+interface AutoRotate {
+  x: boolean;
+  y: boolean;
+  z: boolean;
+}
+
+interface LoadMoleculeFile {
+  loadFile: () => void;
+}
+
+interface MoleculeManager {
+  getAllMolecules: () => MoleculeGroup[];
+}
+
+interface MoleculeGroup {
+  name: string;
+  group: THREE.Group;
+  boundingBox?: {
+    min: THREE.Vector3;
+    max: THREE.Vector3;
+    center: THREE.Vector3;
+    size: THREE.Vector3;
+  };
+}
+
+interface Molecule {
+  name: string;
+  CSID: string;
+}
+
+interface StatsDisplay {
+  totalCells: number;
+  moleculesInGrid: number;
+  totalChecks: number;
+  actualCollisions: number;
+}
+
+interface ValueDisplay {
+  value: string;
+}
+
 /**
- * Main Javascript class for setting up GUI
+ * Main TypeScript class for setting up GUI
  */
 
 /**
-  * Global variable for the center point of the scene.
-  */
-const center = new THREE.Vector3(); // Initialize your center
+ * Global variable for the center point of the scene.
+ */
+const center: THREE.Vector3 = new THREE.Vector3(); // Initialize your center
 
 /**
  * Object to hold auto-rotation switch states for X, Y, and Z axes.
  * These are used to control automatic rotation of molecules in the scene.
  */
-export const autoRotate = { x: false, y: false, z: false };
+export const autoRotate: AutoRotate = { x: false, y: false, z: false };
 
 /**
  * Defines an object used to trigger file input for loading molecule files.
  */
-const loadMoleculeFile = {
-  loadFile: function () {
-    document.getElementById("fileInput").click(); // Simulate a click on the hidden file input element.
+const loadMoleculeFile: LoadMoleculeFile = {
+  loadFile: function (): void {
+    const fileInput = document.getElementById("fileInput");
+    if (fileInput) {
+      fileInput.click(); // Simulate a click on the hidden file input element.
+    }
   },
 };
 
@@ -40,10 +85,10 @@ const loadMoleculeFile = {
  * Sets up the dat.GUI interface for controlling various aspects of the scene,
  * including loading molecules, selecting molecules, and adjusting their properties.
  *
- * @param {object} moleculeManager - The molecule manager object.
- * @param {THREE.Scene} scene - The Three.js scene object.
+ * @param moleculeManager - The molecule manager object.
+ * @param scene - The Three.js scene object.
  */
-export function set_up_gui(moleculeManager, scene) {
+export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene): void {
   // Create a new dat.GUI instance.
   const gui = new dat.GUI();
 
@@ -93,12 +138,17 @@ export function set_up_gui(moleculeManager, scene) {
  * This function retrieves the molecule's CSID and uses it to fetch and display
  * the molecule in the scene.
  *
- * @param {string} selectedMolecule - The name of the selected molecule.
- * @param {object} Molecules - The Molecules enum containing molecule data.
- * @param {object} moleculeManager - The molecule manager object.
- * @param {THREE.Scene} scene - The Three.js scene object.
+ * @param selectedMolecule - The name of the selected molecule.
+ * @param Molecules - The Molecules enum containing molecule data.
+ * @param moleculeManager - The molecule manager object.
+ * @param scene - The Three.js scene object.
  */
-function handleMoleculeSelection(selectedMolecule, Molecules, moleculeManager, scene) {
+function handleMoleculeSelection(
+  selectedMolecule: string, 
+  Molecules: Record<string, Molecule>, 
+  moleculeManager: MoleculeManager, 
+  scene: THREE.Scene
+): void {
   const moleculeKey = Object.keys(Molecules).find(
     (key) => Molecules[key].name === selectedMolecule // Find the key in the Molecules enum that matches the selected name.
   );
@@ -123,19 +173,19 @@ function handleMoleculeSelection(selectedMolecule, Molecules, moleculeManager, s
 /**
  * Adds a dropdown (select) element to the GUI for selecting molecules.
  *
- * @param {object} gui - The dat.GUI instance.
- * @param {object} moleculeManager - The molecule manager object.
- * @param {THREE.Scene} scene - The Three.js scene object.
+ * @param gui - The dat.GUI instance.
+ * @param moleculeManager - The molecule manager object.
+ * @param scene - The Three.js scene object.
  */
-function addMoleculeSelector(gui, moleculeManager, scene) {
+function addMoleculeSelector(gui: dat.GUI, moleculeManager: MoleculeManager, scene: THREE.Scene): void {
   const moleculeSelect = gui.addFolder("Molecule Selector"); // Create a folder in the GUI for the dropdown.
 
   // Create the dropdown element.
-  const moleculeDropdown = document.createElement("select");
+  const moleculeDropdown = document.createElement("select") as HTMLSelectElement;
   moleculeDropdown.id = "moleculeDropdown";
 
   // Populate the dropdown with options from the Molecules enum.
-  Object.values(Molecules).forEach((molecule) => {
+  Object.values(Molecules).forEach((molecule: Molecule) => {
     const option = document.createElement("option"); // Create an option element for each molecule.
     option.value = molecule.name; // Set the option value to the molecule name.
     option.text = molecule.name; // Set the option text to the molecule name.
@@ -146,8 +196,9 @@ function addMoleculeSelector(gui, moleculeManager, scene) {
   moleculeSelect.domElement.appendChild(moleculeDropdown);
 
   // Add an event listener to the dropdown to handle molecule selection.
-  moleculeDropdown.addEventListener("change", (event) => {
-    const selectedMolecule = event.target.value; // Get the selected molecule name.
+  moleculeDropdown.addEventListener("change", (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    const selectedMolecule = target.value; // Get the selected molecule name.
     handleMoleculeSelection(selectedMolecule, Molecules, moleculeManager, scene); // Handle the selection.
     //moleculeSearch.value = ""; // Clear the textbox
   });
@@ -156,18 +207,18 @@ function addMoleculeSelector(gui, moleculeManager, scene) {
 }
 
 /**
- * Adds a search input field to the GUI for searching for molecules.  Uses the
+ * Adds a search input field to the GUI for searching for molecules. Uses the
  * Awesomplete library for autocompletion.
  *
- * @param {object} gui - The dat.GUI instance.
- * @param {object} moleculeManager - The molecule manager object.
- * @param {THREE.Scene} scene - The Three.js scene object.
+ * @param gui - The dat.GUI instance.
+ * @param moleculeManager - The molecule manager object.
+ * @param scene - The Three.js scene object.
  */
-function addMoleculeSearch(gui, moleculeManager, scene) {
+function addMoleculeSearch(gui: dat.GUI, moleculeManager: MoleculeManager, scene: THREE.Scene): void {
   const moleculeSearch = gui.addFolder("Molecule Search"); // Create a folder in the GUI for the search input.
 
   // Create the search input element.
-  const searchInput = document.createElement("input");
+  const searchInput = document.createElement("input") as HTMLInputElement;
   searchInput.id = "moleculeSearch";
   searchInput.type = "text";
   searchInput.placeholder = "Search Molecule..."; // Set a placeholder text.
@@ -177,14 +228,17 @@ function addMoleculeSearch(gui, moleculeManager, scene) {
 
   // Initialize Awesomplete with the molecule names from the Molecules enum.
   const awesomplete = new Awesomplete(searchInput, {
-    list: Object.values(Molecules).map((molecule) => molecule.name), // Use molecule names for the autocomplete list.
+    list: Object.values(Molecules).map((molecule: Molecule) => molecule.name), // Use molecule names for the autocomplete list.
   });
 
   // Add an event listener to the search input to handle molecule selection.
-  searchInput.addEventListener("awesomplete-selectcomplete", (event) => {
+  searchInput.addEventListener("awesomplete-selectcomplete", (event: any) => {
     const selectedMolecule = event.text.value; // Get the selected molecule name.
     handleMoleculeSelection(selectedMolecule, Molecules, moleculeManager, scene); // Handle the selection.
-    moleculeDropdown.value = selectedMolecule; // Change dropdown selection
+    const moleculeDropdown = document.getElementById("moleculeDropdown") as HTMLSelectElement;
+    if (moleculeDropdown) {
+      moleculeDropdown.value = selectedMolecule; // Change dropdown selection
+    }
   });
 
   // moleculeSearch.open();
@@ -192,15 +246,15 @@ function addMoleculeSearch(gui, moleculeManager, scene) {
 
 /**
  * Adds spatial grid debug controls to the GUI
- * @param {object} gui - The dat.GUI instance
- * @param {THREE.Scene} scene - The Three.js scene object
- * @param {object} moleculeManager - The molecule manager instance
+ * @param gui - The dat.GUI instance
+ * @param scene - The Three.js scene object
+ * @param moleculeManager - The molecule manager instance
  */
-function addSpatialGridControls(gui, scene, moleculeManager) {
+function addSpatialGridControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
   const spatialGridFolder = gui.addFolder("Spatial Grid Debug");
   
   // Performance stats display
-  const statsDisplay = {
+  const statsDisplay: StatsDisplay = {
     totalCells: 0,
     moleculesInGrid: 0,
     totalChecks: 0,
@@ -214,15 +268,15 @@ function addSpatialGridControls(gui, scene, moleculeManager) {
   spatialGridFolder.add(statsDisplay, "actualCollisions").name("Actual Collisions (Cumulative)").listen();
 
   // Add average molecules per cell as a separate display
-  const avgDisplay = { value: "0.00" };
+  const avgDisplay: ValueDisplay = { value: "0.00" };
   spatialGridFolder.add(avgDisplay, "value").name("Avg Molecules/Cell").listen();
 
   // Add efficiency ratio display
-  const efficiencyDisplay = { value: "0.00" };
+  const efficiencyDisplay: ValueDisplay = { value: "0.00" };
   spatialGridFolder.add(efficiencyDisplay, "value").name("Collision Efficiency %").listen();
 
   // Update stats every frame
-  function updateStats() {
+  function updateStats(): void {
     const stats = getSpatialGridStats();
     if (stats) {
       statsDisplay.totalCells = stats.totalCells;
@@ -243,7 +297,7 @@ function addSpatialGridControls(gui, scene, moleculeManager) {
 
   // Reset stats button
   spatialGridFolder.add({
-    resetStats: function() {
+    resetStats: function(): void {
       resetSpatialGridStats();
       log("Spatial grid statistics reset");
     }
@@ -252,7 +306,7 @@ function addSpatialGridControls(gui, scene, moleculeManager) {
   // Toggle grid visualization
   let showGrid = false;
   spatialGridFolder.add({
-    toggleGrid: function() {
+    toggleGrid: function(): void {
       showGrid = !showGrid;
       if (showGrid) {
         log("Spatial grid visualization enabled");
@@ -268,7 +322,7 @@ function addSpatialGridControls(gui, scene, moleculeManager) {
   // Toggle bounding box visualization
   let showBoundingBoxes = false;
   spatialGridFolder.add({
-    toggleBoundingBoxes: function() {
+    toggleBoundingBoxes: function(): void {
       showBoundingBoxes = !showBoundingBoxes;
       if (showBoundingBoxes) {
         log("Bounding box visualization enabled");
@@ -282,11 +336,11 @@ function addSpatialGridControls(gui, scene, moleculeManager) {
   }, "toggleBoundingBoxes").name("Show Bounding Boxes");
 
   // Update bounding box visualization each frame when enabled
-  function updateBoundingBoxVisualization() {
+  function updateBoundingBoxVisualization(): void {
     if (showBoundingBoxes) {
       // Get all molecules and visualize their bounding boxes
       const molecules = moleculeManager.getAllMolecules();
-      const boundingBoxes = [];
+      const boundingBoxes: any[] = [];
       
       for (const molecule of molecules) {
         if (molecule.boundingBox) {
@@ -310,7 +364,7 @@ function addSpatialGridControls(gui, scene, moleculeManager) {
   updateBoundingBoxVisualization();
 
   // Update grid visualization each frame when enabled
-  function updateGridVisualization() {
+  function updateGridVisualization(): void {
     if (showGrid) {
       debugVisualizeSpatialGrid(scene);
     }
