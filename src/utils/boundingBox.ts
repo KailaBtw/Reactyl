@@ -45,13 +45,13 @@ function getAtomRadius(atomType: string): number {
 
 
 /**
- * Pre-calculates a comprehensive bounding volume for a molecule
- * This should be called once during molecule creation
+ * Calculates a comprehensive bounding volume for a molecule
+ * Called once during molecule creation
  * 
  * @param molObject - Parsed molecule object
- * @returns Enhanced bounding volume with all pre-calculated data
+ * @returns Enhanced bounding volume with pre-calculated data
  */
-export function preCalculateBoundingVolume(molObject: MolObject): EnhancedConvexHull | null {
+export function calculateHull(molObject: MolObject): EnhancedConvexHull | null {
   if (!molObject || !molObject.atoms || molObject.atoms.length === 0) {
     log("Warning: Invalid molecule object for bounding volume calculation");
     return null;
@@ -398,7 +398,7 @@ function isPointInsideConvexHull(point: THREE.Vector3, volume: EnhancedConvexHul
   return true; // Point is inside all faces
 }
 
-// Enhanced visualization functions for convex hull only
+// Legacy visualization function - kept for compatibility but not used in optimized system
 export function visualizeBoundingVolume(boundingVolume: BoundingBox, scene: THREE.Scene, color: number = 0x00ff00): void {
   if (!boundingVolume || !scene) return;
 
@@ -407,6 +407,191 @@ export function visualizeBoundingVolume(boundingVolume: BoundingBox, scene: THRE
   }
 }
 
+/**
+ * Creates a hull wireframe parented to a molecule group
+ * Allows Three.js to handle transforms automatically
+ * 
+ * @param boundingVolume - The bounding volume to visualize
+ * @param moleculeGroup - The THREE.Group to parent the wireframe to
+ * @param color - Color of the wireframe
+ * @returns The created LineSegments object
+ */
+export function createHullWire(
+  boundingVolume: BoundingBox, 
+  moleculeGroup: THREE.Group, 
+  color: number = 0x00ff00
+): THREE.LineSegments | null {
+  if (!boundingVolume || !moleculeGroup || boundingVolume.type !== 'ConvexHull') {
+    return null;
+  }
+
+  const hull = boundingVolume as EnhancedConvexHull;
+  
+  // Use local vertices (relative to molecule center) for automatic transform handling
+  const localVertices = hull.localVertices || hull.vertices;
+  
+  if (localVertices.length < 4) {
+    return null;
+  }
+
+  // Create geometry using local coordinates
+  const geometry = new THREE.BufferGeometry();
+  const positions: number[] = [];
+  
+  // Add all vertices in local space
+  for (const vertex of localVertices) {
+    positions.push(vertex.x, vertex.y, vertex.z);
+  }
+  
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  
+  // Create wireframe indices
+  const indices: number[] = [];
+  const vertexCount = localVertices.length;
+  
+  // Simple wireframe pattern - connect vertices in pairs
+  for (let i = 0; i < vertexCount; i += 2) {
+    if (i + 1 < vertexCount) {
+      indices.push(i, i + 1);
+    }
+  }
+  
+  // Add cross connections for 3D structure
+  for (let i = 0; i < vertexCount; i += 4) {
+    if (i + 2 < vertexCount) {
+      indices.push(i, i + 2);
+    }
+    if (i + 3 < vertexCount) {
+      indices.push(i + 1, i + 3);
+    }
+  }
+  
+  if (indices.length > 0) {
+    geometry.setIndex(indices);
+  }
+
+  const material = new THREE.LineBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.8
+  });
+
+  const wireframe = new THREE.LineSegments(geometry, material);
+  wireframe.userData.isBoundingBoxViz = true;
+  wireframe.userData.boundingType = 'ConvexHull';
+  wireframe.userData.isParented = true;
+  
+  // Parent to molecule group - Three.js will handle transforms automatically
+  moleculeGroup.add(wireframe);
+  
+  return wireframe;
+}
+
+/**
+ * Throttled wireframe update system
+ * Updates hull wireframes when necessary, throttled to ~10-15 Hz
+ */
+class HullManager {
+  private updateQueue: Set<THREE.LineSegments> = new Set();
+  private lastUpdateTime: number = 0;
+  private updateInterval: number = 100; // 10 Hz (100ms interval)
+  private isUpdating: boolean = false;
+
+  /**
+   * Mark a hull visualization for update
+   */
+  markForUpdate(wireframe: THREE.LineSegments): void {
+    this.updateQueue.add(wireframe);
+    this.scheduleUpdate();
+  }
+
+  /**
+   * Schedule an update if not already scheduled
+   */
+  private scheduleUpdate(): void {
+    if (this.isUpdating) return;
+    
+    const now = performance.now();
+    const timeSinceLastUpdate = now - this.lastUpdateTime;
+    
+    if (timeSinceLastUpdate >= this.updateInterval) {
+      this.performUpdate();
+    } else {
+      setTimeout(() => this.performUpdate(), this.updateInterval - timeSinceLastUpdate);
+    }
+  }
+
+  /**
+   * Perform the actual update
+   */
+  private performUpdate(): void {
+    this.isUpdating = true;
+    this.lastUpdateTime = performance.now();
+    
+    // Process all queued updates
+    for (const wireframe of this.updateQueue) {
+      // For parented wireframes, Three.js handles transforms automatically
+      // We only need to update if the hull geometry itself changed
+      if (wireframe.geometry && wireframe.userData.needsGeometryUpdate) {
+        wireframe.geometry.attributes.position.needsUpdate = true;
+        wireframe.userData.needsGeometryUpdate = false;
+      }
+    }
+    
+    this.updateQueue.clear();
+    this.isUpdating = false;
+  }
+
+  /**
+   * Set the update frequency (in Hz)
+   */
+  setUpdateFrequency(hz: number): void {
+    this.updateInterval = 1000 / hz;
+  }
+}
+
+// Global instance for managing hull wireframe updates
+export const hullManager = new HullManager();
+
+/**
+ * Toggle hull wireframe visibility for all molecules
+ * @param visible - Whether to show or hide hull wireframes
+ * @param molecules - Array of molecule groups
+ */
+export function toggleHulls(visible: boolean, molecules: any[]): void {
+  for (const molecule of molecules) {
+    if (molecule.hullWireframe) {
+      molecule.hullWireframe.visible = visible;
+    }
+  }
+}
+
+/**
+ * Update hull wireframe when molecule transforms change
+ * Called when hull geometry needs updating (rare)
+ * @param molecule - The molecule group to update
+ */
+export function updateHull(molecule: any): void {
+  if (molecule.hullWireframe && molecule.boundingBox) {
+    // Mark for throttled update
+    hullManager.markForUpdate(molecule.hullWireframe);
+  }
+}
+
+/**
+ * Remove hull wireframe from a molecule
+ * @param molecule - The molecule group to clean up
+ */
+export function removeHull(molecule: any): void {
+  if (molecule.hullWireframe) {
+    molecule.group.remove(molecule.hullWireframe);
+    molecule.hullWireframe.geometry.dispose();
+    molecule.hullWireframe.material.dispose();
+    molecule.hullWireframe = null;
+  }
+}
+
+// Legacy function for visualizing convex hull - not used in optimized system
 function visualizeConvexHull(boundingVolume: ConvexHull, scene: THREE.Scene, color: number): void {
   if (boundingVolume.vertices.length < 4) {
     // Skip visualization for insufficient vertices
@@ -470,6 +655,7 @@ function visualizeConvexHull(boundingVolume: ConvexHull, scene: THREE.Scene, col
 
 
 
+// Legacy function for visualizing all bounding volumes - not used in optimized system
 export function visualizeAllBoundingVolumes(boundingVolumes: BoundingBox[], scene: THREE.Scene, color: number = 0xff0000): void {
   if (!scene) return;
 
@@ -487,11 +673,11 @@ export function visualizeAllBoundingVolumes(boundingVolumes: BoundingBox[], scen
 
 // Create bounding box using convex hull only
 export function createBoundingBox(molObject: MolObject, _moleculeCenter: THREE.Vector3, _type: string = 'ConvexHull'): BoundingBox {
-  const volume = preCalculateBoundingVolume(molObject);
-  return volume || createFallbackBoundingBox();
+  const volume = calculateHull(molObject);
+  return volume || createFallbackHull();
 }
 
-function createFallbackBoundingBox(): ConvexHull {
+function createFallbackHull(): ConvexHull {
   const center = new THREE.Vector3(0, 0, 0);
   const vertices = [
     new THREE.Vector3(-1.5, -1.5, -1.5),

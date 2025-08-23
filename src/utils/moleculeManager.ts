@@ -31,6 +31,7 @@ export const createMoleculeGroup = (
     radius: radius, // The molecule's radius for collision detection.
     boundingBox: null, // The molecule's bounding box for accurate collision detection.
     molObject: null, // Store the parsed molecule data for bounding box calculations.
+    hullWireframe: undefined, // Reference to hull wireframe visualization
   };
 };
 

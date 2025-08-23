@@ -72,6 +72,7 @@ export interface MoleculeGroup {
   radius: number;
   boundingBox: BoundingBox | null;
   molObject: MolObject | null;
+  hullWireframe?: THREE.LineSegments; // Reference to hull wireframe visualization
 }
 
 export interface MoleculeManager {

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { molFileToJSON } from "./molFileToJSON";
 import { log } from "./debug";
-import { createBoundingBox } from "./boundingBox";
+import { createBoundingBox, createHullWire } from "./boundingBox";
 
 // Type definitions
 interface Position {
@@ -20,6 +20,7 @@ interface MoleculeGroup {
   radius: number;
   boundingBox: any; // TODO: Define proper bounding box type
   molObject: any; // TODO: Define proper molecule object type
+  hullWireframe?: THREE.LineSegments; // Reference to hull wireframe visualization
 }
 
 interface MoleculeManager {
@@ -212,6 +213,15 @@ export function drawMolecule(
   const boundingBox = createBoundingBox(molObject, moleculeCenter, 'ConvexHull');
   molecule.boundingBox = boundingBox;
   molecule.molObject = molObject; // Store molecule data for future updates
+  
+  // Create hull wireframe for efficient rendering
+  if (boundingBox) {
+    const hullWire = createHullWire(boundingBox, molecule.group, 0x00ff00);
+    if (hullWire) {
+      molecule.hullWireframe = hullWire;
+      log(`Created hull wireframe for ${name}: ${boundingBox.vertices.length} vertices`);
+    }
+  }
   
   // Debug logging
   log(`Created convex hull for ${name}: ${boundingBox.vertices.length} vertices`);

@@ -9,7 +9,7 @@ import {
   resetSpatialGridStats, 
   debugVisualizeSpatialGrid 
 } from "./vectorHelper"; // Import spatial grid functions
-import { visualizeAllBoundingVolumes } from "./boundingBox"; // Import bounding box visualization
+import { toggleHulls } from "./boundingBox"; // Import hull visualization
 import { 
   MoleculeManager, 
   Molecule, 
@@ -281,71 +281,22 @@ function addSpatialGridControls(gui: dat.GUI, scene: THREE.Scene, moleculeManage
     }
   }, "toggleGrid").name("Show Grid");
 
-  // Toggle bounding box visualization
-  let showBoundingBoxes = false;
+  // Toggle hull wireframes
+  let showHulls = false;
   spatialGridFolder.add({
-    toggleBoundingBoxes: function(): void {
-      showBoundingBoxes = !showBoundingBoxes;
-      if (showBoundingBoxes) {
-        log("Bounding box visualization enabled");
-        // Debug: Check what molecules we have
-        const molecules = moleculeManager.getAllMolecules();
-        log(`Found ${molecules.length} molecules to visualize`);
-        molecules.forEach((mol, index) => {
-          if (mol.boundingBox) {
-            log(`Molecule ${index}: ${mol.boundingBox.type} bounding box`);
-          } else {
-            log(`Molecule ${index}: No bounding box`);
-          }
-        });
-      } else {
-        // Remove bounding box visualization objects
-        const boxObjects = scene.children.filter(child => child.userData.isBoundingBoxViz);
-        boxObjects.forEach(obj => scene.remove(obj));
-        log("Bounding box visualization disabled");
-      }
-    }
-  }, "toggleBoundingBoxes").name("Show Bounding Boxes");
-
-  // Update bounding box visualization each frame when enabled
-  function updateBoundingBoxVisualization(): void {
-    if (showBoundingBoxes) {
-      // Get all molecules and visualize their bounding boxes
+    toggleHulls: function(): void {
+      showHulls = !showHulls;
       const molecules = moleculeManager.getAllMolecules();
-      const boundingBoxes: any[] = [];
-      
-      for (const molecule of molecules) {
-        if (molecule.boundingBox && molecule.boundingBox.type === 'ConvexHull') {
-          // For convex hull, we need to use the local vertices and transform them properly
-          const pos = molecule.group.position;
-          const rotation = molecule.group.quaternion;
-          
-          // Use localVertices if available, otherwise use vertices
-          const localVertices = (molecule.boundingBox as any).localVertices || molecule.boundingBox.vertices;
-          
-          const updatedBoundingBox = {
-            ...molecule.boundingBox,
-            vertices: localVertices.map((vertex: THREE.Vector3) => {
-              const transformedVertex = vertex.clone();
-              // Apply rotation first, then translation
-              transformedVertex.applyQuaternion(rotation);
-              transformedVertex.add(pos);
-              return transformedVertex;
-            }),
-            center: pos.clone() // Use the actual molecule position as center
-          };
-          boundingBoxes.push(updatedBoundingBox);
-          
-
-        }
+      toggleHulls(showHulls, molecules);
+      if (showHulls) {
+        log("Hull wireframes enabled");
+      } else {
+        log("Hull wireframes disabled");
       }
-      
-      // Visualize all bounding boxes at once
-      visualizeAllBoundingVolumes(boundingBoxes, scene, 0xff0000); // Red color for bounding boxes
     }
-    requestAnimationFrame(updateBoundingBoxVisualization);
-  }
-  updateBoundingBoxVisualization();
+  }, "toggleHulls").name("Show Hulls");
+
+
 
   // Update grid visualization each frame when enabled
   function updateGridVisualization(): void {
