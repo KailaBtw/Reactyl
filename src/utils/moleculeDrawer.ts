@@ -208,20 +208,16 @@ export function drawMolecule(
     (Number(limits.z.min) + Number(limits.z.max)) / 2
   );
 
-  // Create accurate bounding box for collision detection
-  const boundingBox = createBoundingBox(molObject, moleculeCenter, 'AABB');
+  // Create accurate bounding box for collision detection (now uses convex hull by default)
+  const boundingBox = createBoundingBox(molObject, moleculeCenter, 'ConvexHull');
   molecule.boundingBox = boundingBox;
   molecule.molObject = molObject; // Store molecule data for future updates
   
+  // Debug logging
+  log(`Created convex hull for ${name}: ${boundingBox.vertices.length} vertices`);
+  
   // Set the molecule group position to the specified position
   molecule.group.position.set(position.x, position.y, position.z);
-  
-  // Log bounding box creation for debugging
-  if (boundingBox.type === 'AABB' || boundingBox.type === 'OBB') {
-    log(`Created bounding box for ${name}: size=${boundingBox.size.x.toFixed(2)}x${boundingBox.size.y.toFixed(2)}x${boundingBox.size.z.toFixed(2)}`);
-  } else {
-    log(`Created convex hull for ${name} with ${boundingBox.vertices.length} vertices`);
-  }
 
   // Create and position the atom spheres.
   for (let item of molObject.atoms) {

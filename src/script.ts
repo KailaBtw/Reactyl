@@ -25,7 +25,7 @@ import {
   updateSpatialGrid, 
   checkCollisionsWithSpatialGrid
 } from "./utils/vectorHelper"; // Import functions for collision detection and handling.
-import { log, DEBUG_MODE, addObjectDebug } from "./utils/debug"; // Import debugging utilities.
+import { log, DEBUG_MODE, addObjectDebug, initFpsDebug, updateFpsDebug } from "./utils/debug"; // Import debugging utilities.
 import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
 import { getMolecule, drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
 // import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
@@ -173,6 +173,11 @@ function animate(): void {
   deltaTime = clock.getDelta(); // Get the time elapsed since the last frame.
   totalTime += deltaTime; // Update the total time.
 
+  // Update FPS overlay in debug mode
+  if (DEBUG_MODE) {
+    updateFpsDebug(deltaTime);
+  }
+
   // Rotate all molecules based on the autoRotate settings from the GUI.
   moleculeManager.getAllMolecules().forEach((molecule: MoleculeGroup) => {
     const rotateSettings = autoRotate as AutoRotate;
@@ -251,6 +256,7 @@ function init(CSID: number): void {
   if (DEBUG_MODE) {
     const axesHelper = new THREE.AxesHelper(5);
     scene.add(axesHelper);
+    initFpsDebug();
   }
 
   // Load and draw the initial molecules.

@@ -74,6 +74,70 @@ export function addObjectDebug(scene: THREE.Scene): void {
   }
 }
 
+// ==================================
+// FPS Debug Overlay (lightweight)
+// ==================================
+
+let fpsContainer: HTMLDivElement | null = null;
+let fpsFramesSinceUpdate = 0;
+let fpsAccumulatedTimeMs = 0;
+
+/**
+ * Initializes a simple FPS overlay in the top-left corner when DEBUG_MODE is on.
+ */
+export function initFpsDebug(): void {
+  if (!DEBUG_MODE) return;
+  if (typeof document === "undefined") return;
+  if (fpsContainer) return; // already initialized
+
+  const div = document.createElement("div");
+  div.id = "fps-meter";
+  div.style.position = "fixed";
+  div.style.left = "6px";
+  div.style.top = "6px";
+  div.style.padding = "4px 6px";
+  div.style.background = "rgba(0,0,0,0.45)";
+  div.style.color = "#0f0";
+  div.style.fontFamily = "monospace";
+  div.style.fontSize = "12px";
+  div.style.lineHeight = "14px";
+  div.style.zIndex = "10000";
+  div.textContent = "FPS: -- | ms: --";
+  document.body.appendChild(div);
+  fpsContainer = div;
+}
+
+/**
+ * Updates the FPS overlay. Call once per frame with delta time in seconds.
+ */
+export function updateFpsDebug(deltaSeconds: number): void {
+  if (!DEBUG_MODE || !fpsContainer) return;
+
+  fpsFramesSinceUpdate += 1;
+  fpsAccumulatedTimeMs += deltaSeconds * 1000;
+
+  // Update about twice a second to reduce DOM churn
+  if (fpsAccumulatedTimeMs >= 500) {
+    const fps = (fpsFramesSinceUpdate * 1000) / fpsAccumulatedTimeMs;
+    const ms = fpsAccumulatedTimeMs / fpsFramesSinceUpdate;
+    fpsContainer.textContent = `FPS: ${fps.toFixed(1)} | ms: ${ms.toFixed(1)}`;
+    fpsFramesSinceUpdate = 0;
+    fpsAccumulatedTimeMs = 0;
+  }
+}
+
+/**
+ * Removes the FPS overlay (optional cleanup).
+ */
+export function disposeFpsDebug(): void {
+  if (fpsContainer && fpsContainer.parentElement) {
+    fpsContainer.parentElement.removeChild(fpsContainer);
+  }
+  fpsContainer = null;
+  fpsFramesSinceUpdate = 0;
+  fpsAccumulatedTimeMs = 0;
+}
+
 /**
  * Adds lighting debug helpers to the scene.
  *

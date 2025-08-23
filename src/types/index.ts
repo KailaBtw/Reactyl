@@ -11,10 +11,12 @@ export interface Position {
 }
 
 export interface Atom {
-  x: number;
-  y: number;
-  z: number;
-  symbol: string;
+  position: {
+    x: string;
+    y: string;
+    z: string;
+  };
+  type: string;
 }
 
 export interface MolHeader {
@@ -40,11 +42,11 @@ export interface Limits {
 }
 
 export interface MolObject {
-  header: MolHeader;
-  counts: MolCounts;
-  atoms: Atom[];
-  bonds: any[];
-  limits: Limits;
+  atoms: Array<{
+    position: { x: string; y: string; z: string };
+    type: string;
+  }>;
+  bonds: Array<[string, string, string?]>;
 }
 
 export interface Molecule {
@@ -83,42 +85,40 @@ export interface MoleculeManager {
 }
 
 // ===============================
-//  Bounding Box Types
+//  Bounding Volume Types
 // ===============================
-
-export interface AABB {
-  type: 'AABB';
-  min: THREE.Vector3;
-  max: THREE.Vector3;
-  center: THREE.Vector3;
-  size: THREE.Vector3;
-  containsPoint: (point: THREE.Vector3) => boolean;
-  intersectsBox: (box: AABB) => boolean;
-  getRadius: () => number;
-}
-
-export interface OBB {
-  type: 'OBB';
-  min: THREE.Vector3;
-  max: THREE.Vector3;
-  center: THREE.Vector3;
-  size: THREE.Vector3;
-  rotation: THREE.Matrix3;
-  containsPoint: (point: THREE.Vector3) => boolean;
-  intersectsBox: (box: OBB) => boolean;
-  getRadius: () => number;
-}
 
 export interface ConvexHull {
   type: 'ConvexHull';
-  points: THREE.Vector3[];
+  vertices: THREE.Vector3[];
   center: THREE.Vector3;
   containsPoint: (point: THREE.Vector3) => boolean;
   intersectsBox: (box: ConvexHull) => boolean;
   getRadius: () => number;
 }
 
-export type BoundingBox = AABB | OBB | ConvexHull;
+export interface EnhancedConvexHull extends ConvexHull {
+  // Pre-calculated data for performance
+  localVertices: THREE.Vector3[];  // Vertices in local coordinates (relative to center)
+  boundingSphere: {
+    center: THREE.Vector3;
+    radius: number;
+  };
+  // Pre-calculated face normals for collision detection
+  faceNormals: THREE.Vector3[];
+  faceOffsets: number[];  // Distance from origin to each face
+  // AABB for broad-phase collision detection
+  localAABB: {
+    min: THREE.Vector3;
+    max: THREE.Vector3;
+  };
+  // Required methods from ConvexHull interface
+  containsPoint: (point: THREE.Vector3) => boolean;
+  intersectsBox: (box: ConvexHull) => boolean;
+  getRadius: () => number;
+}
+
+export type BoundingBox = ConvexHull;
 
 // ===============================
 //  Spatial Grid Types
