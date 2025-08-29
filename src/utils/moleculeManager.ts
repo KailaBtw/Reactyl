@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { getNormalizedVectorAB } from "./vectorHelper";
 import { Position, MoleculeGroup, MoleculeManager } from "../types";
 
+
 /**
  * Factory function to create a molecule group.  A molecule group is a Three.js Group
  * that represents a molecule.  It contains the molecule's visual representation
@@ -29,9 +30,7 @@ export const createMoleculeGroup = (
     getGroup: () => group, // Method to get the Three.js Group.
     velocity: new THREE.Vector3(0, 0, 0), // The molecule's velocity (as a THREE.Vector3).
     radius: radius, // The molecule's radius for collision detection.
-    boundingBox: null, // The molecule's bounding box for accurate collision detection.
-    molObject: null, // Store the parsed molecule data for bounding box calculations.
-    hullWireframe: undefined, // Reference to hull wireframe visualization
+    molObject: null, // Store the parsed molecule data for future use.
   };
 };
 
@@ -64,6 +63,8 @@ export const createMoleculeManager = (): MoleculeManager => {
       } : position;
       const radius = 3;
       const newMolecule = createMoleculeGroup(name, defaultPosition, radius);
+
+
 
       molecules = { ...molecules, [name]: newMolecule }; // Add to the molecules object.  Immutably update the object.
       return newMolecule; // Return the new molecule object.

@@ -1,18 +1,6 @@
 import * as THREE from "three";
 import { log } from "./debug";
-
-// Type definitions
-interface MoleculeGroup {
-  name: string;
-  position: { x: number; y: number; z: number };
-  group: THREE.Group;
-  add: (mesh: THREE.Mesh) => void;
-  getGroup: () => THREE.Group;
-  velocity: THREE.Vector3;
-  radius: number;
-  boundingBox: any; // TODO: Define proper bounding box type
-  molObject: any; // TODO: Define proper molecule object type
-}
+import { MoleculeGroup } from "../types";
 
 interface GridStats {
   totalChecks: number;

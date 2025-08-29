@@ -1,32 +1,9 @@
 import * as THREE from "three";
 import { molFileToJSON } from "./molFileToJSON";
 import { log } from "./debug";
-import { createBoundingBox, createHullWire } from "./boundingBox";
 
-// Type definitions
-interface Position {
-  x: number;
-  y: number;
-  z: number;
-}
 
-interface MoleculeGroup {
-  name: string;
-  position: Position;
-  group: THREE.Group;
-  add: (mesh: THREE.Mesh) => void;
-  getGroup: () => THREE.Group;
-  velocity: THREE.Vector3;
-  radius: number;
-  boundingBox: any; // TODO: Define proper bounding box type
-  molObject: any; // TODO: Define proper molecule object type
-  hullWireframe?: THREE.LineSegments; // Reference to hull wireframe visualization
-}
-
-interface MoleculeManager {
-  newMolecule: (name: string, position?: Position) => MoleculeGroup;
-  setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed?: number) => void;
-}
+import { MoleculeGroup, MoleculeManager, Position } from "../types";
 
 interface MolObject {
   atoms: Array<{
@@ -209,22 +186,13 @@ export function drawMolecule(
     (Number(limits.z.min) + Number(limits.z.max)) / 2
   );
 
-  // Create accurate bounding box for collision detection (now uses convex hull by default)
-  const boundingBox = createBoundingBox(molObject, moleculeCenter, 'ConvexHull');
-  molecule.boundingBox = boundingBox;
-  molecule.molObject = molObject; // Store molecule data for future updates
+  // Store molecule data for future updates
+  molecule.molObject = molObject;
   
-  // Create hull wireframe for efficient rendering
-  if (boundingBox) {
-    const hullWire = createHullWire(boundingBox, molecule.group, 0x00ff00);
-    if (hullWire) {
-      molecule.hullWireframe = hullWire;
-      log(`Created hull wireframe for ${name}: ${boundingBox.vertices.length} vertices`);
-    }
-  }
-  
-  // Debug logging
-  log(`Created convex hull for ${name}: ${boundingBox.vertices.length} vertices`);
+  // Create simple Three.js Box3Helper for visualization
+  const boxHelper = new THREE.Box3Helper(new THREE.Box3().setFromObject(molecule.group), 0x00ff00);
+  molecule.group.add(boxHelper);
+  log(`Created Box3Helper for ${name}`);
   
   // Set the molecule group position to the specified position
   molecule.group.position.set(position.x, position.y, position.z);
@@ -234,6 +202,10 @@ export function drawMolecule(
     const geometry = moleculeGeometries[item.type] || moleculeGeometries['C']; // Default to Carbon if type not found
     const material = moleculeMaterials[item.type] || moleculeMaterials['C']; // Default to Carbon if type not found
     
+    // Ensure geometry bounds are computed once
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+
     const sphere = new THREE.Mesh(geometry, material);
     // Position the sphere relative to the molecule's center.
     sphere.position.x = parseFloat(item.position.x) - moleculeCenter.x;
@@ -274,6 +246,9 @@ export function drawMolecule(
       distance,
       8 // Number of segments
     );
+    // Compute bounds for bond geometry
+    cylinderGeometry.computeBoundingBox();
+    cylinderGeometry.computeBoundingSphere();
     cylinderGeometry.translate(0, distance / 2, 0); // Translate to center it.
     cylinderGeometry.rotateX(Math.PI / 2); // Rotate to align with the bond.
 

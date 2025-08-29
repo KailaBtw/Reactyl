@@ -9,7 +9,12 @@ import {
   resetSpatialGridStats, 
   debugVisualizeSpatialGrid 
 } from "./vectorHelper"; // Import spatial grid functions
-import { toggleHulls } from "./boundingBox"; // Import hull visualization
+import { 
+  setHullVisualization, 
+  getHullVisualization, 
+  visualizeHulls 
+} from "./convexHullCollision"; // Import hull visualization functions
+ // Import hull visualization
 import { 
   MoleculeManager, 
   Molecule, 
@@ -93,6 +98,9 @@ export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene)
 
   // --- Spatial Grid Debug Controls ---
   addSpatialGridControls(gui, scene, moleculeManager);
+
+  // --- Hull Visualization Controls ---
+  addHullVisualizationControls(gui, scene, moleculeManager);
 }
 
 /**
@@ -281,20 +289,7 @@ function addSpatialGridControls(gui: dat.GUI, scene: THREE.Scene, moleculeManage
     }
   }, "toggleGrid").name("Show Grid");
 
-  // Toggle hull wireframes
-  let showHulls = false;
-  spatialGridFolder.add({
-    toggleHulls: function(): void {
-      showHulls = !showHulls;
-      const molecules = moleculeManager.getAllMolecules();
-      toggleHulls(showHulls, molecules);
-      if (showHulls) {
-        log("Hull wireframes enabled");
-      } else {
-        log("Hull wireframes disabled");
-      }
-    }
-  }, "toggleHulls").name("Show Hulls");
+
 
 
 
@@ -308,4 +303,38 @@ function addSpatialGridControls(gui: dat.GUI, scene: THREE.Scene, moleculeManage
   updateGridVisualization();
 
   spatialGridFolder.open();
+}
+
+/**
+ * Adds hull visualization controls to the GUI
+ * @param gui - The dat.GUI instance
+ * @param scene - Three.js scene object
+ * @param moleculeManager - The molecule manager instance
+ */
+function addHullVisualizationControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
+  const hullFolder = gui.addFolder("Hull Visualization");
+  
+  // Toggle hull visualization
+  hullFolder.add({
+    toggleHulls: function(): void {
+      const currentState = getHullVisualization();
+      const newState = !currentState;
+      setHullVisualization(newState);
+      if (newState) {
+        console.log("Hull visualization enabled");
+      } else {
+        console.log("Hull visualization disabled");
+      }
+    }
+  }, "toggleHulls").name("Show Hulls");
+
+  // Update hull visualization each frame
+  function updateHullVisualization(): void {
+    // Always call visualizeHulls - it will handle showing/hiding based on the current state
+    visualizeHulls(scene, moleculeManager.getAllMolecules());
+    requestAnimationFrame(updateHullVisualization);
+  }
+  updateHullVisualization();
+
+  hullFolder.open();
 }

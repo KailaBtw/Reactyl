@@ -2,78 +2,135 @@ import * as THREE from "three";
 import { log } from "./debug"; // Assuming this is your debug logging utility
 import { SpatialHashGrid } from "./spatialPartitioning";
 import { MoleculeGroup, GridStats } from "../types";
+import { createWorldSpaceHull, checkHullIntersection } from "./convexHullCollision";
 
 // Type alias for backward compatibility
-type SpatialGridStats = GridStats;
+type Position = { x: number; y: number; z: number };
 
-// Global spatial grid instance
+/**
+ * Calculates a normalized direction vector from position A to position B
+ * @param positionA - Starting position
+ * @param positionB - Target position
+ * @returns Normalized direction vector from A to B
+ */
+export function getNormalizedVectorAB(positionA: THREE.Vector3, positionB: THREE.Vector3): THREE.Vector3 {
+  return new THREE.Vector3().subVectors(positionB, positionA).normalize();
+}
+
+// ===============================
+//  Spatial Grid Management
+// ===============================
+
 let spatialGrid: SpatialHashGrid | null = null;
 
 /**
- * Initializes the spatial grid for collision detection
- * @param cellSize - Size of grid cells (default: 6)
- * @param maxMolecules - Maximum number of molecules (default: 1000)
+ * Initializes the spatial grid for efficient collision detection
+ * @param cellSize - Size of each grid cell
+ * @param maxMolecules - Maximum number of molecules to track
  */
-export function initializeSpatialGrid(cellSize: number = 6, maxMolecules: number = 1000): void {
+export function initializeSpatialGrid(cellSize: number, maxMolecules: number): void {
   spatialGrid = new SpatialHashGrid(cellSize, maxMolecules);
   log(`Spatial grid initialized with cell size: ${cellSize}, max molecules: ${maxMolecules}`);
 }
 
 /**
- * Gets the current spatial grid instance
- * @returns The spatial grid instance
+ * Updates the spatial grid with all molecules (call this each frame)
+ * @param molecules - Array of all molecules to update in the spatial grid
  */
-export function getSpatialGrid(): SpatialHashGrid | null {
-  return spatialGrid;
+export function updateSpatialGrid(molecules: MoleculeGroup[]): void {
+  if (spatialGrid) {
+    // Don't reset collision statistics - let them accumulate over time
+    spatialGrid.updateAll(molecules);
+  }
 }
 
 /**
- * Calculates a normalized vector from point A to point B in Three.js.
- *
- * This function takes two THREE.Vector3 objects representing points A and B,
- * calculates the vector from A to B (B - A), and then normalizes that vector
- * to have a length of 1. This is useful for determining direction without
- * regard to distance.
- *
- * @param a - The starting point (point A). A THREE.Vector3 object.
- * @param b - The ending point (point B). A THREE.Vector3 object.
- * @returns A new THREE.Vector3 representing the normalized
- * direction vector from A to B. The returned vector is guaranteed to have a
- * length of 1.
+ * Gets statistics about the spatial grid performance
+ * @returns Grid statistics or null if grid not initialized
  */
-export function getNormalizedVectorAB(a: THREE.Vector3, b: THREE.Vector3): THREE.Vector3 {
-  const direction = new THREE.Vector3(); // Create a new THREE.Vector3 to store the result.
-  direction.subVectors(b, a);       // Calculate the vector from a to b (b - a).
-  direction.normalize();           // Normalize the vector to unit length.
-  return direction;                 // Return the normalized direction vector.
+export function getSpatialGridStats(): GridStats | null {
+  return spatialGrid?.getStats() || null;
 }
 
 /**
- * Checks for a collision between two molecules represented by their molecule objects.
- *
- * This function uses bounding boxes for more accurate collision detection.
- * It first checks if the bounding boxes intersect, then falls back to radius-based
- * detection if bounding boxes are not available.
- *
+ * Resets the spatial grid collision statistics
+ */
+export function resetSpatialGridStats(): void {
+  spatialGrid?.resetStats();
+}
+
+/**
+ * Creates a bounding sphere from molecule atoms for accurate collision detection
+ * @param molecule - The molecule to create sphere for
+ * @returns Three.js Sphere or null
+ */
+function createMoleculeBoundingSphere(molecule: MoleculeGroup): THREE.Sphere | null {
+  if (!molecule.molObject || !molecule.molObject.atoms) {
+    return null;
+  }
+
+  // Get all atom positions in world space
+  const points: THREE.Vector3[] = [];
+  for (const atom of molecule.molObject.atoms) {
+    const localPos = new THREE.Vector3(
+      parseFloat(atom.position.x),
+      parseFloat(atom.position.y), 
+      parseFloat(atom.position.z)
+    );
+    
+    // Transform to world space
+    const worldPos = localPos.clone().applyMatrix4(molecule.group.matrixWorld);
+    points.push(worldPos);
+  }
+
+  if (points.length === 0) {
+    return null;
+  }
+
+  // Create bounding sphere from points
+  const sphere = new THREE.Sphere();
+  sphere.setFromPoints(points);
+  
+  return sphere;
+}
+
+/**
+ * Two-phase collision detection: Broad-phase (sphere) + Narrow-phase (hull)
  * @param molA - The first molecule object.
  * @param molB - The second molecule object.
  * @returns True if the molecules are colliding, false otherwise.
  */
 export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolean {
-  // Get the positions of the molecule groups. We access the group's position.
-  const posA = molA.group.position;
-  const posB = molB.group.position;
+  // PHASE 1: Broad-phase - World AABB using Box3
+  molA.group.updateMatrixWorld(true);
+  molB.group.updateMatrixWorld(true);
+  const aabbA = new THREE.Box3().setFromObject(molA.group);
+  const aabbB = new THREE.Box3().setFromObject(molB.group);
+  
+  if (!aabbA.intersectsBox(aabbB)) {
+    return false; // Early out
+  }
 
-  // Get the radii of the molecules. Use default radius of 1 if not defined.
-  const radiusA = molA.radius || 1;
-  const radiusB = molB.radius || 1;
+  // Debug: Log when AABBs intersect
+  console.log(`AABB intersection detected between ${molA.name} and ${molB.name}`);
 
-  // Calculate the squared distance between the molecule centers.
-  const distanceSq = posA.distanceToSquared(posB);
-  const sumRadiiSq = (radiusA + radiusB) * (radiusA + radiusB); // Square of the sum of radii.
+  // PHASE 2: Narrow-phase - Accurate hull collision detection
+  const hullA = createWorldSpaceHull(molA);
+  const hullB = createWorldSpaceHull(molB);
+  
+  if (!hullA || !hullB) {
+    // Fallback: treat as colliding if AABBs intersect
+    console.log(`Hull creation failed for ${molA.name} or ${molB.name}, treating as collision`);
+    return true;
+  }
 
-  // Return true if the squared distance is less than or equal to the squared sum of the radii.
-  return distanceSq <= sumRadiiSq;
+  // Debug: Log hull vertex counts
+  console.log(`Hull A (${molA.name}): ${hullA.length} vertices, Hull B (${molB.name}): ${hullB.length} vertices`);
+
+  // Detailed hull intersection test (narrow-phase)
+  const collision = checkHullIntersection(hullA, hullB);
+  console.log(`Hull intersection result: ${collision}`);
+  return collision;
 }
 
 /**
@@ -97,6 +154,8 @@ export function checkCollisionsWithSpatialGrid(molecule: MoleculeGroup, allMolec
   if (spatialGrid.stats) {
     spatialGrid.stats.totalChecks += nearbyMolecules.size;
   }
+
+
 
   for (const otherMolecule of nearbyMolecules) {
     if (molecule !== otherMolecule && checkCollision(molecule, otherMolecule)) {
@@ -136,17 +195,6 @@ export function checkCollisionsBruteForce(molecule: MoleculeGroup, allMolecules:
   }
 
   return collidingMolecules;
-}
-
-/**
- * Updates the spatial grid with all molecules (call this each frame)
- * @param molecules - Array of all molecules to update in the spatial grid
- */
-export function updateSpatialGrid(molecules: MoleculeGroup[]): void {
-  if (spatialGrid) {
-    // Don't reset collision statistics - let them accumulate over time
-    spatialGrid.updateAll(molecules);
-  }
 }
 
 /**
@@ -195,23 +243,6 @@ export function handleCollision(moleculeObject1: MoleculeGroup, moleculeObject2:
   // Update the velocities of the molecule objects. This modifies the original objects.
   moleculeObject1.velocity.copy(new_vA);
   moleculeObject2.velocity.copy(new_vB);
-}
-
-/**
- * Gets performance statistics from the spatial grid
- * @returns Statistics object or null if grid not initialized
- */
-export function getSpatialGridStats(): SpatialGridStats | null {
-  return spatialGrid ? spatialGrid.getStats() : null;
-}
-
-/**
- * Resets performance statistics for the spatial grid
- */
-export function resetSpatialGridStats(): void {
-  if (spatialGrid) {
-    spatialGrid.resetStats();
-  }
 }
 
 /**

@@ -119,6 +119,12 @@ init(defaultCSID);
 // Start the animation loop.
 animate();
 
+// Auto-reload for demo purposes (every 1.5 minutes)
+setInterval(() => {
+  console.log("[DEMO]: Auto-reloading simulation...");
+  location.reload();
+}, 90000); // 90 seconds = 1.5 minutes
+
 // ===============================
 //  Event Listeners
 // ===============================
@@ -199,16 +205,6 @@ function animate(): void {
   // Move all the molecules based on their velocities and handle collisions.
   for (const moleculeObject of allMolecules) {
     const group = moleculeObject.getGroup(); // Get the Three.js Group.
-    // const randomForceStrength = 20; // Unused variable
-
-    // Apply a small random force (change in velocity).
-    // Random force calculation (commented out - no random force applied)
-    // const randomForce = new THREE.Vector3(
-    //   (Math.random() * randomForceStrength) + moleculeObject.velocity.x,
-    //   (Math.random() * randomForceStrength) + moleculeObject.velocity.y,
-    //   (Math.random() * randomForceStrength) + moleculeObject.velocity.z
-    // );
-    // moleculeObject.velocity.addScaledVector(randomForce, deltaTime); // Removed: No random force
 
     // Apply some damping to prevent infinite speed increase (optional).
     moleculeObject.velocity.multiplyScalar(0.999);

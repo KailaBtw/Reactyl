@@ -116,11 +116,16 @@ export function updateFpsDebug(deltaSeconds: number): void {
   fpsFramesSinceUpdate += 1;
   fpsAccumulatedTimeMs += deltaSeconds * 1000;
 
-  // Update about twice a second to reduce DOM churn
-  if (fpsAccumulatedTimeMs >= 500) {
+  // Update more frequently for better responsiveness
+  if (fpsAccumulatedTimeMs >= 250) { // Update 4 times per second instead of 2
     const fps = (fpsFramesSinceUpdate * 1000) / fpsAccumulatedTimeMs;
     const ms = fpsAccumulatedTimeMs / fpsFramesSinceUpdate;
-    fpsContainer.textContent = `FPS: ${fps.toFixed(1)} | ms: ${ms.toFixed(1)}`;
+    
+    // Add some validation to prevent NaN or infinite values
+    const validFps = isFinite(fps) ? fps : 0;
+    const validMs = isFinite(ms) ? ms : 0;
+    
+    fpsContainer.textContent = `FPS: ${validFps.toFixed(1)} | ms: ${validMs.toFixed(1)}`;
     fpsFramesSinceUpdate = 0;
     fpsAccumulatedTimeMs = 0;
   }

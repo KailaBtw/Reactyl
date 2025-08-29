@@ -10,5 +10,13 @@ export default defineConfig({
     assetsDir: 'assets', // Place assets in the 'assets' folder
     //emptyOutDir: true, // Cleans the output directory before building
     sourcemap: true, // or 'inline', or 'hidden'
+    rollupOptions: {
+      output: {
+        // Disable file name hashing for consistent file names
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]'
+      }
+    }
   },
 });

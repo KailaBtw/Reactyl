@@ -70,9 +70,7 @@ export interface MoleculeGroup {
   getGroup: () => THREE.Group;
   velocity: THREE.Vector3;
   radius: number;
-  boundingBox: BoundingBox | null;
   molObject: MolObject | null;
-  hullWireframe?: THREE.LineSegments; // Reference to hull wireframe visualization
 }
 
 export interface MoleculeManager {
@@ -85,41 +83,7 @@ export interface MoleculeManager {
   setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed?: number) => void;
 }
 
-// ===============================
-//  Bounding Volume Types
-// ===============================
 
-export interface ConvexHull {
-  type: 'ConvexHull';
-  vertices: THREE.Vector3[];
-  center: THREE.Vector3;
-  containsPoint: (point: THREE.Vector3) => boolean;
-  intersectsBox: (box: ConvexHull) => boolean;
-  getRadius: () => number;
-}
-
-export interface EnhancedConvexHull extends ConvexHull {
-  // Pre-calculated data for performance
-  localVertices: THREE.Vector3[];  // Vertices in local coordinates (relative to center)
-  boundingSphere: {
-    center: THREE.Vector3;
-    radius: number;
-  };
-  // Pre-calculated face normals for collision detection
-  faceNormals: THREE.Vector3[];
-  faceOffsets: number[];  // Distance from origin to each face
-  // AABB for broad-phase collision detection
-  localAABB: {
-    min: THREE.Vector3;
-    max: THREE.Vector3;
-  };
-  // Required methods from ConvexHull interface
-  containsPoint: (point: THREE.Vector3) => boolean;
-  intersectsBox: (box: ConvexHull) => boolean;
-  getRadius: () => number;
-}
-
-export type BoundingBox = ConvexHull;
 
 // ===============================
 //  Spatial Grid Types
