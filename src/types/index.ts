@@ -71,6 +71,8 @@ export interface MoleculeGroup {
   velocity: THREE.Vector3;
   radius: number;
   molObject: MolObject | null;
+  rotationController?: any; // Will be RotationController type
+  molecularProperties?: any; // Will be MolecularProperties type
 }
 
 export interface MoleculeManager {

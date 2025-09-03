@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { molFileToJSON } from "./molFileToJSON";
 import { log } from "./debug";
-
+import { MolecularPropertiesCalculator, type Atom as PhysicsAtom, type MolecularProperties } from "./molecularPropertiesCalculator";
+import { RotationController } from "./rotationController";
 
 import { MoleculeGroup, MoleculeManager, Position } from "../types";
 
@@ -191,6 +192,47 @@ export function drawMolecule(
   
   // Set the molecule group position to the specified position
   molecule.group.position.set(position.x, position.y, position.z);
+  
+  // Add random initial rotation around X and Z axes for more realistic starting orientations
+  molecule.group.rotation.x = (Math.random() - 0.5) * Math.PI; // Random rotation around X-axis (-π/2 to π/2)
+  molecule.group.rotation.z = (Math.random() - 0.5) * Math.PI; // Random rotation around Z-axis (-π/2 to π/2)
+
+  // Set up physics-based rotation system
+  try {
+    // Convert MOL data to physics-ready format
+    const physicsAtoms: PhysicsAtom[] = molObject.atoms.map(atom => ({
+      element: atom.type,
+      position: new THREE.Vector3(
+        parseFloat(atom.position.x),
+        parseFloat(atom.position.y),
+        parseFloat(atom.position.z)
+      ),
+      mass: MolecularPropertiesCalculator['ATOMIC_MASSES'][atom.type] || 12.0
+    }));
+
+    // Calculate molecular properties
+    const molecularProperties = MolecularPropertiesCalculator.calculateProperties(physicsAtoms);
+    
+    // Create rotation controller
+    const rotationController = new RotationController({
+      mode: 'realistic',
+      temperature: 150, // Reduced from 300K to 150K for slower rotation
+      speedMultiplier: 0.5, // Reduced from 1.0 to 0.5 for slower rotation
+      dampingFactor: 0.99, // Increased from 0.98 to 0.99 for more damping
+      enableThermalNoise: true
+    });
+    
+    // Set molecular properties and initialize rotation
+    rotationController.setMolecule(molecularProperties);
+    
+    // Store in molecule for future use
+    (molecule as any).molecularProperties = molecularProperties;
+    (molecule as any).rotationController = rotationController;
+    
+    log(`Rotation system initialized for ${name} with ${physicsAtoms.length} atoms`);
+  } catch (error) {
+    log(`Failed to initialize rotation system for ${name}: ${error}`);
+  }
 
   // Create and position the atom spheres.
   for (let item of molObject.atoms) {

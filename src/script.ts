@@ -214,6 +214,26 @@ function animate(): void {
     // Update molecule position based on velocity and time.
     group.position.addScaledVector(moleculeObject.velocity, deltaTime);
     
+    // Apply physics-based rotation if available, otherwise fall back to movement-based rotation
+    if ((moleculeObject as any).rotationController) {
+      // Use the sophisticated physics-based rotation system
+      const rotationController = (moleculeObject as any).rotationController;
+      rotationController.update(deltaTime);
+      rotationController.applyToObject3D(group);
+    } else {
+      // Fallback to simple movement-based rotation
+      const rotationSpeed = 2.0; // Radians per second
+      const velocityMagnitude = moleculeObject.velocity.length();
+      
+      if (velocityMagnitude > 0.1) { // Only rotate if moving
+        // Rotate around X-axis (forward/backward tilt)
+        group.rotation.x += rotationSpeed * deltaTime * (moleculeObject.velocity.z / velocityMagnitude);
+        
+        // Rotate around Z-axis (left/right tilt) 
+        group.rotation.z += rotationSpeed * deltaTime * (moleculeObject.velocity.x / velocityMagnitude);
+      }
+    }
+    
     // Mark transform as dirty for collision detection optimization
     markTransformDirty(moleculeObject);
 

@@ -17,6 +17,7 @@ import {
 import { collisionEventSystem } from "./collisionEventSystem";
 import { getCacheStats } from "./transformCache";
 import { reactionCollisionInterface } from "./reactionCollisionInterface";
+import { RotationController } from "./rotationController";
  // Import hull visualization
 import { 
   MoleculeManager, 
@@ -107,6 +108,9 @@ export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene)
 
   // --- Collision System Debug Controls ---
   addCollisionSystemControls(gui, scene, moleculeManager);
+
+  // --- Molecule Rotation Controls ---
+  addMoleculeRotationControls(gui, scene, moleculeManager);
 }
 
 /**
@@ -400,4 +404,86 @@ function addCollisionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   }, "toggleReactions").name("Enable Reactions");
   
   collisionFolder.open();
+}
+
+/**
+ * Adds molecule rotation controls to the GUI
+ * @param gui - The dat.GUI instance
+ * @param scene - Three.js scene object
+ * @param moleculeManager - The molecule manager instance
+ */
+function addMoleculeRotationControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
+  const rotationFolder = gui.addFolder("Molecule Rotation");
+  
+  // Advanced rotation settings
+  const rotationSettings = {
+    mode: 'realistic' as 'realistic' | 'demo' | 'manual',
+    temperature: 300,
+    speedMultiplier: 1.0,
+    dampingFactor: 0.98,
+    enableThermalNoise: true,
+    naturalRotation: true,
+    rotationSpeed: 2.0,
+    
+    resetRotations: function(): void {
+      const allMolecules = moleculeManager.getAllMolecules();
+      allMolecules.forEach(mol => {
+        mol.group.rotation.set(0, 0, 0);
+        // Add new random rotation
+        mol.group.rotation.x = (Math.random() - 0.5) * Math.PI;
+        mol.group.rotation.z = (Math.random() - 0.5) * Math.PI;
+        
+        // Reset physics-based rotation if available
+        if ((mol as any).rotationController) {
+          (mol as any).rotationController.reset();
+        }
+      });
+      log("All molecule rotations reset with new random orientations");
+    },
+    
+    applyToAll: function(): void {
+      const allMolecules = moleculeManager.getAllMolecules();
+      allMolecules.forEach(mol => {
+        if ((mol as any).rotationController) {
+          const controller = (mol as any).rotationController;
+          controller.setMode(rotationSettings.mode);
+          controller.setTemperature(rotationSettings.temperature);
+          controller.setSpeedMultiplier(rotationSettings.speedMultiplier);
+          controller['config'].dampingFactor = rotationSettings.dampingFactor;
+          controller['config'].enableThermalNoise = rotationSettings.enableThermalNoise;
+        }
+      });
+      log(`Applied rotation settings to all molecules: mode=${rotationSettings.mode}, temp=${rotationSettings.temperature}K`);
+    }
+  };
+  
+  // Mode selection
+  const modeController = rotationFolder.add(rotationSettings, "mode", ['realistic', 'demo', 'manual']).name("Rotation Mode");
+  modeController.onChange(() => rotationSettings.applyToAll());
+  
+  // Temperature control (affects realistic mode)
+  const tempController = rotationFolder.add(rotationSettings, "temperature", 50, 1000).name("Temperature (K)");
+  tempController.onChange(() => rotationSettings.applyToAll());
+  
+  // Speed multiplier
+  const speedController = rotationFolder.add(rotationSettings, "speedMultiplier", 0.1, 5.0).name("Speed Multiplier");
+  speedController.onChange(() => rotationSettings.applyToAll());
+  
+  // Damping factor
+  const dampingController = rotationFolder.add(rotationSettings, "dampingFactor", 0.9, 0.999).name("Damping Factor");
+  dampingController.onChange(() => rotationSettings.applyToAll());
+  
+  // Thermal noise toggle
+  const noiseController = rotationFolder.add(rotationSettings, "enableThermalNoise").name("Thermal Noise");
+  noiseController.onChange(() => rotationSettings.applyToAll());
+  
+  // Legacy controls
+  rotationFolder.add(rotationSettings, "naturalRotation").name("Enable Natural Rotation");
+  rotationFolder.add(rotationSettings, "rotationSpeed", 0.1, 5.0).name("Rotation Speed");
+  
+  // Action buttons
+  rotationFolder.add(rotationSettings, "resetRotations").name("Reset All Rotations");
+  rotationFolder.add(rotationSettings, "applyToAll").name("Apply to All Molecules");
+  
+  rotationFolder.open();
 }
