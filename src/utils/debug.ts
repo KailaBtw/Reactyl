@@ -48,7 +48,7 @@ export function log(...messages: any[]): void {
  */
 export function addObjectDebug(scene: THREE.Scene): void {
   const GROUND_DEBUG: boolean = false;  // Flag to enable/disable ground plane debug.
-  const SHAPE_DEBUG: boolean = true;   // Flag to enable/disable shape (cube) debug.
+  const SHAPE_DEBUG: boolean = false;   // Flag to enable/disable shape (cube) debug.
 
   if (!OBJECT_DEBUG) return; // If OBJECT_DEBUG is false, do nothing.
 

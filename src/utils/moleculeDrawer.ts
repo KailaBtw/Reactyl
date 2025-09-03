@@ -189,11 +189,6 @@ export function drawMolecule(
   // Store molecule data for future updates
   molecule.molObject = molObject;
   
-  // Create simple Three.js Box3Helper for visualization
-  const boxHelper = new THREE.Box3Helper(new THREE.Box3().setFromObject(molecule.group), 0x00ff00);
-  molecule.group.add(boxHelper);
-  log(`Created Box3Helper for ${name}`);
-  
   // Set the molecule group position to the specified position
   molecule.group.position.set(position.x, position.y, position.z);
 

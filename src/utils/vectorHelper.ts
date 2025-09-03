@@ -3,6 +3,8 @@ import { log } from "./debug"; // Assuming this is your debug logging utility
 import { SpatialHashGrid } from "./spatialPartitioning";
 import { MoleculeGroup, GridStats } from "../types";
 import { createWorldSpaceHull, checkHullIntersection } from "./convexHullCollision";
+import { collisionEventSystem, createCollisionEvent } from "./collisionEventSystem";
+import { getFastAABB, markTransformDirty } from "./transformCache";
 
 // Type alias for backward compatibility
 type Position = { x: number; y: number; z: number };
@@ -101,13 +103,11 @@ function createMoleculeBoundingSphere(molecule: MoleculeGroup): THREE.Sphere | n
  * @returns True if the molecules are colliding, false otherwise.
  */
 export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolean {
-  // PHASE 1: Broad-phase - World AABB using Box3
-  molA.group.updateMatrixWorld(true);
-  molB.group.updateMatrixWorld(true);
-  const aabbA = new THREE.Box3().setFromObject(molA.group);
-  const aabbB = new THREE.Box3().setFromObject(molB.group);
+  // PHASE 1: Broad-phase - Fast AABB using transform cache
+  const aabbA = getFastAABB(molA);
+  const aabbB = getFastAABB(molB);
   
-  if (!aabbA.intersectsBox(aabbB)) {
+  if (!aabbA || !aabbB || !aabbA.intersectsBox(aabbB)) {
     return false; // Early out
   }
 
@@ -119,17 +119,37 @@ export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolea
   const hullB = createWorldSpaceHull(molB);
   
   if (!hullA || !hullB) {
-    // Fallback: treat as colliding if AABBs intersect
-    console.log(`Hull creation failed for ${molA.name} or ${molB.name}, treating as collision`);
-    return true;
+    // Fallback: if hull creation fails, we can't determine collision accurately
+    // Log the issue but don't treat as collision to avoid false positives
+    console.warn(`Hull creation failed for ${molA.name} or ${molB.name}, skipping collision check`);
+    return false;
   }
 
   // Debug: Log hull vertex counts
   console.log(`Hull A (${molA.name}): ${hullA.length} vertices, Hull B (${molB.name}): ${hullB.length} vertices`);
 
+  // Additional validation: ensure hulls aren't too large relative to molecule size
+  const hullASize = getHullSize(hullA);
+  const hullBSize = getHullSize(hullB);
+  const molASize = getMoleculeSize(molA);
+  const molBSize = getMoleculeSize(molB);
+  
+  // If hull is significantly larger than molecule, something is wrong
+  if (hullASize > molASize * 3 || hullBSize > molBSize * 3) {
+    console.warn(`Hull size mismatch detected - Hull A: ${hullASize.toFixed(2)}, Molecule A: ${molASize.toFixed(2)}, Hull B: ${hullBSize.toFixed(2)}, Molecule B: ${molBSize.toFixed(2)}`);
+    return false; // Skip collision to avoid false positives
+  }
+
   // Detailed hull intersection test (narrow-phase)
   const collision = checkHullIntersection(hullA, hullB);
   console.log(`Hull intersection result: ${collision}`);
+  
+  // Emit collision event if collision detected
+  if (collision) {
+    const event = createCollisionEvent(molA, molB);
+    collisionEventSystem.emitCollision(event);
+  }
+  
   return collision;
 }
 
@@ -253,4 +273,55 @@ export function debugVisualizeSpatialGrid(scene: THREE.Scene): void {
   if (spatialGrid) {
     spatialGrid.debugVisualize(scene);
   }
+}
+
+/**
+ * Calculate the size (diameter) of a convex hull
+ * @param hull - Array of hull vertices
+ * @returns Hull diameter
+ */
+function getHullSize(hull: THREE.Vector3[]): number {
+  if (hull.length < 2) return 0;
+  
+  let maxDistance = 0;
+  for (let i = 0; i < hull.length; i++) {
+    for (let j = i + 1; j < hull.length; j++) {
+      const distance = hull[i].distanceTo(hull[j]);
+      maxDistance = Math.max(maxDistance, distance);
+    }
+  }
+  return maxDistance;
+}
+
+/**
+ * Calculate the size (diameter) of a molecule based on atom positions
+ * @param molecule - Molecule to measure
+ * @returns Molecule diameter
+ */
+function getMoleculeSize(molecule: MoleculeGroup): number {
+  if (!molecule.molObject || !molecule.molObject.atoms || molecule.molObject.atoms.length < 2) {
+    return 0;
+  }
+  
+  let maxDistance = 0;
+  const atoms = molecule.molObject.atoms;
+  
+  for (let i = 0; i < atoms.length; i++) {
+    for (let j = i + 1; j < atoms.length; j++) {
+      const posA = new THREE.Vector3(
+        parseFloat(atoms[i].position.x),
+        parseFloat(atoms[i].position.y),
+        parseFloat(atoms[i].position.z)
+      );
+      const posB = new THREE.Vector3(
+        parseFloat(atoms[j].position.x),
+        parseFloat(atoms[j].position.y),
+        parseFloat(atoms[j].position.z)
+      );
+      
+      const distance = posA.distanceTo(posB);
+      maxDistance = Math.max(maxDistance, distance);
+    }
+  }
+  return maxDistance;
 }

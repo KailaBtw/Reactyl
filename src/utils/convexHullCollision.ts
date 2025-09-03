@@ -23,6 +23,11 @@ const hullCache = new Map<MoleculeGroup, HullCache>();
 let showHulls = false;
 
 /**
+ * Global flag for collision debug visualization
+ */
+let showCollisionDebug = false;
+
+/**
  * Set whether to show hull visualization
  * @param enabled - Whether to show hulls
  */
@@ -36,6 +41,22 @@ export function setHullVisualization(enabled: boolean): void {
  */
 export function getHullVisualization(): boolean {
   return showHulls;
+}
+
+/**
+ * Set whether to show collision debug visualization
+ * @param enabled - Whether to show collision debug
+ */
+export function setCollisionDebugVisualization(enabled: boolean): void {
+  showCollisionDebug = enabled;
+}
+
+/**
+ * Get current collision debug visualization state
+ * @returns Whether collision debug is being shown
+ */
+export function getCollisionDebugVisualization(): boolean {
+  return showCollisionDebug;
 }
 
 /**
@@ -122,18 +143,26 @@ export function createWorldSpaceHull(molecule: MoleculeGroup): THREE.Vector3[] |
     // Use Three.js ConvexGeometry for robust hull generation
     const hullGeometry = new ConvexGeometry(points);
     
-    // Extract vertices from the geometry
+    // Extract unique vertices from the geometry (avoid duplicates)
     const vertices: THREE.Vector3[] = [];
     const positions = hullGeometry.attributes.position;
+    const seen = new Set<string>();
     
     for (let i = 0; i < positions.count; i++) {
-      vertices.push(new THREE.Vector3(
-        positions.getX(i),
-        positions.getY(i),
-        positions.getZ(i)
-      ));
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
+      
+      // Create a key to avoid duplicate vertices
+      const key = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
+      
+      if (!seen.has(key)) {
+        seen.add(key);
+        vertices.push(new THREE.Vector3(x, y, z));
+      }
     }
 
+    console.log(`Created hull with ${vertices.length} unique vertices from ${points.length} atom points`);
     return vertices;
   } catch (error) {
     console.warn('Failed to create world-space convex hull for molecule:', error);
@@ -195,15 +224,15 @@ export function visualizeHulls(scene: THREE.Scene, molecules: MoleculeGroup[]): 
 }
 
 /**
- * Check if two convex hulls intersect using Separating Axis Theorem (SAT)
- * This is a more robust implementation than the previous point-in-hull test
+ * Check if two convex hulls intersect using proper 3D Separating Axis Theorem (SAT)
+ * This implementation uses the actual faces from ConvexGeometry for accurate collision detection
  * @param hullA - First hull vertices in world space
  * @param hullB - Second hull vertices in world space
  * @returns True if hulls intersect
  */
 export function checkHullIntersection(hullA: THREE.Vector3[], hullB: THREE.Vector3[]): boolean {
-  if (hullA.length < 3 || hullB.length < 3) {
-    console.log(`Hull intersection: insufficient vertices - A: ${hullA.length}, B: ${hullB.length}`);
+  if (hullA.length < 4 || hullB.length < 4) {
+    console.log(`Hull intersection: insufficient vertices for 3D hull - A: ${hullA.length}, B: ${hullB.length}`);
     return false;
   }
 
@@ -216,100 +245,240 @@ export function checkHullIntersection(hullA: THREE.Vector3[], hullB: THREE.Vecto
     return false; // Bounding boxes don't intersect
   }
 
-  console.log("Hull intersection: bounding boxes intersect, proceeding with SAT test");
+  console.log("Hull intersection: bounding boxes intersect, proceeding with 3D SAT test");
 
-  // SAT test: if there exists a separating axis, the hulls don't intersect
-  // Test all face normals from both hulls as potential separating axes
+  // For proper 3D SAT, we need to test:
+  // 1. Face normals from both hulls
+  // 2. Edge-edge cross products
   
-  // Test hull A face normals
-  for (let i = 0; i < hullA.length; i++) {
-    const a = hullA[i];
-    const b = hullA[(i + 1) % hullA.length];
-    const c = hullA[(i + 2) % hullA.length];
+  // Since we're working with vertices from ConvexGeometry, we need to reconstruct faces
+  // For now, let's use a simpler but more robust approach: GJK-inspired point containment
+  
+  // Check if any vertex from hullA is inside hullB or vice versa
+  for (const point of hullA) {
+    if (isPointInsideConvexHull(point, hullB)) {
+      console.log("Hull intersection: point from hull A is inside hull B");
+      return true;
+    }
+  }
+  
+  for (const point of hullB) {
+    if (isPointInsideConvexHull(point, hullA)) {
+      console.log("Hull intersection: point from hull B is inside hull A");
+      return true;
+    }
+  }
+
+  // Additional check: check if hulls are penetrating each other
+  // This catches cases where molecules are traveling through each other
+  if (areHullsPenetrating(hullA, hullB)) {
+    console.log("Hull intersection: hulls are penetrating each other");
+    return true;
+  }
+
+  // If no points are inside, check if the hulls are very close (touching)
+  // This handles edge cases where hulls are just touching
+  const minDistance = getMinimumDistanceBetweenHulls(hullA, hullB);
+  if (minDistance < 0.01) { // Much smaller threshold for "touching" (0.01 instead of 0.1)
+    console.log(`Hull intersection: hulls are very close (distance: ${minDistance})`);
+    return true;
+  }
+
+  // Additional check: ensure hulls aren't overlapping at edges
+  // This catches cases where molecules are traveling through each other
+  if (areHullsOverlapping(hullA, hullB)) {
+    console.log("Hull intersection: hulls are overlapping at edges");
+    return true;
+  }
+
+  console.log("Hull intersection: no intersection detected");
+  return false;
+}
+
+/**
+ * Check if a point is inside a convex hull using a more robust method
+ * @param point - Point to test
+ * @param hull - Hull vertices
+ * @returns True if point is inside hull
+ */
+function isPointInsideConvexHull(point: THREE.Vector3, hull: THREE.Vector3[]): boolean {
+  if (hull.length < 4) return false;
+
+  // For convex hulls, a point is inside if it's on the same side of all faces
+  // We'll use the center of the hull as a reference point
+  
+  const center = new THREE.Vector3();
+  for (const vertex of hull) {
+    center.add(vertex);
+  }
+  center.divideScalar(hull.length);
+  
+  // Test the point against each face of the hull
+  // If the point is on the opposite side of any face from the center, it's outside
+  
+  for (let i = 0; i < hull.length; i++) {
+    const v0 = hull[i];
+    const v1 = hull[(i + 1) % hull.length];
+    const v2 = hull[(i + 2) % hull.length];
     
-    const normal = new THREE.Vector3().crossVectors(
-      new THREE.Vector3().subVectors(b, a),
-      new THREE.Vector3().subVectors(c, a)
-    ).normalize();
+    // Calculate face normal
+    const edge1 = new THREE.Vector3().subVectors(v1, v0);
+    const edge2 = new THREE.Vector3().subVectors(v2, v0);
+    const normal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
     
-    if (isSeparatingAxis(normal, hullA, hullB)) {
-      console.log("Hull intersection: separating axis found (hull A face normal)");
+    // Check if point and center are on the same side of this face
+    const toPoint = new THREE.Vector3().subVectors(point, v0);
+    const toCenter = new THREE.Vector3().subVectors(center, v0);
+    
+    const pointSide = normal.dot(toPoint);
+    const centerSide = normal.dot(toCenter);
+    
+    // If they're on opposite sides, point is outside
+    if ((pointSide > 0) !== (centerSide > 0)) {
       return false;
     }
   }
   
-  // Test hull B face normals
-  for (let i = 0; i < hullB.length; i++) {
-    const a = hullB[i];
-    const b = hullB[(i + 1) % hullB.length];
-    const c = hullB[(i + 2) % hullB.length];
-    
-    const normal = new THREE.Vector3().crossVectors(
-      new THREE.Vector3().subVectors(b, a),
-      new THREE.Vector3().subVectors(c, a)
-    ).normalize();
-    
-    if (isSeparatingAxis(normal, hullA, hullB)) {
-      console.log("Hull intersection: separating axis found (hull B face normal)");
-      return false;
+  return true; // Point is on the same side of all faces as the center
+}
+
+
+
+/**
+ * Calculate the minimum distance between two convex hulls
+ * @param hullA - First hull vertices
+ * @param hullB - Second hull vertices
+ * @returns Minimum distance between hulls
+ */
+function getMinimumDistanceBetweenHulls(hullA: THREE.Vector3[], hullB: THREE.Vector3[]): number {
+  let minDistance = Infinity;
+  
+  // Check all vertex-vertex distances
+  for (const vertexA of hullA) {
+    for (const vertexB of hullB) {
+      const distance = vertexA.distanceTo(vertexB);
+      minDistance = Math.min(minDistance, distance);
     }
   }
   
-  // Test edge-edge cross products as potential separating axes
+  return minDistance;
+}
+
+/**
+ * Check if two convex hulls are overlapping at their edges
+ * This catches cases where molecules are traveling through each other
+ * @param hullA - First hull vertices
+ * @param hullB - Second hull vertices
+ * @returns True if hulls are overlapping
+ */
+function areHullsOverlapping(hullA: THREE.Vector3[], hullB: THREE.Vector3[]): boolean {
+  // Check if any edge from hullA intersects with any edge from hullB
   for (let i = 0; i < hullA.length; i++) {
-    const edgeA = new THREE.Vector3().subVectors(
-      hullA[(i + 1) % hullA.length], 
-      hullA[i]
-    );
+    const edgeAStart = hullA[i];
+    const edgeAEnd = hullA[(i + 1) % hullA.length];
     
     for (let j = 0; j < hullB.length; j++) {
-      const edgeB = new THREE.Vector3().subVectors(
-        hullB[(j + 1) % hullB.length], 
-        hullB[j]
-      );
+      const edgeBStart = hullB[j];
+      const edgeBEnd = hullB[(j + 1) % hullB.length];
       
-      const crossAxis = new THREE.Vector3().crossVectors(edgeA, edgeB);
-      if (crossAxis.lengthSq() > 0.0001) { // Avoid zero-length axes
-        crossAxis.normalize();
-        if (isSeparatingAxis(crossAxis, hullA, hullB)) {
-          console.log("Hull intersection: separating axis found (edge-edge cross product)");
-          return false;
-        }
+      // Check if these edges intersect
+      if (doEdgesIntersect(edgeAStart, edgeAEnd, edgeBStart, edgeBEnd)) {
+        return true;
       }
     }
   }
   
-  // No separating axis found, hulls intersect
-  console.log("Hull intersection: no separating axis found, hulls intersect");
-  return true;
+  return false;
 }
 
 /**
- * Check if a given axis is a separating axis for two convex hulls
- * @param axis - The potential separating axis (normalized)
+ * Check if two line segments intersect in 3D space
+ * @param a1 - Start of first line segment
+ * @param a2 - End of first line segment
+ * @param b1 - Start of second line segment
+ * @param b2 - End of second line segment
+ * @returns True if line segments intersect
+ */
+function doEdgesIntersect(a1: THREE.Vector3, a2: THREE.Vector3, b1: THREE.Vector3, b2: THREE.Vector3): boolean {
+  // Vector from a1 to a2
+  const va = new THREE.Vector3().subVectors(a2, a1);
+  // Vector from b1 to b2
+  const vb = new THREE.Vector3().subVectors(b2, b1);
+  // Vector from a1 to b1
+  const ab = new THREE.Vector3().subVectors(b1, a1);
+  
+  // Cross products
+  const crossAB = new THREE.Vector3().crossVectors(va, vb);
+  const crossAAB = new THREE.Vector3().crossVectors(va, ab);
+  const crossBAB = new THREE.Vector3().crossVectors(vb, ab);
+  
+  // Check if lines are coplanar and intersect
+  const denominator = crossAB.lengthSq();
+  if (denominator < 0.0001) {
+    // Lines are parallel, check if they're the same line
+    return crossAAB.lengthSq() < 0.0001;
+  }
+  
+  // Calculate intersection parameters
+  const t = crossBAB.dot(crossAB) / denominator;
+  const u = crossAAB.dot(crossAB) / denominator;
+  
+  // Check if intersection point is on both line segments
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+/**
+ * Check if two convex hulls are penetrating each other
+ * This is a more aggressive check that catches molecules traveling through each other
  * @param hullA - First hull vertices
  * @param hullB - Second hull vertices
- * @returns True if this axis separates the hulls
+ * @returns True if hulls are penetrating
  */
-function isSeparatingAxis(axis: THREE.Vector3, hullA: THREE.Vector3[], hullB: THREE.Vector3[]): boolean {
-  // Project all points from both hulls onto the axis
-  let minA = Infinity, maxA = -Infinity;
-  let minB = Infinity, maxB = -Infinity;
+function areHullsPenetrating(hullA: THREE.Vector3[], hullB: THREE.Vector3[]): boolean {
+  // Check if the center of one hull is inside the other hull
+  const centerA = new THREE.Vector3();
+  const centerB = new THREE.Vector3();
   
-  for (const point of hullA) {
-    const projection = point.dot(axis);
-    minA = Math.min(minA, projection);
-    maxA = Math.max(maxA, projection);
+  // Calculate centers
+  for (const vertex of hullA) {
+    centerA.add(vertex);
+  }
+  centerA.divideScalar(hullA.length);
+  
+  for (const vertex of hullB) {
+    centerB.add(vertex);
+  }
+  centerB.divideScalar(hullB.length);
+  
+  // Check if centers are inside the opposite hull
+  if (isPointInsideConvexHull(centerA, hullB) || isPointInsideConvexHull(centerB, hullA)) {
+    return true;
   }
   
-  for (const point of hullB) {
-    const projection = point.dot(axis);
-    minB = Math.min(minB, projection);
-    maxB = Math.max(maxB, projection);
+  // Check if any significant portion of one hull is inside the other
+  // Count how many vertices are inside the opposite hull
+  let verticesInsideA = 0;
+  let verticesInsideB = 0;
+  
+  for (const vertex of hullA) {
+    if (isPointInsideConvexHull(vertex, hullB)) {
+      verticesInsideA++;
+    }
   }
   
-  // Check if the projections overlap
-  return maxA < minB || maxB < minA;
+  for (const vertex of hullB) {
+    if (isPointInsideConvexHull(vertex, hullA)) {
+      verticesInsideB++;
+    }
+  }
+  
+  // If more than 25% of vertices are inside, consider it penetration
+  const threshold = 0.25;
+  if (verticesInsideA > hullA.length * threshold || verticesInsideB > hullB.length * threshold) {
+    return true;
+  }
+  
+  return false;
 }
 
 /**

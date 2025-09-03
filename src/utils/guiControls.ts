@@ -14,6 +14,9 @@ import {
   getHullVisualization, 
   visualizeHulls 
 } from "./convexHullCollision"; // Import hull visualization functions
+import { collisionEventSystem } from "./collisionEventSystem";
+import { getCacheStats } from "./transformCache";
+import { reactionCollisionInterface } from "./reactionCollisionInterface";
  // Import hull visualization
 import { 
   MoleculeManager, 
@@ -101,6 +104,9 @@ export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene)
 
   // --- Hull Visualization Controls ---
   addHullVisualizationControls(gui, scene, moleculeManager);
+
+  // --- Collision System Debug Controls ---
+  addCollisionSystemControls(gui, scene, moleculeManager);
 }
 
 /**
@@ -328,13 +334,70 @@ function addHullVisualizationControls(gui: dat.GUI, scene: THREE.Scene, molecule
     }
   }, "toggleHulls").name("Show Hulls");
 
-  // Update hull visualization each frame
-  function updateHullVisualization(): void {
-    // Always call visualizeHulls - it will handle showing/hiding based on the current state
-    visualizeHulls(scene, moleculeManager.getAllMolecules());
-    requestAnimationFrame(updateHullVisualization);
-  }
-  updateHullVisualization();
+  // Hull visualization is now handled in the main animation loop
+  // No need for separate update function here
 
   hullFolder.open();
+}
+
+/**
+ * Adds collision system debug controls to the GUI
+ * @param gui - The dat.GUI instance
+ * @param scene - Three.js scene object
+ * @param moleculeManager - The molecule manager instance
+ */
+function addCollisionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
+  const collisionFolder = gui.addFolder("Collision System");
+  
+  // Transform cache stats
+  const cacheStatsDisplay: ValueDisplay = { value: "0 cached, 0 dirty" };
+  collisionFolder.add(cacheStatsDisplay, "value").name("Transform Cache").listen();
+  
+  // Collision event stats
+  const eventStatsDisplay: ValueDisplay = { value: "0 handlers, 0 history" };
+  collisionFolder.add(eventStatsDisplay, "value").name("Event System").listen();
+  
+  // Reaction interface stats
+  const reactionStatsDisplay: ValueDisplay = { value: "0 reactions, enabled" };
+  collisionFolder.add(reactionStatsDisplay, "value").name("Reaction Interface").listen();
+  
+  // Update stats every frame
+  function updateCollisionStats(): void {
+    const cacheStats = getCacheStats();
+    const eventStats = collisionEventSystem.getStats();
+    const reactionStats = reactionCollisionInterface.getStats();
+    
+    cacheStatsDisplay.value = `${cacheStats.totalCached} cached, ${cacheStats.dirtyCount} dirty`;
+    eventStatsDisplay.value = `${eventStats.totalHandlers} handlers, ${eventStats.historySize} history`;
+    reactionStatsDisplay.value = `${reactionStats.totalReactions} reactions, ${reactionStats.enabled ? 'enabled' : 'disabled'}`;
+    
+    requestAnimationFrame(updateCollisionStats);
+  }
+  updateCollisionStats();
+  
+  // Clear caches button
+  collisionFolder.add({
+    clearCaches: function(): void {
+      // Clear all caches
+      import("./transformCache").then(({ clearAllTransformCaches }) => {
+        clearAllTransformCaches();
+        log("All transform caches cleared");
+      });
+      
+      // Clear collision history
+      collisionEventSystem.clearHistory();
+      log("Collision history cleared");
+    }
+  }, "clearCaches").name("Clear All Caches");
+  
+  // Toggle reaction processing
+  collisionFolder.add({
+    toggleReactions: function(): void {
+      const currentState = reactionCollisionInterface.getStats().enabled;
+      reactionCollisionInterface.setEnabled(!currentState);
+      log(`Reaction processing ${!currentState ? 'enabled' : 'disabled'}`);
+    }
+  }, "toggleReactions").name("Enable Reactions");
+  
+  collisionFolder.open();
 }

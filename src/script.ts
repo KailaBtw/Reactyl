@@ -25,6 +25,8 @@ import {
   updateSpatialGrid, 
   checkCollisionsWithSpatialGrid
 } from "./utils/vectorHelper"; // Import functions for collision detection and handling.
+import { markTransformDirty } from "./utils/transformCache"; // Import transform cache management
+import { visualizeHulls } from "./utils/convexHullCollision"; // Import hull visualization
 import { log, DEBUG_MODE, addObjectDebug, initFpsDebug, updateFpsDebug } from "./utils/debug"; // Import debugging utilities.
 import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
 import { getMolecule, drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
@@ -211,6 +213,9 @@ function animate(): void {
 
     // Update molecule position based on velocity and time.
     group.position.addScaledVector(moleculeObject.velocity, deltaTime);
+    
+    // Mark transform as dirty for collision detection optimization
+    markTransformDirty(moleculeObject);
 
     // Check for collisions with other molecules using spatial partitioning
     const collidingMolecules = checkCollisionsWithSpatialGrid(moleculeObject, allMolecules);
@@ -218,6 +223,9 @@ function animate(): void {
       handleCollision(moleculeObject, collidingMolecule);
     }
   }
+
+  // Update hull visualization for all molecules
+  visualizeHulls(scene, allMolecules);
 
   // Update the positions of the spotlight and skylight based on the camera.
   updateSpotlightPosition(camera);
