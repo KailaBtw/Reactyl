@@ -73,6 +73,10 @@ export interface MoleculeGroup {
   molObject: MolObject | null;
   rotationController?: any; // Will be RotationController type
   molecularProperties?: any; // Will be MolecularProperties type
+  physicsBody?: any; // CANNON.Body reference for physics integration
+  hasPhysics?: boolean; // Flag to indicate if molecule is in physics world
+  reactionFeatures?: ReactionFeatures; // Reaction compatibility features
+  compatibleReactions?: string[]; // List of compatible reaction types
 }
 
 export interface MoleculeManager {
@@ -128,4 +132,104 @@ export interface StatsDisplay {
 
 export interface ValueDisplay {
   value: string;
+}
+
+// ===============================
+//  Reaction System Types
+// ===============================
+
+export interface ReactionType {
+  id: string;
+  name: string;
+  mechanism: 'SN2' | 'SN1' | 'E2' | 'E1' | 'Addition' | 'Elimination';
+  requiredFeatures: {
+    substrate: MolecularFeature[];
+    nucleophile: MolecularFeature[];
+  };
+  activationEnergy: number; // kJ/mol
+  optimalAngle: number; // degrees
+  probabilityFactors: {
+    temperature: (T: number) => number;
+    orientation: (angle: number) => number;
+  };
+}
+
+export interface MolecularFeature {
+  type: 'leaving_group' | 'nucleophile' | 'electrophile' | 'double_bond';
+  atoms: string[]; // atom types that qualify
+  strength: number; // relative reactivity
+}
+
+export interface ReactionCandidate {
+  smiles: string;
+  name: string;
+  molFile: string;
+  features: MolecularFeature[];
+  compatibleReactions: string[];
+}
+
+export interface ReactionFeatures {
+  leavingGroups: { atomIndex: number; atomType: string; strength: number }[];
+  nucleophiles: { atomIndex: number; atomType: string; strength: number }[];
+  electrophiles: { atomIndex: number; atomType: string; strength: number }[];
+}
+
+export interface CollisionData {
+  relativeVelocity: THREE.Vector3;
+  collisionEnergy: number; // kJ/mol
+  approachAngle: number; // degrees
+  impactPoint: THREE.Vector3;
+  moleculeOrientations: {
+    substrate: THREE.Quaternion;
+    nucleophile: THREE.Quaternion;
+  };
+}
+
+export interface CollisionSetup {
+  substrate: MoleculeGroup;
+  nucleophile: MoleculeGroup;
+  approachAngle: number; // degrees
+  impactParameter: number; // offset from center
+  relativeVelocity: number; // m/s
+  temperature: number; // Kelvin
+}
+
+export interface ReactionStep {
+  time: number; // 0 to 1
+  bondChanges: {
+    breaking: { atoms: [number, number]; strength: number }[];
+    forming: { atoms: [number, number]; strength: number }[];
+  };
+  atomPositions: THREE.Vector3[];
+  energy: number; // relative energy
+}
+
+export interface EnvironmentParameters {
+  temperature: number; // Kelvin
+  pressure: number; // atm
+  solvent: 'polar' | 'nonpolar' | 'protic' | 'aprotic';
+  catalyst: string | null;
+  collisionEnergy: number; // kJ/mol
+  approachAngle: number; // degrees
+  impactParameter: number; // Angstroms
+}
+
+export interface MolecularData {
+  cid: number; // PubChem Compound ID
+  smiles: string;
+  inchi: string;
+  molWeight: number;
+  formula: string;
+  mol3d?: string; // 3D MOL file content
+  properties?: {
+    pka?: number;
+    logP?: number;
+    polarSurfaceArea?: number;
+  };
+}
+
+export interface ReactivityData {
+  nucleophilicity: number; // 0-10 scale
+  electrophilicity: number; // 0-10 scale  
+  leavingGroupAbility: number; // 0-10 scale
 } 

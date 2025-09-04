@@ -24,6 +24,7 @@
   "homepage": "https://github.com/KailaBtw/MolMod-Molecular_Modeler#readme",
   "dependencies": {
     "awesomplete": "^1.1.7",
+    "cannon-es": "^0.20.0",
     "dat.gui": "^0.7.9",
     "gh-pages": "^6.3.0",
     "three": "^0.173.0",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@types/awesomplete": "^1.1.16",
+    "@types/cannon": "^0.1.13",
     "@types/dat.gui": "^0.7.13",
     "@types/three": "^0.179.0",
     "typescript": "^5.8.2"

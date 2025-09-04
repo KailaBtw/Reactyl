@@ -19,13 +19,8 @@ import {
   updateSpotlightPosition,
   updateSkyLightPosition,
 } from "./utils/lightingControls"; // Import functions for managing scene lighting.
-import { 
-  handleCollision, 
-  initializeSpatialGrid, 
-  updateSpatialGrid, 
-  checkCollisionsWithSpatialGrid
-} from "./utils/vectorHelper"; // Import functions for collision detection and handling.
-import { markTransformDirty } from "./utils/transformCache"; // Import transform cache management
+// Legacy spatial grid imports removed - now using physics engine
+import { physicsEngine } from "./utils/cannonPhysicsEngine"; // Import Cannon.js physics engine
 import { visualizeHulls } from "./utils/convexHullCollision"; // Import hull visualization
 import { log, DEBUG_MODE, addObjectDebug, initFpsDebug, updateFpsDebug } from "./utils/debug"; // Import debugging utilities.
 import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
@@ -64,10 +59,6 @@ let totalTime: number = 0;
 
 // Performance optimization variables
 let frameCount: number = 0;
-let lastHullUpdate: number = 0;
-let lastCollisionCheck: number = 0;
-const HULL_UPDATE_INTERVAL: number = 10; // Update hulls every 10 frames
-const COLLISION_CHECK_INTERVAL: number = 2; // Check collisions every 2 frames
 
 // ===============================
 //  Scene Setup
@@ -208,59 +199,43 @@ function animate(): void {
     }
   });
 
-  // Update spatial grid with current molecule positions
+  // PHYSICS ENGINE STEP - Replaces custom collision detection
+  physicsEngine.step(deltaTime);
+  
+  // Get all molecules for additional processing
   const allMolecules = moleculeManager.getAllMolecules();
-  updateSpatialGrid(allMolecules);
 
-  // Batch transform updates for better performance
-  const transformUpdates: MoleculeGroup[] = [];
-
-  // Move all the molecules based on their velocities and handle collisions.
+  // Handle non-physics molecules (fallback for molecules without physics bodies)
   for (const moleculeObject of allMolecules) {
-    const group = moleculeObject.getGroup(); // Get the Three.js Group.
+    // Skip molecules that are handled by physics engine
+    if (moleculeObject.hasPhysics) {
+      continue;
+    }
+    
+    const group = moleculeObject.getGroup();
 
-    // Apply some damping to prevent infinite speed increase (optional).
+    // Apply damping to prevent infinite speed increase
     moleculeObject.velocity.multiplyScalar(0.999);
 
-    // Update molecule position based on velocity and time.
+    // Update position based on velocity (for non-physics molecules)
     group.position.addScaledVector(moleculeObject.velocity, deltaTime);
     
-    // Apply physics-based rotation if available, otherwise fall back to movement-based rotation
+    // Apply rotation for non-physics molecules
     if ((moleculeObject as any).rotationController) {
-      // Use the sophisticated physics-based rotation system
       const rotationController = (moleculeObject as any).rotationController;
       rotationController.update(deltaTime);
       rotationController.applyToObject3D(group);
     } else {
-      // Fallback to simple movement-based rotation
-      const rotationSpeed = 2.0; // Radians per second
+      // Fallback rotation
+      const rotationSpeed = 2.0;
       const velocityMagnitude = moleculeObject.velocity.length();
       
-      if (velocityMagnitude > 0.1) { // Only rotate if moving
-        // Rotate around X-axis (forward/backward tilt)
+      if (velocityMagnitude > 0.1) {
         group.rotation.x += rotationSpeed * deltaTime * (moleculeObject.velocity.z / velocityMagnitude);
-        
-        // Rotate around Z-axis (left/right tilt) 
         group.rotation.z += rotationSpeed * deltaTime * (moleculeObject.velocity.x / velocityMagnitude);
       }
     }
-    
-    // Batch transform updates instead of marking dirty every frame
-    transformUpdates.push(moleculeObject);
-
-    // Throttle collision detection for better performance
-    if (frameCount % COLLISION_CHECK_INTERVAL === 0) {
-      const collidingMolecules = checkCollisionsWithSpatialGrid(moleculeObject, allMolecules);
-      for (const collidingMolecule of collidingMolecules) {
-        handleCollision(moleculeObject, collidingMolecule);
-      }
-    }
   }
-
-  // Batch process transform updates
-  transformUpdates.forEach(moleculeObject => {
-    markTransformDirty(moleculeObject);
-  });
 
   // Hull visualization is now properly cached and only updates positions
   visualizeHulls(scene, allMolecules);
@@ -283,10 +258,8 @@ function animate(): void {
 function init(CSID: number): void {
   log(`Initializing scene with molecule CSID: ${CSID}`);
 
-  // Initialize spatial grid for collision detection
-  // Cell size should be ~2x the largest molecule radius for optimal performance
-  initializeSpatialGrid(4, 1000); // cellSize = 4, maxMolecules = 1000
-  log("Spatial grid initialized for collision detection");
+  // Initialize physics engine (already initialized globally)
+  log("Physics engine ready for collision detection and response");
 
   // Clear the scene:
   while (scene.children.length > 0) {
