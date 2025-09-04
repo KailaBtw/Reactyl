@@ -1,184 +1,243 @@
 import * as THREE from 'three';
-import { MolecularProperties } from './molecularPropertiesCalculator';
-
-export interface RotationState {
-  angularVelocity: THREE.Vector3; // rad/s around each axis
-  quaternion: THREE.Quaternion;   // current rotation as quaternion
-  euler: THREE.Euler;            // current rotation as Euler angles
-  rotationSpeed: number;         // magnitude of rotation
-}
+import { MoleculeGroup } from '../types';
+import { RotationConfig, RotationState } from './rotationController';
+import { log } from './debug';
 
 export class RotationPhysicsEngine {
-  // Physical constants
-  private static readonly BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
-  private static readonly AMU_TO_KG = 1.66054e-27; // atomic mass unit to kg
-  private static readonly ANGSTROM_TO_M = 1e-10; // Angstrom to meters
-
-  // Scaling factors for visualization
-  private static readonly SPEED_SCALE = 1e8; // Reduced from 1e12 to 1e8 for more reasonable speeds
-  private static readonly MIN_ROTATION_SPEED = 0.05; // Reduced minimum speed
-  private static readonly MAX_ROTATION_SPEED = 2.0; // Maximum rotation speed cap
-
-  static calculateRotationFromTemperature(
-    properties: MolecularProperties, 
-    temperature: number = 300 // Kelvin, room temperature default
-  ): RotationState {
-    
-    // Convert moments of inertia to SI units (kg⋅m²)
-    const I = properties.momentOfInertia.clone().multiplyScalar(
-      this.AMU_TO_KG * this.ANGSTROM_TO_M * this.ANGSTROM_TO_M
-    );
-
-    // Calculate thermal rotational energy: E = (3/2) * k_B * T
-    const thermalEnergy = 1.5 * this.BOLTZMANN_CONSTANT * temperature;
-
-    // Calculate angular velocities: ω = √(2E / I)
-    const angularVelocity = new THREE.Vector3(
-      Math.sqrt(2 * thermalEnergy / Math.max(I.x, 1e-45)) * this.SPEED_SCALE,
-      Math.sqrt(2 * thermalEnergy / Math.max(I.y, 1e-45)) * this.SPEED_SCALE,
-      Math.sqrt(2 * thermalEnergy / Math.max(I.z, 1e-45)) * this.SPEED_SCALE
-    );
-
-    // Apply minimum and maximum rotation speed caps
-    angularVelocity.x = Math.max(Math.min(angularVelocity.x, this.MAX_ROTATION_SPEED), this.MIN_ROTATION_SPEED);
-    angularVelocity.y = Math.max(Math.min(angularVelocity.y, this.MAX_ROTATION_SPEED), this.MIN_ROTATION_SPEED);
-    angularVelocity.z = Math.max(Math.min(angularVelocity.z, this.MAX_ROTATION_SPEED), this.MIN_ROTATION_SPEED);
-
-    // Add some randomness for thermal motion (±10% instead of ±20%)
-    const randomFactor = () => 0.9 + Math.random() * 0.2;
-    angularVelocity.multiplyScalar(randomFactor());
-    angularVelocity.x *= randomFactor();
-    angularVelocity.y *= randomFactor();
-
-    // Create initial rotation state using Three.js objects
-    const euler = new THREE.Euler(0, 0, 0, 'XYZ');
-    const quaternion = new THREE.Quaternion().setFromEuler(euler);
-    const rotationSpeed = angularVelocity.length();
-
-    return {
-      angularVelocity,
-      quaternion,
-      euler,
-      rotationSpeed
+  private rotationState: RotationState;
+  private molecule: MoleculeGroup | null = null;
+  private molecularProperties: any = null;
+  private lastUpdateTime: number = 0;
+  
+  // Physics constants
+  private readonly kB = 1.38e-23; // Boltzmann constant
+  private readonly SPEED_SCALE = 0.1; // Scale factor for molecular rotation
+  private readonly MIN_ROTATION_SPEED = 0.01;
+  private readonly MAX_ROTATION_SPEED = 0.5;
+  
+  constructor() {
+    this.rotationState = {
+      angularVelocity: new THREE.Vector3(),
+      quaternion: new THREE.Quaternion(),
+      temperature: 300,
+      mode: 'realistic'
     };
-  }
-
-  static scaleRotationByMolecularSize(
-    rotation: RotationState, 
-    properties: MolecularProperties
-  ): RotationState {
-    // Smaller molecules rotate faster (inversely proportional to size)
-    const sizeScale = 2.0 / (1.0 + properties.boundingRadius);
     
-    return {
-      angularVelocity: rotation.angularVelocity.clone().multiplyScalar(sizeScale),
-      quaternion: rotation.quaternion.clone(),
-      euler: rotation.euler.clone(),
-      rotationSpeed: rotation.rotationSpeed * sizeScale
-    };
+    log('RotationPhysicsEngine initialized');
   }
-
-  static updateRotationState(
-    rotationState: RotationState, 
-    deltaTime: number,
-    dampingFactor: number = 0.98
-  ): RotationState {
-    // Apply damping using Three.js vector operations
+  
+  /**
+   * Initialize molecule for rotation physics
+   */
+  initializeMolecule(molecule: MoleculeGroup, config: RotationConfig): void {
+    this.molecule = molecule;
+    this.molecularProperties = (molecule as any).molecularProperties;
+    this.rotationState.temperature = config.temperature;
+    this.rotationState.mode = config.mode;
+    
+    // Initialize with random rotation
+    this.rotationState.quaternion.setFromEuler(new THREE.Euler(
+      (Math.random() - 0.5) * Math.PI,
+      (Math.random() - 0.5) * Math.PI,
+      (Math.random() - 0.5) * Math.PI
+    ));
+    
+    // Initialize angular velocity based on temperature
+    this.initializeAngularVelocity(config);
+    
+    log(`Rotation physics initialized for ${molecule.name}`);
+  }
+  
+  /**
+   * Initialize angular velocity based on temperature and molecular properties
+   */
+  private initializeAngularVelocity(config: RotationConfig): void {
+    if (!this.molecularProperties) return;
+    
+    const temperature = config.temperature;
+    const mass = this.molecularProperties.totalMass || 1.0;
+    const radius = this.molecularProperties.boundingRadius || 1.0;
+    
+    // Calculate thermal rotational energy
+    const thermalEnergy = this.kB * temperature;
+    const momentOfInertia = 0.4 * mass * radius * radius; // Approximate for sphere
+    
+    // Calculate angular velocity magnitude
+    const angularSpeed = Math.sqrt(2 * thermalEnergy / momentOfInertia) * this.SPEED_SCALE;
+    
+    // Clamp to reasonable range
+    const clampedSpeed = Math.max(
+      this.MIN_ROTATION_SPEED,
+      Math.min(this.MAX_ROTATION_SPEED, angularSpeed)
+    );
+    
+    // Set random direction
+    this.rotationState.angularVelocity.set(
+      (Math.random() - 0.5) * clampedSpeed,
+      (Math.random() - 0.5) * clampedSpeed,
+      (Math.random() - 0.5) * clampedSpeed
+    );
+  }
+  
+  /**
+   * Update rotation physics
+   */
+  update(deltaTime: number, config: RotationConfig): void {
+    if (!this.molecule || !this.molecularProperties) return;
+    
+    const currentTime = performance.now() / 1000;
+    const actualDeltaTime = currentTime - this.lastUpdateTime;
+    this.lastUpdateTime = currentTime;
+    
+    // Apply different rotation modes
+    switch (config.mode) {
+      case 'realistic':
+        this.updateRealisticRotation(actualDeltaTime, config);
+        break;
+      case 'demo':
+        this.updateDemoRotation(actualDeltaTime, config);
+        break;
+      case 'manual':
+        // Manual mode - no automatic rotation
+        break;
+    }
+    
+    // Apply damping
+    this.applyDamping(config.dampingFactor, actualDeltaTime);
+    
+    // Update quaternion from angular velocity
+    this.updateQuaternion(actualDeltaTime);
+  }
+  
+  /**
+   * Update realistic rotation based on temperature and molecular properties
+   */
+  private updateRealisticRotation(deltaTime: number, config: RotationConfig): void {
+    if (!this.molecularProperties) return;
+    
+    const temperature = config.temperature;
+    const mass = this.molecularProperties.totalMass || 1.0;
+    const radius = this.molecularProperties.boundingRadius || 1.0;
+    
+    // Calculate thermal noise
+    const thermalNoise = Math.sqrt(this.kB * temperature / mass) * 0.001;
+    const noiseScale = config.enableThermalNoise ? 1.0 : 0.0;
+    
+    // Add thermal noise to angular velocity
+    this.rotationState.angularVelocity.add(new THREE.Vector3(
+      (Math.random() - 0.5) * thermalNoise * noiseScale,
+      (Math.random() - 0.5) * thermalNoise * noiseScale,
+      (Math.random() - 0.5) * thermalNoise * noiseScale
+    ));
+    
+    // Apply speed multiplier
+    this.rotationState.angularVelocity.multiplyScalar(config.speedMultiplier);
+  }
+  
+  /**
+   * Update demo rotation (simplified for demonstration)
+   */
+  private updateDemoRotation(deltaTime: number, config: RotationConfig): void {
+    // Simple constant rotation for demo purposes
+    const baseSpeed = 0.1 * config.speedMultiplier;
+    
+    this.rotationState.angularVelocity.set(
+      baseSpeed * 0.5,
+      baseSpeed * 0.3,
+      baseSpeed * 0.7
+    );
+  }
+  
+  /**
+   * Apply damping to angular velocity
+   */
+  private applyDamping(dampingFactor: number, deltaTime: number): void {
     const damping = Math.pow(dampingFactor, deltaTime);
-    rotationState.angularVelocity.multiplyScalar(damping);
-
-    // Calculate rotation increments
-    const rotationIncrement = rotationState.angularVelocity.clone().multiplyScalar(deltaTime);
-
-    // Create quaternion for this frame's rotation
-    const deltaQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(rotationIncrement.x, rotationIncrement.y, rotationIncrement.z, 'XYZ')
-    );
-
-    // Apply rotation using quaternion multiplication (smoother than Euler)
-    rotationState.quaternion.multiplyQuaternions(deltaQuat, rotationState.quaternion);
-    rotationState.quaternion.normalize(); // Prevent drift
-
-    // Update Euler representation
-    rotationState.euler.setFromQuaternion(rotationState.quaternion, 'XYZ');
+    this.rotationState.angularVelocity.multiplyScalar(damping);
     
-    // Update rotation speed
-    rotationState.rotationSpeed = rotationState.angularVelocity.length();
-
-    return rotationState;
+    // Stop very slow rotations
+    if (this.rotationState.angularVelocity.length() < 0.001) {
+      this.rotationState.angularVelocity.set(0, 0, 0);
+    }
   }
-
-  static addThermalNoise(
-    rotationState: RotationState, 
-    temperature: number, 
-    deltaTime: number
-  ): RotationState {
-    // Add small random rotations to simulate thermal motion (reduced intensity)
-    const noiseScale = Math.sqrt(temperature / 300) * 0.002 * deltaTime; // Reduced from 0.01 to 0.002
+  
+  /**
+   * Update quaternion from angular velocity
+   */
+  private updateQuaternion(deltaTime: number): void {
+    const angularVel = this.rotationState.angularVelocity;
+    const angularSpeed = angularVel.length();
     
-    const noise = new THREE.Vector3(
-      (Math.random() - 0.5) * noiseScale,
-      (Math.random() - 0.5) * noiseScale,
-      (Math.random() - 0.5) * noiseScale
-    );
-
-    // Create noise quaternion
-    const noiseEuler = new THREE.Euler(noise.x, noise.y, noise.z, 'XYZ');
-    const noiseQuat = new THREE.Quaternion().setFromEuler(noiseEuler);
-
-    // Apply noise
-    rotationState.quaternion.multiplyQuaternions(noiseQuat, rotationState.quaternion);
-    rotationState.quaternion.normalize();
-
-    return rotationState;
+    if (angularSpeed > 0.001) {
+      const axis = angularVel.clone().normalize();
+      const angle = angularSpeed * deltaTime;
+      
+      const deltaQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+      this.rotationState.quaternion.multiplyQuaternions(deltaQuaternion, this.rotationState.quaternion);
+      this.rotationState.quaternion.normalize();
+    }
   }
-
-  static createDemoRotation(time: number): RotationState {
-    // Smooth, predictable rotation for demonstration
-    const rotX = Math.sin(time * 0.5) * 0.3;
-    const rotY = time * 0.8;
-    const rotZ = Math.cos(time * 0.3) * 0.2;
-
-    const euler = new THREE.Euler(rotX, rotY, rotZ, 'XYZ');
-    const quaternion = new THREE.Quaternion().setFromEuler(euler);
-    
-    // Calculate angular velocity from time derivatives
-    const angularVelocity = new THREE.Vector3(
-      Math.cos(time * 0.5) * 0.15,
-      0.8,
-      -Math.sin(time * 0.3) * 0.06
-    );
-
+  
+  /**
+   * Get current rotation state
+   */
+  getRotationState(): RotationState {
     return {
-      angularVelocity,
-      quaternion,
-      euler,
-      rotationSpeed: angularVelocity.length()
+      angularVelocity: this.rotationState.angularVelocity.clone(),
+      quaternion: this.rotationState.quaternion.clone(),
+      temperature: this.rotationState.temperature,
+      mode: this.rotationState.mode
     };
   }
-
-  static calculateTemperatureFromRotation(
-    rotation: RotationState,
-    properties: MolecularProperties
-  ): number {
-    // Reverse calculation: estimate temperature from rotation speed
-    const avgAngularVel = (
-      Math.abs(rotation.angularVelocity.x) + 
-      Math.abs(rotation.angularVelocity.y) + 
-      Math.abs(rotation.angularVelocity.z)
-    ) / 3;
-
-    const avgMomentOfInertia = (
-      properties.momentOfInertia.x + 
-      properties.momentOfInertia.y + 
-      properties.momentOfInertia.z
-    ) / 3;
-
-    // Reverse the thermal energy calculation
-    const scaledAngularVel = avgAngularVel / this.SPEED_SCALE;
-    const momentSI = avgMomentOfInertia * this.AMU_TO_KG * this.ANGSTROM_TO_M ** 2;
-    const energy = 0.5 * momentSI * scaledAngularVel ** 2;
+  
+  /**
+   * Set rotation mode
+   */
+  setMode(mode: 'realistic' | 'demo' | 'manual'): void {
+    this.rotationState.mode = mode;
     
-    return (2 * energy) / (3 * this.BOLTZMANN_CONSTANT);
+    if (mode === 'manual') {
+      this.rotationState.angularVelocity.set(0, 0, 0);
+    }
+  }
+  
+  /**
+   * Set temperature
+   */
+  setTemperature(temperature: number): void {
+    this.rotationState.temperature = temperature;
+  }
+  
+  /**
+   * Set speed multiplier
+   */
+  setSpeedMultiplier(multiplier: number): void {
+    // This is handled in the update method
+  }
+  
+  /**
+   * Update configuration
+   */
+  updateConfig(config: RotationConfig): void {
+    this.rotationState.temperature = config.temperature;
+    this.rotationState.mode = config.mode;
+  }
+  
+  /**
+   * Reset rotation state
+   */
+  reset(): void {
+    this.rotationState.angularVelocity.set(0, 0, 0);
+    this.rotationState.quaternion.set(0, 0, 0, 1);
+    this.lastUpdateTime = 0;
+  }
+  
+  /**
+   * Clean up resources
+   */
+  dispose(): void {
+    this.molecule = null;
+    this.molecularProperties = null;
+    log('RotationPhysicsEngine disposed');
   }
 }

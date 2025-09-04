@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ReactionFeatures } from '../types';
 
 // Enhanced types
 export interface Atom {
@@ -36,6 +37,7 @@ export interface MolecularProperties {
 	 atoms: Atom[];
 	 bonds: Bond[];
 	 molecularFormula: string;
+	 reactionFeatures?: ReactionFeatures; // Reaction compatibility features
 	 // Cached expensive calculations
 	 _cached?: {
 		 inertiaTensor?: THREE.Matrix3;
@@ -267,6 +269,9 @@ class EnhancedMolecularPropertiesCalculator {
 		 properties.geometry = this.analyzeMolecularGeometry(atoms, bonds, properties.centerOfMass);
 		 properties.rotationalDegreesOfFreedom = properties.geometry.type === 'linear' ? 2 : 3;
 
+		 // Calculate reaction features
+		 properties.reactionFeatures = this.calculateReactionFeatures(atoms, bonds);
+
 		 return properties;
 	 }
 
@@ -472,6 +477,91 @@ class EnhancedMolecularPropertiesCalculator {
 			 box.expandByPoint(atom.position);
 		 }
 		 return box;
+	 }
+
+	 /**
+	  * Calculate reaction features for molecular compatibility
+	  */
+	 static calculateReactionFeatures(atoms: Atom[], bonds: Bond[]): ReactionFeatures {
+		 const features: ReactionFeatures = {
+			 leavingGroups: [],
+			 nucleophiles: [],
+			 electrophiles: []
+		 };
+
+		 atoms.forEach((atom, index) => {
+			 const atomType = atom.element;
+			 
+			 // Identify leaving groups (halides, sulfonates, etc.)
+			 if (['Cl', 'Br', 'I', 'F'].includes(atomType)) {
+				 features.leavingGroups.push({
+					 atomIndex: index,
+					 atomType,
+					 strength: this.getLeavingGroupStrength(atomType)
+				 });
+			 }
+			 
+			 // Identify nucleophiles (anions, lone pairs)
+			 if (atomType === 'O' && atom.charge < 0) {
+				 features.nucleophiles.push({
+					 atomIndex: index,
+					 atomType: 'O-',
+					 strength: 8
+				 });
+			 } else if (atomType === 'N' && atom.charge <= 0) {
+				 features.nucleophiles.push({
+					 atomIndex: index,
+					 atomType: 'N',
+					 strength: 6
+				 });
+			 } else if (atomType === 'S' && atom.charge < 0) {
+				 features.nucleophiles.push({
+					 atomIndex: index,
+					 atomType: 'S-',
+					 strength: 7
+				 });
+			 }
+			 
+			 // Identify electrophiles (cations, electron-deficient centers)
+			 if (atom.charge > 0) {
+				 features.electrophiles.push({
+					 atomIndex: index,
+					 atomType: `${atomType}+`,
+					 strength: Math.abs(atom.charge) * 5
+				 });
+			 } else if (atomType === 'C' && this.isElectronDeficientCarbon(atom, bonds)) {
+				 features.electrophiles.push({
+					 atomIndex: index,
+					 atomType: 'C*',
+					 strength: 4
+				 });
+			 }
+		 });
+
+		 return features;
+	 }
+
+	 private static getLeavingGroupStrength(atomType: string): number {
+		 const strengths = { 
+			 'I': 9, 'Br': 7, 'Cl': 5, 'F': 1,
+			 'OTs': 8, 'OMs': 7, 'OTf': 9 // Sulfonates
+		 };
+		 return strengths[atomType] || 0;
+	 }
+
+	 private static isElectronDeficientCarbon(atom: Atom, bonds: Bond[]): boolean {
+		 // Check if carbon is bonded to electronegative atoms
+		 const carbonBonds = bonds.filter(bond => 
+			 bond.atom1Index === atom.index || bond.atom2Index === atom.index
+		 );
+		 
+		 // Simple heuristic: if bonded to multiple halides or oxygen
+		 const bondedAtoms = carbonBonds.map(bond => 
+			 bond.atom1Index === atom.index ? bond.atom2Index : bond.atom1Index
+		 );
+		 
+		 // This is a simplified check - in practice, you'd analyze the full structure
+		 return carbonBonds.length >= 3; // Assume electron-deficient if highly substituted
 	 }
 }
 

@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { MoleculeGroup } from "../types";
+import { MoleculeGroup, ReactionType, CollisionData } from "../types";
+import { ReactionDetector, ReactionResult } from "./reactionDetector";
 
 /**
  * Collision event data passed to reaction handlers
@@ -11,6 +12,8 @@ export interface CollisionEvent {
   collisionNormal: THREE.Vector3;
   relativeVelocity: THREE.Vector3;
   timestamp: number;
+  collisionData?: CollisionData;
+  reactionResult?: ReactionResult;
 }
 
 /**
@@ -25,6 +28,41 @@ class CollisionEventSystem {
   private eventHandlers: CollisionEventHandler[] = [];
   private collisionHistory: Map<string, number> = new Map(); // Prevent duplicate events
   private readonly collisionCooldown = 0.1; // 100ms cooldown between same molecule collisions
+  private reactionDetector: ReactionDetector;
+  private currentReactionType: ReactionType | null = null;
+  private temperature: number = 298; // Default room temperature
+
+  constructor() {
+    this.reactionDetector = new ReactionDetector();
+  }
+
+  /**
+   * Set the current reaction type for detection
+   */
+  setReactionType(reactionType: ReactionType): void {
+    this.currentReactionType = reactionType;
+  }
+
+  /**
+   * Set the temperature for reaction calculations
+   */
+  setTemperature(temperature: number): void {
+    this.temperature = temperature;
+  }
+
+  /**
+   * Get current reaction type
+   */
+  getReactionType(): ReactionType | null {
+    return this.currentReactionType;
+  }
+
+  /**
+   * Get current temperature
+   */
+  getTemperature(): number {
+    return this.temperature;
+  }
 
   /**
    * Register a collision event handler
@@ -64,12 +102,96 @@ class CollisionEventSystem {
     // Update collision history
     this.collisionHistory.set(key, now);
     
+    // Process reaction detection if reaction type is set
+    if (this.currentReactionType) {
+      this.processReactionDetection(event);
+    }
+    
     // Emit to all handlers
     for (const handler of this.eventHandlers) {
       try {
         handler(event);
       } catch (error) {
         console.error('Error in collision event handler:', error);
+      }
+    }
+  }
+
+  /**
+   * Process reaction detection for collision event
+   */
+  private processReactionDetection(event: CollisionEvent): void {
+    if (!this.currentReactionType) return;
+
+    // Calculate collision data
+    const collisionData: CollisionData = {
+      relativeVelocity: event.relativeVelocity,
+      collisionEnergy: this.calculateCollisionEnergy(event),
+      approachAngle: this.calculateApproachAngle(event),
+      impactPoint: event.collisionPoint,
+      moleculeOrientations: {
+        substrate: event.moleculeA.group.quaternion,
+        nucleophile: event.moleculeB.group.quaternion
+      }
+    };
+
+    // Detect reaction
+    const reactionResult = this.reactionDetector.detectReaction(
+      collisionData,
+      this.currentReactionType,
+      this.temperature,
+      event.moleculeA,
+      event.moleculeB
+    );
+
+    // Add collision data and reaction result to event
+    event.collisionData = collisionData;
+    event.reactionResult = reactionResult;
+
+    // Emit reaction event if reaction occurs
+    if (reactionResult.occurs) {
+      this.emitReactionEvent(event);
+    }
+  }
+
+  /**
+   * Calculate collision energy from event data
+   */
+  private calculateCollisionEnergy(event: CollisionEvent): number {
+    const massA = (event.moleculeA as any).molecularProperties?.totalMass || 1.0;
+    const massB = (event.moleculeB as any).molecularProperties?.totalMass || 1.0;
+    const relativeVelocity = event.relativeVelocity.length();
+    
+    return this.reactionDetector.calculateCollisionEnergy(massA, massB, relativeVelocity);
+  }
+
+  /**
+   * Calculate approach angle from event data
+   */
+  private calculateApproachAngle(event: CollisionEvent): number {
+    return this.reactionDetector.calculateApproachAngle(
+      event.moleculeA.group.quaternion,
+      event.moleculeB.group.quaternion,
+      event.collisionPoint
+    );
+  }
+
+  /**
+   * Emit reaction event for successful reactions
+   */
+  private emitReactionEvent(event: CollisionEvent): void {
+    // Emit to reaction-specific handlers
+    for (const handler of this.eventHandlers) {
+      try {
+        // Create reaction event with additional data
+        const reactionEvent = {
+          ...event,
+          type: 'reaction' as const,
+          reactionType: this.currentReactionType!.id
+        };
+        handler(reactionEvent);
+      } catch (error) {
+        console.error('Error in reaction event handler:', error);
       }
     }
   }

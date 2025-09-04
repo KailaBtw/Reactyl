@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { MolecularProperties } from './molecularPropertiesCalculator';
-import { RotationState, RotationPhysicsEngine } from './rotationPhysicsEngine';
+import { MoleculeGroup } from '../types';
+import { RotationPhysicsEngine } from './rotationPhysicsEngine';
+import { log } from './debug';
 
 export interface RotationConfig {
   mode: 'realistic' | 'demo' | 'manual';
@@ -10,226 +11,155 @@ export interface RotationConfig {
   enableThermalNoise: boolean;
 }
 
-export class RotationController {
-  private rotationState: RotationState;
-  private config: RotationConfig;
-  private molecularProperties: MolecularProperties | null = null;
-  
-  // Three.js objects for rotation management
-  private rotationObject: THREE.Object3D;
-  private matrix: THREE.Matrix4;
-  
-  // Time tracking
-  private startTime: number;
+export interface RotationState {
+  angularVelocity: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  temperature: number;
+  mode: string;
+}
 
+export class RotationController {
+  private config: RotationConfig;
+  private physicsEngine: RotationPhysicsEngine;
+  private molecule: MoleculeGroup | null = null;
+  private isActive: boolean = true;
+  
   constructor(config: Partial<RotationConfig> = {}) {
     this.config = {
       mode: 'realistic',
-      temperature: 300, // Kelvin
+      temperature: 300,
       speedMultiplier: 1.0,
       dampingFactor: 0.98,
       enableThermalNoise: true,
       ...config
     };
-
-    // Initialize Three.js objects
-    this.rotationObject = new THREE.Object3D();
-    this.matrix = new THREE.Matrix4();
-    this.startTime = performance.now() * 0.001;
-
-    // Initialize rotation state
-    this.rotationState = {
-      angularVelocity: new THREE.Vector3(0, 0, 0),
-      quaternion: new THREE.Quaternion(),
-      euler: new THREE.Euler(),
-      rotationSpeed: 0
-    };
+    
+    this.physicsEngine = new RotationPhysicsEngine();
+    log('RotationController initialized');
+  }
+  
+  /**
+   * Attach to a molecule
+   */
+  attachToMolecule(molecule: MoleculeGroup): void {
+    this.molecule = molecule;
+    this.physicsEngine.initializeMolecule(molecule, this.config);
+    log(`RotationController attached to ${molecule.name}`);
   }
 
-  setMolecule(properties: MolecularProperties): void {
-    this.molecularProperties = properties;
-    this.updateRotationFromPhysics();
+  /**
+   * Set molecular properties (legacy method for compatibility)
+   */
+  setMolecule(molecularProperties: any): void {
+    if (this.molecule) {
+      (this.molecule as any).molecularProperties = molecularProperties;
+      this.physicsEngine.initializeMolecule(this.molecule, this.config);
+      log(`Molecular properties set for ${this.molecule.name}`);
+    }
   }
-
+  
+  /**
+   * Update rotation physics
+   */
+  update(deltaTime: number): void {
+    if (!this.molecule || !this.isActive) return;
+    
+    this.physicsEngine.update(deltaTime, this.config);
+    this.syncWithMolecule();
+  }
+  
+  /**
+   * Sync physics state with molecule
+   */
+  private syncWithMolecule(): void {
+    if (!this.molecule) return;
+    
+    const state = this.physicsEngine.getRotationState();
+    
+    // Update molecule's quaternion
+    this.molecule.group.quaternion.copy(state.quaternion);
+    
+    // Update molecule's rotation if needed
+    const euler = new THREE.Euler().setFromQuaternion(state.quaternion);
+    this.molecule.group.rotation.copy(euler);
+  }
+  
+  /**
+   * Get current rotation state
+   */
+  getRotationState(): RotationState {
+    return this.physicsEngine.getRotationState();
+  }
+  
+  /**
+   * Set rotation mode
+   */
+  setMode(mode: 'realistic' | 'demo' | 'manual'): void {
+    this.config.mode = mode;
+    this.physicsEngine.setMode(mode);
+    log(`Rotation mode set to: ${mode}`);
+  }
+  
+  /**
+   * Set temperature
+   */
   setTemperature(temperature: number): void {
     this.config.temperature = temperature;
-    this.updateRotationFromPhysics();
+    this.physicsEngine.setTemperature(temperature);
+    log(`Temperature set to: ${temperature}K`);
   }
-
-  setMode(mode: RotationConfig['mode']): void {
-    this.config.mode = mode;
-    this.updateRotationFromPhysics();
-  }
-
+  
+  /**
+   * Set speed multiplier
+   */
   setSpeedMultiplier(multiplier: number): void {
     this.config.speedMultiplier = multiplier;
+    this.physicsEngine.setSpeedMultiplier(multiplier);
+    log(`Speed multiplier set to: ${multiplier}`);
   }
-
-  update(deltaTime: number): THREE.Matrix4 {
-    if (!this.molecularProperties && this.config.mode !== 'demo') {
-      return this.matrix;
-    }
-
-    switch (this.config.mode) {
-      case 'realistic':
-        return this.updateRealisticRotation(deltaTime);
-      case 'demo':
-        return this.updateDemoRotation();
-      case 'manual':
-        return this.matrix;
-      default:
-        return this.matrix;
-    }
-  }
-
-  // Direct Three.js integration methods
-  applyToObject3D(object: THREE.Object3D): void {
-    object.quaternion.copy(this.rotationState.quaternion);
-  }
-
-  applyToMesh(mesh: THREE.Mesh): void {
-    mesh.quaternion.copy(this.rotationState.quaternion);
-  }
-
-  getQuaternion(): THREE.Quaternion {
-    return this.rotationState.quaternion.clone();
-  }
-
-  getMatrix4(): THREE.Matrix4 {
-    return this.matrix.makeRotationFromQuaternion(this.rotationState.quaternion);
-  }
-
-  getRotationObject(): THREE.Object3D {
-    this.rotationObject.quaternion.copy(this.rotationState.quaternion);
-    return this.rotationObject;
-  }
-
-  getRotationState(): RotationState {
-    return {
-      angularVelocity: this.rotationState.angularVelocity.clone(),
-      quaternion: this.rotationState.quaternion.clone(),
-      euler: this.rotationState.euler.clone(),
-      rotationSpeed: this.rotationState.rotationSpeed
-    };
-  }
-
-  // Reset rotation to identity
+  
+  /**
+   * Reset rotation
+   */
   reset(): void {
-    this.rotationState.quaternion.identity();
-    this.rotationState.euler.set(0, 0, 0);
-    this.rotationObject.quaternion.identity();
-  }
-
-  // Manual rotation control (useful for user interaction)
-  addRotation(axis: THREE.Vector3, angle: number): void {
-    const deltaQuat = new THREE.Quaternion().setFromAxisAngle(axis.normalize(), angle);
-    this.rotationState.quaternion.multiplyQuaternions(deltaQuat, this.rotationState.quaternion);
-    this.rotationState.quaternion.normalize();
-  }
-
-  private updateRotationFromPhysics(): void {
-    if (!this.molecularProperties) return;
-
-    this.rotationState = RotationPhysicsEngine.calculateRotationFromTemperature(
-      this.molecularProperties,
-      this.config.temperature
-    );
-
-    // Scale by molecular size
-    this.rotationState = RotationPhysicsEngine.scaleRotationByMolecularSize(
-      this.rotationState,
-      this.molecularProperties
-    );
-
-    // Apply speed multiplier
-    this.rotationState.angularVelocity.multiplyScalar(this.config.speedMultiplier);
-  }
-
-  private updateRealisticRotation(deltaTime: number): THREE.Matrix4 {
-    // Update rotation state using physics engine
-    this.rotationState = RotationPhysicsEngine.updateRotationState(
-      this.rotationState,
-      deltaTime,
-      this.config.dampingFactor
-    );
-
-    // Add thermal noise if enabled
-    if (this.config.enableThermalNoise) {
-      this.rotationState = RotationPhysicsEngine.addThermalNoise(
-        this.rotationState,
-        this.config.temperature,
-        deltaTime
-      );
+    if (this.molecule) {
+      this.molecule.group.rotation.set(0, 0, 0);
+      this.molecule.group.quaternion.set(0, 0, 0, 1);
     }
-
-    // Update matrix from quaternion
-    this.matrix.makeRotationFromQuaternion(this.rotationState.quaternion);
-    
-    // Update rotation object
-    this.rotationObject.quaternion.copy(this.rotationState.quaternion);
-
-    return this.matrix;
+    this.physicsEngine.reset();
+    log('Rotation reset');
   }
-
-  private updateDemoRotation(): THREE.Matrix4 {
-    const currentTime = (performance.now() * 0.001) - this.startTime;
-    
-    // Use physics engine for smooth demo rotation
-    this.rotationState = RotationPhysicsEngine.createDemoRotation(currentTime * this.config.speedMultiplier);
-    
-    // Update matrix and object
-    this.matrix.makeRotationFromQuaternion(this.rotationState.quaternion);
-    this.rotationObject.quaternion.copy(this.rotationState.quaternion);
-
-    return this.matrix;
+  
+  /**
+   * Enable/disable rotation
+   */
+  setActive(active: boolean): void {
+    this.isActive = active;
+    log(`Rotation ${active ? 'enabled' : 'disabled'}`);
   }
-}
-
-// Utility class for common Three.js molecular rotation tasks
-export class MolecularRotationHelper {
-  static createRotatingMolecule(
-    geometry: THREE.BufferGeometry, 
-    material: THREE.Material,
-    rotationController: RotationController
-  ): THREE.Mesh {
-    const mesh = new THREE.Mesh(geometry, material);
-    
-    // Set up automatic rotation in render loop
-    const originalOnBeforeRender = mesh.onBeforeRender;
-    mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-      const deltaTime = 1/60; // Assume 60fps, or pass from your render loop
-      rotationController.update(deltaTime);
-      rotationController.applyToMesh(mesh);
-      
-      if (originalOnBeforeRender) {
-        originalOnBeforeRender.call(mesh, renderer, scene, camera, geometry, material, group);
-      }
-    };
-
-    return mesh;
+  
+  /**
+   * Get configuration
+   */
+  getConfig(): RotationConfig {
+    return { ...this.config };
   }
-
-  static createRotationGroup(rotationController: RotationController): THREE.Group {
-    const group = new THREE.Group();
-    
-    // Auto-update rotation
-    const originalOnBeforeRender = group.onBeforeRender;
-    group.onBeforeRender = (renderer, scene, camera, geometry, material, groupObj) => {
-      const deltaTime = 1/60;
-      rotationController.update(deltaTime);
-      rotationController.applyToObject3D(group);
-      
-      if (originalOnBeforeRender) {
-        originalOnBeforeRender.call(group, renderer, scene, camera, geometry, material, groupObj);
-      }
-    };
-
-    return group;
+  
+  /**
+   * Update configuration
+   */
+  updateConfig(newConfig: Partial<RotationConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+    this.physicsEngine.updateConfig(this.config);
+    log('Rotation configuration updated');
   }
-
-  static lerp(controller1: RotationController, controller2: RotationController, t: number): THREE.Quaternion {
-    const q1 = controller1.getQuaternion();
-    const q2 = controller2.getQuaternion();
-    return q1.slerp(q2, t); // Spherical linear interpolation
+  
+  /**
+   * Clean up resources
+   */
+  dispose(): void {
+    this.molecule = null;
+    this.physicsEngine.dispose();
+    log('RotationController disposed');
   }
 }

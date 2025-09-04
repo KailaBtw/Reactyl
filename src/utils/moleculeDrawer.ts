@@ -3,6 +3,7 @@ import { molFileToJSON } from "./molFileToJSON";
 import { log } from "./debug";
 import { MolToPhysicsConverter } from "./molToPhysics";
 import { RotationController } from "./rotationController";
+import { physicsEngine } from "./cannonPhysicsEngine";
 
 import { MoleculeGroup, MoleculeManager, Position } from "../types";
 
@@ -229,9 +230,9 @@ export function drawMolecule(
     (molecule as any).molecularProperties = molecularProperties;
     (molecule as any).rotationController = rotationController;
     
-    log(`Rotation system initialized for ${name} with ${summary.atomCount} atoms`);
+    log(`Rotation and physics systems initialized for ${name} with ${summary.atomCount} atoms`);
   } catch (error) {
-    log(`Failed to initialize rotation system for ${name}: ${error}`);
+    log(`Failed to initialize rotation and physics systems for ${name}: ${error}`);
   }
 
   // Create and position the atom spheres.
@@ -310,6 +311,23 @@ export function drawMolecule(
 
   // Set an initial velocity toward the target
   moleculeManager.setMoleculeVelocity(name, targetPosition, 4); // sped up for faster testing and sim
+
+  // Ensure physics body exists and gets the initial velocity
+  try {
+    const props = (molecule as any).molecularProperties;
+    if (!molecule.hasPhysics && props) {
+      const ok = physicsEngine.addMolecule(molecule, props);
+      if (ok) {
+        molecule.hasPhysics = true;
+        molecule.physicsBody = physicsEngine.getPhysicsBody(molecule);
+      }
+    }
+    if (molecule.hasPhysics) {
+      physicsEngine.setVelocity(molecule, molecule.velocity.clone());
+    }
+  } catch (e) {
+    log(`Physics hookup failed for ${name}: ${e}`);
+  }
 
   // add the molecule to the scene
   scene.add(molecule.group);

@@ -24,10 +24,10 @@ import { physicsEngine } from "./utils/cannonPhysicsEngine"; // Import Cannon.js
 import { visualizeHulls } from "./utils/convexHullCollision"; // Import hull visualization
 import { log, DEBUG_MODE, addObjectDebug, initFpsDebug, updateFpsDebug } from "./utils/debug"; // Import debugging utilities.
 import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
-import { getMolecule, drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
+import { drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
 // import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
 
-import { MoleculeGroup, MoleculeManager, AutoRotate } from "./types";
+import { MoleculeGroup, MoleculeManager } from "./types";
 
 // ===============================
 //  Module-Level Variables
@@ -187,7 +187,7 @@ function animate(): void {
 
   // Rotate all molecules based on the autoRotate settings from the GUI.
   moleculeManager.getAllMolecules().forEach((molecule: MoleculeGroup) => {
-    const rotateSettings = autoRotate as AutoRotate;
+    const rotateSettings = autoRotate();
     if (rotateSettings.x.switch) {
       molecule.group.rotation.x -= 0.5 * deltaTime;
     }
@@ -275,13 +275,14 @@ function init(CSID: number): void {
   }
 
   // Load and draw the initial molecules.
-  getMolecule(CSID.toString(), moleculeManager, scene, "a");
-  getMolecule("682", moleculeManager, scene, "b");
-  getMolecule(CSID.toString(), moleculeManager, scene, "c");
-  getMolecule("682", moleculeManager, scene, "d");
-  getMolecule(CSID.toString(), moleculeManager, scene, "e");
-  getMolecule("682", moleculeManager, scene, "f");
-  getMolecule(CSID.toString(), moleculeManager, scene, "g");
+  // Commented out for clean reaction system testing
+  // getMolecule(CSID.toString(), moleculeManager, scene, "a");
+  // getMolecule("682", moleculeManager, scene, "b");
+  // getMolecule(CSID.toString(), moleculeManager, scene, "c");
+  // getMolecule("682", moleculeManager, scene, "d");
+  // getMolecule(CSID.toString(), moleculeManager, scene, "e");
+  // getMolecule("682", moleculeManager, scene, "f");
+  // getMolecule(CSID.toString(), moleculeManager, scene, "g");
 
   //log(moleculeManager.getAllMolecules());
 

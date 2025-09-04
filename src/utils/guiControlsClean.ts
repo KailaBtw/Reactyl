@@ -5,14 +5,14 @@
 
 import * as THREE from "three";
 import * as dat from "dat.gui";
-import { MoleculeManager, AutoRotate } from "../types";
+import { MoleculeManager } from "../types";
 import { log } from "./debug";
 import { physicsEngine } from "./cannonPhysicsEngine";
-import { getReactionType } from "./reactionDatabase";
+import { getReactionType, getAllReactionTypes } from "./reactionDatabase";
 import { CollisionTrajectoryController } from "./collisionTrajectoryController";
 import { ReactionDetector } from "./reactionDetector";
 import { ReactionVisualizer } from "./reactionVisualizer";
-import { collisionEventSystem } from "./collisionEventSystem";
+import { CollisionEventSystem } from "./collisionEventSystem";
 
 /**
  * Sets up the main GUI for the reaction system
@@ -37,6 +37,7 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
   const trajectoryController = new CollisionTrajectoryController(scene);
   const reactionDetector = new ReactionDetector();
   const reactionVisualizer = new ReactionVisualizer(scene);
+  const collisionEventSystem = new CollisionEventSystem();
   
   // Get available molecules
   const availableMolecules = moleculeManager.getAllMolecules().map(mol => mol.name);
@@ -145,7 +146,7 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
         return;
       }
       
-      reactionVisualizer.generateSN2Reaction(substrate, nucleophile, 0);
+      const steps = reactionVisualizer.generateSN2Reaction(substrate, nucleophile, 0);
       reactionVisualizer.play();
       timeControls.isPlaying = true;
       log('Reaction animation started');
@@ -183,8 +184,8 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
       const nucleophile = moleculeManager.getMolecule(reactionParams.nucleophileMolecule);
       
       if (substrate && nucleophile) {
-        const distance = new THREE.Vector3().copy(substrate.position).distanceTo(new THREE.Vector3().copy(nucleophile.position));
-        const velocity = (substrate as any).userData?.velocity?.length() || 0;
+        const distance = substrate.position.distanceTo(nucleophile.position);
+        const velocity = substrate.userData.velocity?.length() || 0;
         const timeToCollision = distance / (velocity || 1);
         
         statsDisplay.distance = distance;
@@ -230,7 +231,7 @@ function addEssentialDebugControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
       // Remove all molecules
       const molecules = moleculeManager.getAllMolecules();
       molecules.forEach(mol => {
-        scene.remove(mol as any);
+        scene.remove(mol);
         moleculeManager.removeMolecule(mol.name);
       });
       log('Scene cleared');
@@ -253,7 +254,7 @@ function addEssentialDebugControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
   const physicsStats = {
     getStats: () => {
       const stats = physicsEngine.getStats();
-      log(`Physics: ${(stats as any).activeBodies || 0} bodies, ${(stats as any).contacts || 0} contacts`);
+      log(`Physics: ${stats.activeBodies} bodies, ${stats.contacts} contacts`);
     }
   };
   
@@ -264,11 +265,6 @@ function addEssentialDebugControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
 }
 
 // Legacy function for compatibility
-export function autoRotate(): AutoRotate {
+export function autoRotate(): void {
   // Placeholder for auto-rotate functionality
-  return {
-    x: { switch: false },
-    y: { switch: false },
-    z: { switch: false }
-  };
 }
