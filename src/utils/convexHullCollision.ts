@@ -60,6 +60,40 @@ export function getCollisionDebugVisualization(): boolean {
 }
 
 /**
+ * Clean up hull meshes for a specific molecule (call when molecule is removed)
+ * @param molecule - The molecule whose hull should be cleaned up
+ */
+export function cleanupHullMesh(molecule: MoleculeGroup): void {
+  const hullMesh = hullMeshes.get(molecule);
+  if (hullMesh) {
+    // Remove from scene
+    if (hullMesh.parent) {
+      hullMesh.parent.remove(hullMesh);
+    }
+    // Dispose of geometry and material
+    if (hullMesh.geometry) hullMesh.geometry.dispose();
+    if (hullMesh.material) {
+      if (Array.isArray(hullMesh.material)) {
+        hullMesh.material.forEach(mat => mat.dispose());
+      } else {
+        hullMesh.material.dispose();
+      }
+    }
+    // Remove from our map
+    hullMeshes.delete(molecule);
+  }
+}
+
+/**
+ * Clean up all hull meshes (call when clearing scene)
+ */
+export function cleanupAllHullMeshes(): void {
+  hullMeshes.forEach((mesh, molecule) => {
+    cleanupHullMesh(molecule);
+  });
+}
+
+/**
  * Creates a convex hull from molecule atoms using Three.js ConvexGeometry
  * @param molecule - The molecule to create hull for
  * @returns Hull geometry or null if insufficient points
@@ -175,50 +209,63 @@ export function createWorldSpaceHull(molecule: MoleculeGroup): THREE.Vector3[] |
  * @param scene - Three.js scene to add hull visualizations
  * @param molecules - Array of all molecules to visualize
  */
-export function visualizeHulls(scene: THREE.Scene, molecules: MoleculeGroup[]): void {
-  // Always remove existing hull visualizations first
-  const existingHulls = scene.children.filter(child => child.userData.isHullDebug);
-  existingHulls.forEach(obj => {
-    scene.remove(obj);
-    // Dispose of geometry and material to prevent memory leaks
-    if (obj instanceof THREE.Mesh) {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) {
-        if (Array.isArray(obj.material)) {
-          obj.material.forEach((mat: THREE.Material) => mat.dispose());
-        } else {
-          obj.material.dispose();
-        }
-      }
-    }
-  });
+// Global storage for hull meshes to avoid recreation
+const hullMeshes = new Map<MoleculeGroup, THREE.Mesh>();
 
-  // Only add new hull visualizations if enabled
+export function visualizeHulls(scene: THREE.Scene, molecules: MoleculeGroup[]): void {
+  // Only create/update hulls if visualization is enabled
   if (!showHulls) {
+    // Remove all hull meshes if visualization is disabled
+    hullMeshes.forEach((mesh, molecule) => {
+      if (scene.children.includes(mesh)) {
+        scene.remove(mesh);
+      }
+    });
+    hullMeshes.clear();
     return;
   }
 
-  // Add new hull visualizations
+  // Create hulls for new molecules or update existing ones
   for (const molecule of molecules) {
-    const hullGeometry = createMoleculeHull(molecule);
-    if (hullGeometry) {
-      // Create wireframe material for hull visualization
-      const material = new THREE.MeshBasicMaterial({
-        color: 0xff0000, // Red wireframe
-        wireframe: true,
-        transparent: true,
-        opacity: 0.7
-      });
+    let hullMesh = hullMeshes.get(molecule);
+    
+    if (!hullMesh) {
+      // Create new hull mesh for this molecule
+      const hullGeometry = createMoleculeHull(molecule);
+      if (hullGeometry) {
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xff0000, // Red wireframe
+          wireframe: true,
+          transparent: true,
+          opacity: 0.7
+        });
 
-      // Create mesh and position it at the molecule's world position
-      const hullMesh = new THREE.Mesh(hullGeometry, material);
+        hullMesh = new THREE.Mesh(hullGeometry, material);
+        hullMesh.userData.isHullDebug = true;
+        hullMesh.userData.moleculeName = molecule.name;
+        
+        // Add to scene and store reference
+        scene.add(hullMesh);
+        hullMeshes.set(molecule, hullMesh);
+      }
+    }
+    
+    // Update existing hull mesh position/orientation to match molecule
+    if (hullMesh) {
       hullMesh.position.copy(molecule.group.position);
       hullMesh.quaternion.copy(molecule.group.quaternion);
       hullMesh.scale.copy(molecule.group.scale);
-      hullMesh.userData.isHullDebug = true;
-      hullMesh.userData.moleculeName = molecule.name;
+    }
+  }
 
-      scene.add(hullMesh);
+  // Remove hull meshes for molecules that no longer exist
+  const currentMoleculeNames = new Set(molecules.map(m => m.name));
+  for (const [molecule, mesh] of hullMeshes.entries()) {
+    if (!currentMoleculeNames.has(molecule.name)) {
+      if (scene.children.includes(mesh)) {
+        scene.remove(mesh);
+      }
+      hullMeshes.delete(molecule);
     }
   }
 }

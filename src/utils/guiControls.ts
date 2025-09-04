@@ -18,6 +18,7 @@ import { collisionEventSystem } from "./collisionEventSystem";
 import { getCacheStats } from "./transformCache";
 import { reactionCollisionInterface } from "./reactionCollisionInterface";
 import { RotationController } from "./rotationController";
+import { MolecularPropertiesCalculator } from "./molecularPropertiesCalculator";
  // Import hull visualization
 import { 
   MoleculeManager, 
@@ -365,15 +366,21 @@ function addCollisionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   const reactionStatsDisplay: ValueDisplay = { value: "0 reactions, enabled" };
   collisionFolder.add(reactionStatsDisplay, "value").name("Reaction Interface").listen();
   
+  // Molecular properties cache stats
+  const molecularCacheStatsDisplay: ValueDisplay = { value: "0 cached molecules" };
+  collisionFolder.add(molecularCacheStatsDisplay, "value").name("Molecular Cache").listen();
+  
   // Update stats every frame
   function updateCollisionStats(): void {
     const cacheStats = getCacheStats();
     const eventStats = collisionEventSystem.getStats();
     const reactionStats = reactionCollisionInterface.getStats();
+    const molecularCacheStats = MolecularPropertiesCalculator.getCacheStats();
     
     cacheStatsDisplay.value = `${cacheStats.totalCached} cached, ${cacheStats.dirtyCount} dirty`;
     eventStatsDisplay.value = `${eventStats.totalHandlers} handlers, ${eventStats.historySize} history`;
     reactionStatsDisplay.value = `${reactionStats.totalReactions} reactions, ${reactionStats.enabled ? 'enabled' : 'disabled'}`;
+    molecularCacheStatsDisplay.value = `${molecularCacheStats.size} cached molecules`;
     
     requestAnimationFrame(updateCollisionStats);
   }
@@ -391,6 +398,10 @@ function addCollisionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
       // Clear collision history
       collisionEventSystem.clearHistory();
       log("Collision history cleared");
+      
+      // Clear molecular properties cache
+      MolecularPropertiesCalculator.clearCache();
+      log("Molecular properties cache cleared");
     }
   }, "clearCaches").name("Clear All Caches");
   
@@ -402,6 +413,14 @@ function addCollisionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
       log(`Reaction processing ${!currentState ? 'enabled' : 'disabled'}`);
     }
   }, "toggleReactions").name("Enable Reactions");
+
+  // Performance optimization controls
+  collisionFolder.add({
+    toggleHullVisualization: function(): void {
+      // This will be controlled by the performance settings
+      log("Hull visualization toggled (performance optimization)");
+    }
+  }, "toggleHullVisualization").name("Optimize Hull Updates");
   
   collisionFolder.open();
 }
@@ -484,6 +503,18 @@ function addMoleculeRotationControls(gui: dat.GUI, scene: THREE.Scene, moleculeM
   // Action buttons
   rotationFolder.add(rotationSettings, "resetRotations").name("Reset All Rotations");
   rotationFolder.add(rotationSettings, "applyToAll").name("Apply to All Molecules");
+  
+  // Quick speed control
+  const quickSpeedControl = rotationFolder.add({ quickSpeed: 0.5 }, "quickSpeed", 0.1, 2.0).name("Quick Speed Control");
+  quickSpeedControl.onChange((value: number) => {
+    const allMolecules = moleculeManager.getAllMolecules();
+    allMolecules.forEach(mol => {
+      if ((mol as any).rotationController) {
+        (mol as any).rotationController.setSpeedMultiplier(value);
+      }
+    });
+    log(`Quick speed control applied: ${value}x`);
+  });
   
   rotationFolder.open();
 }

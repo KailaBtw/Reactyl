@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { molFileToJSON } from "./molFileToJSON";
 import { log } from "./debug";
-import { MolecularPropertiesCalculator, type Atom as PhysicsAtom, type MolecularProperties } from "./molecularPropertiesCalculator";
+import { MolToPhysicsConverter } from "./molToPhysics";
 import { RotationController } from "./rotationController";
 
 import { MoleculeGroup, MoleculeManager, Position } from "../types";
@@ -199,19 +199,19 @@ export function drawMolecule(
 
   // Set up physics-based rotation system
   try {
-    // Convert MOL data to physics-ready format
-    const physicsAtoms: PhysicsAtom[] = molObject.atoms.map(atom => ({
-      element: atom.type,
-      position: new THREE.Vector3(
-        parseFloat(atom.position.x),
-        parseFloat(atom.position.y),
-        parseFloat(atom.position.z)
-      ),
-      mass: MolecularPropertiesCalculator['ATOMIC_MASSES'][atom.type] || 12.0
-    }));
-
-    // Calculate molecular properties
-    const molecularProperties = MolecularPropertiesCalculator.calculateProperties(physicsAtoms);
+    // Use the converter to get molecular properties from parsed MOL data
+    const molecularProperties = MolToPhysicsConverter.calculateProperties(molObject);
+    
+    // Validate the MOL data
+    const validation = MolToPhysicsConverter.validateMolData(molObject);
+    if (!validation.isValid) {
+      log(`MOL data validation failed for ${name}: ${validation.errors.join(', ')}`);
+      return;
+    }
+    
+    // Get molecular summary for debugging
+    const summary = MolToPhysicsConverter.getMolecularSummary(molObject);
+    log(`Molecule ${name}: ${summary.atomCount} atoms, ${summary.bondCount} bonds, mass: ${summary.totalMass.toFixed(2)}, radius: ${summary.boundingRadius.toFixed(2)}`);
     
     // Create rotation controller
     const rotationController = new RotationController({
@@ -229,7 +229,7 @@ export function drawMolecule(
     (molecule as any).molecularProperties = molecularProperties;
     (molecule as any).rotationController = rotationController;
     
-    log(`Rotation system initialized for ${name} with ${physicsAtoms.length} atoms`);
+    log(`Rotation system initialized for ${name} with ${summary.atomCount} atoms`);
   } catch (error) {
     log(`Failed to initialize rotation system for ${name}: ${error}`);
   }

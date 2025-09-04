@@ -62,6 +62,13 @@ let deltaTime: number = 0;
  */
 let totalTime: number = 0;
 
+// Performance optimization variables
+let frameCount: number = 0;
+let lastHullUpdate: number = 0;
+let lastCollisionCheck: number = 0;
+const HULL_UPDATE_INTERVAL: number = 10; // Update hulls every 10 frames
+const COLLISION_CHECK_INTERVAL: number = 2; // Check collisions every 2 frames
+
 // ===============================
 //  Scene Setup
 // ===============================
@@ -180,6 +187,7 @@ function animate(): void {
 
   deltaTime = clock.getDelta(); // Get the time elapsed since the last frame.
   totalTime += deltaTime; // Update the total time.
+  frameCount++; // Increment frame counter for performance optimization
 
   // Update FPS overlay in debug mode
   if (DEBUG_MODE) {
@@ -203,6 +211,9 @@ function animate(): void {
   // Update spatial grid with current molecule positions
   const allMolecules = moleculeManager.getAllMolecules();
   updateSpatialGrid(allMolecules);
+
+  // Batch transform updates for better performance
+  const transformUpdates: MoleculeGroup[] = [];
 
   // Move all the molecules based on their velocities and handle collisions.
   for (const moleculeObject of allMolecules) {
@@ -234,17 +245,24 @@ function animate(): void {
       }
     }
     
-    // Mark transform as dirty for collision detection optimization
-    markTransformDirty(moleculeObject);
+    // Batch transform updates instead of marking dirty every frame
+    transformUpdates.push(moleculeObject);
 
-    // Check for collisions with other molecules using spatial partitioning
-    const collidingMolecules = checkCollisionsWithSpatialGrid(moleculeObject, allMolecules);
-    for (const collidingMolecule of collidingMolecules) {
-      handleCollision(moleculeObject, collidingMolecule);
+    // Throttle collision detection for better performance
+    if (frameCount % COLLISION_CHECK_INTERVAL === 0) {
+      const collidingMolecules = checkCollisionsWithSpatialGrid(moleculeObject, allMolecules);
+      for (const collidingMolecule of collidingMolecules) {
+        handleCollision(moleculeObject, collidingMolecule);
+      }
     }
   }
 
-  // Update hull visualization for all molecules
+  // Batch process transform updates
+  transformUpdates.forEach(moleculeObject => {
+    markTransformDirty(moleculeObject);
+  });
+
+  // Hull visualization is now properly cached and only updates positions
   visualizeHulls(scene, allMolecules);
 
   // Update the positions of the spotlight and skylight based on the camera.
