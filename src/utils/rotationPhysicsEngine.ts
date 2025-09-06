@@ -119,7 +119,12 @@ export class RotationPhysicsEngine {
     const mass = this.molecularProperties.totalMass || 1.0;
     const radius = this.molecularProperties.boundingRadius || 1.0;
     
-    // Calculate thermal noise
+    // Debug logging (only log occasionally to avoid spam)
+    if (Math.random() < 0.001) { // 0.1% chance to log
+      log(`RotationPhysicsEngine: T=${temperature}K, mass=${mass.toFixed(2)}, radius=${radius.toFixed(2)}`);
+    }
+    
+    // Calculate thermal noise (physically accurate)
     const thermalNoise = Math.sqrt(this.kB * temperature / mass) * 0.001;
     const noiseScale = config.enableThermalNoise ? 1.0 : 0.0;
     
@@ -206,6 +211,7 @@ export class RotationPhysicsEngine {
    */
   setTemperature(temperature: number): void {
     this.rotationState.temperature = temperature;
+    log(`RotationPhysicsEngine: Temperature updated to ${temperature}K`);
   }
   
   /**

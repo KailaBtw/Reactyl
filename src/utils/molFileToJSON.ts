@@ -30,6 +30,14 @@ interface MolObject {
   bonds: [string, string][]; // [atomIndex1, atomIndex2]
 }
 
+interface PubChemMetadata {
+  cid?: string;
+  molecularFormula?: string;
+  molecularWeight?: string;
+  smiles?: string;
+  inchi?: string;
+}
+
 /**
  * Parses a .mol file string and converts it into a JavaScript object.
  *
@@ -74,7 +82,15 @@ interface MolObject {
  */
 export function molFileToJSON(molFile: string): MolObject {
   let molObj: MolObject = {} as MolObject; // Initialize the object to store the parsed data.
-  const split: string[] = molFile.split('\n'); // Split the molFile content into lines.
+  
+  // Handle PubChem's extended format - extract just the MOL part
+  let molContent = molFile;
+  const molEndIndex = molFile.indexOf('$$$$');
+  if (molEndIndex !== -1) {
+    molContent = molFile.substring(0, molEndIndex + 4); // Include the $$$$ line
+  }
+  
+  const split: string[] = molContent.split('\n'); // Split the molFile content into lines.
 
   // --- Parse Header Section ---
   molObj.header = {} as MolHeader;
@@ -126,4 +142,43 @@ export function molFileToJSON(molFile: string): MolObject {
   molObj.bonds = bondsArray; // Assign the array of bond connections.
 
   return molObj; // Return the complete parsed molecule object.
+}
+
+/**
+ * Extracts PubChem metadata from extended MOL format
+ */
+export function extractPubChemMetadata(molFile: string): PubChemMetadata {
+  const metadata: PubChemMetadata = {};
+  
+  // Look for PubChem metadata after the MOL structure
+  const lines = molFile.split('\n');
+  let inPropertyTable = false;
+  
+  for (const line of lines) {
+    if (line.includes('PropertyTable')) {
+      inPropertyTable = true;
+      continue;
+    }
+    
+    if (inPropertyTable) {
+      if (line.includes('CID')) {
+        const match = line.match(/CID\s+(\d+)/);
+        if (match) metadata.cid = match[1];
+      } else if (line.includes('MolecularFormula')) {
+        const match = line.match(/MolecularFormula\s+"([^"]+)"/);
+        if (match) metadata.molecularFormula = match[1];
+      } else if (line.includes('MolecularWeight')) {
+        const match = line.match(/MolecularWeight\s+"([^"]+)"/);
+        if (match) metadata.molecularWeight = match[1];
+      } else if (line.includes('ConnectivitySMILES')) {
+        const match = line.match(/ConnectivitySMILES\s+"([^"]+)"/);
+        if (match) metadata.smiles = match[1];
+      } else if (line.includes('InChI')) {
+        const match = line.match(/InChI\s+"([^"]+)"/);
+        if (match) metadata.inchi = match[1];
+      }
+    }
+  }
+  
+  return metadata;
 } 

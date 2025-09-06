@@ -217,9 +217,9 @@ export function drawMolecule(
     // Create rotation controller
     const rotationController = new RotationController({
       mode: 'realistic',
-      temperature: 150, // Reduced from 300K to 150K for slower rotation
-      speedMultiplier: 0.5, // Reduced from 1.0 to 0.5 for slower rotation
-      dampingFactor: 0.99, // Increased from 0.98 to 0.99 for more damping
+      temperature: 298, // Default room temperature (will be updated by GUI)
+      speedMultiplier: 1.0, // Normal speed multiplier
+      dampingFactor: 0.98, // Normal damping
       enableThermalNoise: true
     });
     

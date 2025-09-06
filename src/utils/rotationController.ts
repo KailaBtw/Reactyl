@@ -83,6 +83,22 @@ export class RotationController {
     const euler = new THREE.Euler().setFromQuaternion(state.quaternion);
     this.molecule.group.rotation.copy(euler);
   }
+
+  /**
+   * Apply rotation to a Three.js object (public method for compatibility)
+   */
+  applyToObject3D(object3D: THREE.Object3D): void {
+    if (!this.isActive) return;
+    
+    const state = this.physicsEngine.getRotationState();
+    
+    // Update object's quaternion
+    object3D.quaternion.copy(state.quaternion);
+    
+    // Update object's rotation if needed
+    const euler = new THREE.Euler().setFromQuaternion(state.quaternion);
+    object3D.rotation.copy(euler);
+  }
   
   /**
    * Get current rotation state
@@ -106,7 +122,7 @@ export class RotationController {
   setTemperature(temperature: number): void {
     this.config.temperature = temperature;
     this.physicsEngine.setTemperature(temperature);
-    log(`Temperature set to: ${temperature}K`);
+    log(`RotationController: Temperature set to: ${temperature}K`);
   }
   
   /**

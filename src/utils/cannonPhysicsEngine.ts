@@ -24,6 +24,8 @@ export class CannonPhysicsEngine {
   private moleculeBodies: Map<MoleculeGroup, PhysicsBodyData> = new Map();
   private contactMaterial: CANNON.ContactMaterial;
   private defaultMaterial: CANNON.Material;
+  private isPaused = false;
+  private timeScale = 1.0;
   
   constructor() {
     log('Initializing Cannon.js Physics Engine...');
@@ -155,8 +157,16 @@ export class CannonPhysicsEngine {
   private readonly maxSubSteps = 2; // limit substeps per frame
 
   step(deltaTime: number): void {
+    // Don't step if paused
+    if (this.isPaused) {
+      return;
+    }
+
+    // Apply time scale
+    const scaledDeltaTime = deltaTime * this.timeScale;
+    
     // Accumulate time and step with fixed timestep for stability and performance
-    this.accumulator += Math.min(deltaTime, 0.1); // avoid spiral of death
+    this.accumulator += Math.min(scaledDeltaTime, 0.1); // avoid spiral of death
     let substeps = 0;
     while (this.accumulator >= this.fixedTimeStep && substeps < this.maxSubSteps) {
       this.world.step(this.fixedTimeStep);
@@ -343,13 +353,51 @@ export class CannonPhysicsEngine {
   }
 
   /**
+   * Pause the physics simulation
+   */
+  pause(): void {
+    this.isPaused = true;
+    log('Physics simulation paused');
+  }
+
+  /**
+   * Resume the physics simulation
+   */
+  resume(): void {
+    this.isPaused = false;
+    log('Physics simulation resumed');
+  }
+
+  /**
+   * Set the time scale for the simulation
+   */
+  setTimeScale(scale: number): void {
+    this.timeScale = Math.max(0, scale); // Ensure non-negative
+    log(`Physics time scale set to: ${this.timeScale}`);
+  }
+
+  /**
+   * Get the current time scale
+   */
+  getTimeScale(): number {
+    return this.timeScale;
+  }
+
+  /**
+   * Check if the simulation is paused
+   */
+  isSimulationPaused(): boolean {
+    return this.isPaused;
+  }
+
+  /**
    * Clean up physics world
    */
   dispose(): void {
     log('Disposing Cannon.js Physics Engine...');
     
     // Remove all bodies
-    for (const [molecule, bodyData] of this.moleculeBodies.entries()) {
+    for (const [, bodyData] of this.moleculeBodies.entries()) {
       this.world.removeBody(bodyData.body);
     }
     this.moleculeBodies.clear();

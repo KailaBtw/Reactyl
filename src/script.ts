@@ -23,11 +23,11 @@ import {
 import { physicsEngine } from "./utils/cannonPhysicsEngine"; // Import Cannon.js physics engine
 import { visualizeHulls } from "./utils/convexHullCollision"; // Import hull visualization
 import { log, DEBUG_MODE, addObjectDebug, initFpsDebug, updateFpsDebug } from "./utils/debug"; // Import debugging utilities.
-import { set_up_gui, autoRotate } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
+import { set_up_gui } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
 import { drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
 // import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
 
-import { MoleculeGroup, MoleculeManager } from "./types";
+import { MoleculeManager } from "./types";
 
 // ===============================
 //  Module-Level Variables
@@ -185,19 +185,8 @@ function animate(): void {
     updateFpsDebug(deltaTime);
   }
 
-  // Rotate all molecules based on the autoRotate settings from the GUI.
-  moleculeManager.getAllMolecules().forEach((molecule: MoleculeGroup) => {
-    const rotateSettings = autoRotate();
-    if (rotateSettings.x.switch) {
-      molecule.group.rotation.x -= 0.5 * deltaTime;
-    }
-    if (rotateSettings.y.switch) {
-      molecule.group.rotation.y -= 0.5 * deltaTime;
-    }
-    if (rotateSettings.z.switch) {
-      molecule.group.rotation.z -= 0.5 * deltaTime;
-    }
-  });
+  // Check if physics simulation is paused
+  const isPhysicsPaused = physicsEngine.isSimulationPaused();
 
   // PHYSICS ENGINE STEP - Replaces custom collision detection
   physicsEngine.step(deltaTime);
@@ -205,40 +194,26 @@ function animate(): void {
   // Get all molecules for additional processing
   const allMolecules = moleculeManager.getAllMolecules();
 
-  // Handle non-physics molecules (fallback for molecules without physics bodies)
-  for (const moleculeObject of allMolecules) {
-    // Skip molecules that are handled by physics engine
-    if (moleculeObject.hasPhysics) {
-      continue;
-    }
-    
-    const group = moleculeObject.getGroup();
-
-    // Apply damping to prevent infinite speed increase
-    moleculeObject.velocity.multiplyScalar(0.999);
-
-    // Update position based on velocity (for non-physics molecules)
-    group.position.addScaledVector(moleculeObject.velocity, deltaTime);
-    
-    // Apply rotation for non-physics molecules
-    if ((moleculeObject as any).rotationController) {
-      const rotationController = (moleculeObject as any).rotationController;
-      rotationController.update(deltaTime);
-      rotationController.applyToObject3D(group);
-    } else {
-      // Fallback rotation
-      const rotationSpeed = 2.0;
-      const velocityMagnitude = moleculeObject.velocity.length();
+  // Update rotation controllers for ALL molecules
+  // Only update if simulation is not paused
+  if (!isPhysicsPaused) {
+    for (const moleculeObject of allMolecules) {
+      const group = moleculeObject.getGroup();
       
-      if (velocityMagnitude > 0.1) {
-        group.rotation.x += rotationSpeed * deltaTime * (moleculeObject.velocity.z / velocityMagnitude);
-        group.rotation.z += rotationSpeed * deltaTime * (moleculeObject.velocity.x / velocityMagnitude);
+      // Apply rotation for all molecules with rotation controllers
+      if ((moleculeObject as any).rotationController) {
+        const rotationController = (moleculeObject as any).rotationController;
+        rotationController.update(deltaTime);
+        rotationController.applyToObject3D(group);
       }
     }
   }
 
   // Hull visualization is now properly cached and only updates positions
-  visualizeHulls(scene, allMolecules);
+  // Only update hulls if simulation is not paused
+  if (!isPhysicsPaused) {
+    visualizeHulls(scene, allMolecules);
+  }
 
   // Update the positions of the spotlight and skylight based on the camera.
   updateSpotlightPosition(camera);
