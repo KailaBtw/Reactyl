@@ -1,72 +1,64 @@
 /**
- * Simple cache service for GitHub Pages
- * Loads from JSON file, adds new results, saves back to JSON
+ * Simple cache service for individual molecule files
+ * Loads from individual JSON files, saves individual molecules
  */
 
 import { MolecularData } from '../types';
 import { log } from './debug';
 
-interface SearchResult {
-  cid: string;
-  name: string;
-  formula: string;
-}
-
-interface CacheData {
-  molecules: Record<string, MolecularData>;
-  searches: Record<string, SearchResult[]>;
-  metadata: {
-    lastUpdated: string;
-    version: string;
-    totalMolecules: number;
-    totalSearches: number;
-  };
-}
-
 export class SimpleCacheService {
-  private cacheData: CacheData;
-  private readonly VERSION = '1.0.0';
-  private readonly CACHE_URL = 'data/cache/chemical_cache.json';
+  private molecules: Map<string, MolecularData> = new Map();
   private readonly LOCALSTORAGE_KEY = 'molMod_cache';
-  private isDev: boolean;
+  private readonly isDev = window.location.hostname === 'localhost' || window.location.port === '5173';
 
   constructor() {
-    this.cacheData = {
-      molecules: {},
-      searches: {},
-      metadata: {
-        lastUpdated: new Date().toISOString(),
-        version: this.VERSION,
-        totalMolecules: 0,
-        totalSearches: 0
-      }
-    };
-    
-    // Simple dev detection
-    this.isDev = window.location.hostname === 'localhost' || window.location.port === '5173';
     log(`Running in ${this.isDev ? 'development' : 'production'} mode`);
-    
     this.loadCache();
   }
 
   /**
-   * Load cache from file or localStorage
+   * Load cache from backend or localStorage
    */
   private async loadCache(): Promise<void> {
     try {
       if (this.isDev) {
-        // Try to load from file first
-        const response = await fetch(this.CACHE_URL);
-        if (response.ok) {
-          this.cacheData = await response.json();
-          log(`Loaded cache from file: ${this.cacheData.metadata.totalMolecules} molecules`);
+        // Try to load from backend API first
+        try {
+          const response = await fetch('http://localhost:3000/api/molecules');
+          if (response.ok) {
+            const data = await response.json();
+            log(`📖 Found ${data.count} molecules in backend`);
+            
+            // Load each molecule individually
+            for (const cid of data.molecules) {
+              try {
+                const molResponse = await fetch(`http://localhost:3000/api/molecule/${cid}`);
+                if (molResponse.ok) {
+                  const molecularData = await molResponse.json();
+                  this.molecules.set(cid, molecularData);
+                }
+              } catch (error) {
+                log(`Failed to load molecule ${cid}: ${error}`);
+              }
+            }
+            
+            log(`✅ Loaded ${this.molecules.size} molecules from backend`);
+            return;
+          }
+        } catch (error) {
+          log('Backend not available, trying localStorage...');
         }
-      } else {
-        // Load from localStorage
-        const stored = localStorage.getItem(this.LOCALSTORAGE_KEY);
-        if (stored) {
-          this.cacheData = JSON.parse(stored);
-          log(`Loaded cache from localStorage: ${this.cacheData.metadata.totalMolecules} molecules`);
+      }
+
+      // Fallback to localStorage
+      const stored = localStorage.getItem(this.LOCALSTORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.molecules) {
+          Object.entries(data.molecules).forEach(([cid, molData]) => {
+            this.molecules.set(cid, molData as MolecularData);
+          });
+          log(`✅ Loaded ${this.molecules.size} molecules from localStorage`);
         }
       }
     } catch (error) {
@@ -75,147 +67,193 @@ export class SimpleCacheService {
   }
 
   /**
-   * Save cache using dev server API or localStorage
+   * Save cache to backend or localStorage
    */
   private async saveCache(): Promise<void> {
     try {
-      this.cacheData.metadata.lastUpdated = new Date().toISOString();
-      this.cacheData.metadata.totalMolecules = Object.keys(this.cacheData.molecules).length;
-      this.cacheData.metadata.totalSearches = Object.keys(this.cacheData.searches).length;
-
       if (this.isDev) {
-        // Try to save to dev server first
-        try {
-          const response = await fetch('http://localhost:3000/api/save-cache', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.cacheData)
-          });
-          
-          if (response.ok) {
-            log(`✅ Cache saved to project file: ${this.cacheData.metadata.totalMolecules} molecules`);
-            return;
-          }
-        } catch (error) {
-          log('Dev server not available, falling back to localStorage');
-        }
+        // In dev mode, molecules are saved individually when fetched
+        // This method is kept for compatibility but doesn't do bulk saves
+        log(`💾 Dev mode: molecules saved individually`);
+        return;
       }
+
+      // Production mode: save to localStorage
+      const data = {
+        molecules: Object.fromEntries(this.molecules),
+        metadata: {
+          lastUpdated: new Date().toISOString(),
+          totalMolecules: this.molecules.size
+        }
+      };
       
-      // Fallback to localStorage
-      localStorage.setItem(this.LOCALSTORAGE_KEY, JSON.stringify(this.cacheData, null, 2));
-      log(`Cache saved to localStorage: ${this.cacheData.metadata.totalMolecules} molecules`);
+      localStorage.setItem(this.LOCALSTORAGE_KEY, JSON.stringify(data, null, 2));
+      log(`💾 Cache saved to localStorage: ${this.molecules.size} molecules`);
     } catch (error) {
       log(`Error saving cache: ${error}`);
     }
   }
 
   /**
-   * Get molecular data from cache
+   * Save individual molecule to backend
    */
-  getMolecule(cid: string): MolecularData | null {
-    return this.cacheData.molecules[cid] || null;
+  async saveMolecule(cid: string, molecularData: MolecularData): Promise<void> {
+    try {
+      this.molecules.set(cid, molecularData);
+      
+      if (this.isDev) {
+        // Save to backend
+        try {
+          log(`🔄 POSTing molecule ${cid} to backend`);
+
+          const response = await fetch('http://localhost:3000/api/save-molecule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cid, molecularData })
+          });
+
+          if (response.ok) {
+            log(`✅ Molecule ${cid} saved to backend`);
+            return;
+          } else {
+            log(`❌ Backend responded with status: ${response.status}`);
+          }
+        } catch (error) {
+          log(`❌ Dev server not available: ${error}`);
+        }
+      }
+
+      // Fallback to localStorage
+      await this.saveCache();
+      log(`💾 Molecule ${cid} saved to localStorage`);
+    } catch (error) {
+      log(`Error saving molecule ${cid}: ${error}`);
+    }
   }
 
   /**
-   * Set molecular data in cache
+   * Get molecule by CID
+   */
+  getMolecule(cid: string): MolecularData | undefined {
+    return this.molecules.get(cid);
+  }
+
+  /**
+   * Set molecule in cache
    */
   setMolecule(cid: string, data: MolecularData): void {
-    this.cacheData.molecules[cid] = data;
-    this.saveCache(); // Fire and forget
+    this.molecules.set(cid, data);
+    this.saveMolecule(cid, data).catch(error => log(`Error saving molecule cache: ${error}`));
   }
 
   /**
-   * Get search results from cache
+   * Search molecules by name, formula, or synonyms
    */
-  getSearchResults(query: string): SearchResult[] | null {
-    const normalizedQuery = query.toLowerCase();
-    return this.cacheData.searches[normalizedQuery] || null;
-  }
+  searchMolecules(query: string, limit: number = 10): Array<{cid: string, name: string, formula: string}> {
+    const results: Array<{cid: string, name: string, formula: string}> = [];
+    const lowerQuery = query.toLowerCase();
 
-  /**
-   * Set search results in cache
-   */
-  setSearchResults(query: string, results: SearchResult[]): void {
-    const normalizedQuery = query.toLowerCase();
-    this.cacheData.searches[normalizedQuery] = results;
-    this.saveCache(); // Fire and forget
+    for (const [cid, molecule] of this.molecules) {
+      if (results.length >= limit) break;
+
+      // Search in name
+      if (molecule.name?.toLowerCase().includes(lowerQuery)) {
+        results.push({
+          cid,
+          name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
+          formula: molecule.formula || 'Unknown'
+        });
+        continue;
+      }
+
+      // Search in title
+      if (molecule.title?.toLowerCase().includes(lowerQuery)) {
+        results.push({
+          cid,
+          name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
+          formula: molecule.formula || 'Unknown'
+        });
+        continue;
+      }
+
+      // Search in formula
+      if (molecule.formula?.toLowerCase().includes(lowerQuery)) {
+        results.push({
+          cid,
+          name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
+          formula: molecule.formula || 'Unknown'
+        });
+        continue;
+      }
+
+      // Search in synonyms
+      if (molecule.synonyms?.some(synonym => synonym.toLowerCase().includes(lowerQuery))) {
+        results.push({
+          cid,
+          name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
+          formula: molecule.formula || 'Unknown'
+        });
+        continue;
+      }
+    }
+
+    return results;
   }
 
   /**
    * Get cache statistics
    */
-  getStats(): {
-    molecules: number;
-    searches: number;
-    lastUpdated: string;
-    version: string;
-  } {
+  getStats(): { molecules: number; lastUpdated: string } {
     return {
-      molecules: this.cacheData.metadata.totalMolecules,
-      searches: this.cacheData.metadata.totalSearches,
-      lastUpdated: this.cacheData.metadata.lastUpdated,
-      version: this.cacheData.metadata.version
+      molecules: this.molecules.size,
+      lastUpdated: new Date().toISOString()
     };
   }
 
   /**
-   * Clear all cache
+   * Refresh cache from backend
    */
-  clearCache(): void {
-    this.cacheData = {
-      molecules: {},
-      searches: {},
-      metadata: {
-        lastUpdated: new Date().toISOString(),
-        version: this.VERSION,
-        totalMolecules: 0,
-        totalSearches: 0
-      }
-    };
-    this.saveCache();
-    log('Cache cleared');
-  }
-
-  /**
-   * Download cache as JSON file (manual download)
-   */
-  downloadCache(): void {
-    try {
-      const jsonString = JSON.stringify(this.cacheData, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `chemical_cache_${new Date().toISOString().split('T')[0]}.json`;
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      log('Cache downloaded as JSON file');
-    } catch (error) {
-      log(`Error downloading cache: ${error}`);
+  async refreshFromBackend(): Promise<void> {
+    if (this.isDev) {
+      await this.loadCache();
+      log(`✅ Cache refreshed from backend: ${this.molecules.size} molecules`);
+    } else {
+      log(`ℹ️ Refresh from backend only available in development mode`);
     }
   }
 
   /**
-   * Export cache as JSON string
+   * Download cache as JSON file
    */
-  exportCache(): string {
-    return JSON.stringify(this.cacheData, null, 2);
+  downloadCache(): void {
+    const data = {
+      molecules: Object.fromEntries(this.molecules),
+      metadata: {
+        lastUpdated: new Date().toISOString(),
+        totalMolecules: this.molecules.size
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'molecular_cache.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    log(`📥 Cache downloaded: ${this.molecules.size} molecules`);
   }
 
   /**
-   * Get environment info for debugging
+   * Clear cache
    */
-  getEnvironmentInfo(): { isDev: boolean; method: string } {
-    return {
-      isDev: this.isDev,
-      method: 'localStorage'
-    };
+  clearCache(): void {
+    this.molecules.clear();
+    localStorage.removeItem(this.LOCALSTORAGE_KEY);
+    log('Cache cleared');
   }
 }
 

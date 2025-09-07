@@ -5,6 +5,24 @@ import { simpleCacheService } from './simpleCacheService';
 
 export class ChemicalDataService {
   private readonly PUBCHEM_BASE = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
+  private lastRequestTime = 0;
+  private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second between requests
+  
+  /**
+   * Throttle requests to respect PubChem limits
+   */
+  private async throttleRequest(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
+      const delay = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+      log(`⏳ Throttling request: waiting ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    
+    this.lastRequestTime = Date.now();
+  }
   
   /**
    * Fetch molecular data by CID from PubChem
@@ -20,8 +38,11 @@ export class ChemicalDataService {
     try {
       log(`Fetching data for CID ${cid} from PubChem...`);
       
+      // Throttle request to respect PubChem limits
+      await this.throttleRequest();
+      
       // Get properties using correct PubChem REST API format
-      const propUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,InChI/JSON`;
+      const propUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,InChI,IUPACName,Title/JSON`;
       log(`Fetching properties from: ${propUrl}`);
       
       const propResponse = await fetch(propUrl);
@@ -35,6 +56,22 @@ export class ChemicalDataService {
       
       const propData = await propResponse.json();
       const props = propData.PropertyTable.Properties[0];
+      
+      // Fetch synonyms
+      let synonyms: string[] = [];
+      try {
+        const synonymsUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/synonyms/JSON`;
+        log(`Fetching synonyms from: ${synonymsUrl}`);
+        
+        const synonymsResponse = await fetch(synonymsUrl);
+        if (synonymsResponse.ok) {
+          const synonymsData = await synonymsResponse.json();
+          synonyms = synonymsData.InformationList?.Information?.[0]?.Synonym || [];
+          log(`Found ${synonyms.length} synonyms for CID ${cid}`);
+        }
+      } catch (error) {
+        log(`Failed to fetch synonyms for CID ${cid}: ${error}`);
+      }
       
       // Get 3D structure using correct PubChem REST API format
       const mol3dUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/SDF?record_type=3d`;
@@ -64,6 +101,9 @@ export class ChemicalDataService {
         
         const molecularData: MolecularData = {
           cid: parseInt(cid),
+          name: props.IUPACName || molMetadata.name || undefined,
+          title: props.Title || molMetadata.title || undefined,
+          synonyms: synonyms.length > 0 ? synonyms : molMetadata.synonyms || undefined,
           smiles: props.CanonicalSMILES || molMetadata.smiles || '',
           inchi: props.InChI || molMetadata.inchi || '',
           molWeight: parseFloat(props.MolecularWeight) || parseFloat(molMetadata.molecularWeight || '0'),
@@ -77,7 +117,7 @@ export class ChemicalDataService {
         };
         
         // Cache the result
-        simpleCacheService.setMolecule(cid, molecularData);
+        await simpleCacheService.saveMolecule(cid, molecularData);
         
         log(`Successfully fetched 2D data for CID ${cid}: ${molecularData.formula}`);
         return molecularData;
@@ -90,6 +130,9 @@ export class ChemicalDataService {
       
       const molecularData: MolecularData = {
         cid: parseInt(cid),
+        name: props.IUPACName || molMetadata.name || undefined,
+        title: props.Title || molMetadata.title || undefined,
+        synonyms: synonyms.length > 0 ? synonyms : molMetadata.synonyms || undefined,
         smiles: props.CanonicalSMILES || molMetadata.smiles || '',
         inchi: props.InChI || molMetadata.inchi || '',
         molWeight: parseFloat(props.MolecularWeight) || parseFloat(molMetadata.molecularWeight || '0'),
@@ -103,7 +146,7 @@ export class ChemicalDataService {
       };
       
       // Cache the result
-      simpleCacheService.setMolecule(cid, molecularData);
+      await simpleCacheService.saveMolecule(cid, molecularData);
       
       log(`Successfully fetched 3D data for CID ${cid}`);
       return molecularData;
@@ -119,9 +162,10 @@ export class ChemicalDataService {
    */
   async fetchMoleculeByName(name: string): Promise<MolecularData> {
     // Check cache first
-    if (this.cache.has(name)) {
+    const cachedData = simpleCacheService.getMolecule(name);
+    if (cachedData) {
       log(`Using cached data for ${name}`);
-      return this.cache.get(name)!;
+      return cachedData;
     }
     
     try {
@@ -174,7 +218,7 @@ export class ChemicalDataService {
         mol3d
       };
       
-      this.cache.set(name, molecularData);
+      await simpleCacheService.saveMolecule(name, molecularData);
       log(`Successfully fetched and cached data for ${name}`);
       return molecularData;
       
@@ -240,29 +284,161 @@ export class ChemicalDataService {
     };
   }
 
-  /**
-   * Clear cache
-   */
-  clearCache(): void {
-    simpleCacheService.clearCache();
-    log('Cache cleared');
-  }
   
+  /**
+   * Fetch molecular data by InChIKey from PubChem
+   */
+  async fetchMoleculeByInChIKey(inchikey: string): Promise<MolecularData> {
+    // Check cache first
+    const cachedData = simpleCacheService.getMolecule(inchikey);
+    if (cachedData) {
+      log(`Using cached data for InChIKey ${inchikey}`);
+      return cachedData;
+    }
+    
+    try {
+      log(`Fetching data for InChIKey ${inchikey} from PubChem...`);
+      
+      // Throttle request to respect PubChem limits
+      await this.throttleRequest();
+      
+      // Get CID from InChIKey first
+      const cidUrl = `${this.PUBCHEM_BASE}/compound/inchikey/${inchikey}/cids/JSON`;
+      const cidResponse = await fetch(cidUrl);
+      
+      if (!cidResponse.ok) {
+        throw new Error(`Failed to get CID for InChIKey ${inchikey}: ${cidResponse.status}`);
+      }
+      
+      const cidData = await cidResponse.json();
+      const cid = cidData.IdentifierList?.Identifier?.[0];
+      
+      if (!cid) {
+        throw new Error(`No CID found for InChIKey ${inchikey}`);
+      }
+      
+      // Now fetch the molecular data using the CID
+      return await this.fetchMoleculeByCID(cid.toString());
+      
+    } catch (error) {
+      log(`Failed to fetch data for InChIKey ${inchikey}: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch molecular data by SMILES from PubChem
+   */
+  async fetchMoleculeBySMILES(smiles: string): Promise<MolecularData> {
+    // Check cache first
+    const cachedData = simpleCacheService.getMolecule(smiles);
+    if (cachedData) {
+      log(`Using cached data for SMILES ${smiles}`);
+      return cachedData;
+    }
+    
+    try {
+      log(`Fetching data for SMILES ${smiles} from PubChem...`);
+      
+      // Throttle request to respect PubChem limits
+      await this.throttleRequest();
+      
+      // Get CID from SMILES first
+      const cidUrl = `${this.PUBCHEM_BASE}/compound/smiles/${encodeURIComponent(smiles)}/cids/JSON`;
+      const cidResponse = await fetch(cidUrl);
+      
+      if (!cidResponse.ok) {
+        throw new Error(`Failed to get CID for SMILES ${smiles}: ${cidResponse.status}`);
+      }
+      
+      const cidData = await cidResponse.json();
+      const cid = cidData.IdentifierList?.Identifier?.[0];
+      
+      if (!cid) {
+        throw new Error(`No CID found for SMILES ${smiles}`);
+      }
+      
+      // Now fetch the molecular data using the CID
+      return await this.fetchMoleculeByCID(cid.toString());
+      
+    } catch (error) {
+      log(`Failed to fetch data for SMILES ${smiles}: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Search for molecules by formula
+   */
+  async searchMoleculesByFormula(formula: string, limit: number = 10): Promise<Array<{cid: string, name: string, formula: string}>> {
+    if (!formula || formula.length < 1) return [];
+    
+    // First check local cache
+    const localResults = simpleCacheService.searchMolecules(formula, limit);
+    if (localResults.length > 0) {
+      log(`Using local cache for formula search: ${formula}`);
+      return localResults;
+    }
+    
+    try {
+      log(`Searching for formula: ${formula}`);
+      
+      // Throttle request to respect PubChem limits
+      await this.throttleRequest();
+      
+      // Search by formula
+      const searchUrl = `${this.PUBCHEM_BASE}/compound/fastformula/${formula}/cids/JSON?MaxRecords=${limit}`;
+      const response = await fetch(searchUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Formula search failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const cids = data.IdentifierList?.Identifier || [];
+      
+      // Get basic info for each CID
+      const results: Array<{cid: string, name: string, formula: string}> = [];
+      for (const cid of cids.slice(0, limit)) {
+        try {
+          const molecularData = await this.fetchMoleculeByCID(cid.toString());
+          results.push({
+            cid: cid.toString(),
+            name: molecularData.title || molecularData.name || molecularData.formula || `CID ${cid}`,
+            formula: molecularData.formula || 'Unknown'
+          });
+        } catch (error) {
+          log(`Failed to get details for CID ${cid}: ${error}`);
+        }
+      }
+      
+      log(`Found ${results.length} results for formula: ${formula}`);
+      return results;
+      
+    } catch (error) {
+      log(`Formula search failed for ${formula}: ${error}`);
+      return [];
+    }
+  }
+
   /**
    * Search for molecules by partial name with enhanced results
    */
   async searchMolecules(query: string, limit: number = 10): Promise<Array<{cid: string, name: string, formula: string}>> {
     if (!query || query.length < 2) return [];
     
-    // Check cache first
-    const cachedResults = simpleCacheService.getSearchResults(query);
-    if (cachedResults) {
-      log(`Using cached search results for: ${query}`);
-      return cachedResults;
+    // First check local cache
+    const localResults = simpleCacheService.searchMolecules(query, limit);
+    if (localResults.length > 0) {
+      log(`Using local cache for search: ${query}`);
+      return localResults;
     }
     
     try {
       log(`Searching PubChem for: ${query}`);
+      
+      // Throttle request to respect PubChem limits
+      await this.throttleRequest();
       
       // Use PubChem's compound name search
       const searchUrl = `${this.PUBCHEM_BASE}/compound/name/${encodeURIComponent(query)}/cids/JSON?MaxRecords=${limit}`;
@@ -312,8 +488,7 @@ export class ChemicalDataService {
         })
       );
       
-      // Cache the results
-      simpleCacheService.setSearchResults(query, results);
+      // Results are automatically cached when molecules are fetched
       
       log(`Found ${results.length} compounds for: ${query}`);
       log(`Search results:`, results.map(r => `${r.name} (${r.formula}) - CID: ${r.cid}`));

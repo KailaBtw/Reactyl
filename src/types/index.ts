@@ -216,6 +216,9 @@ export interface EnvironmentParameters {
 
 export interface MolecularData {
   cid: number; // PubChem Compound ID
+  name?: string; // IUPAC name or common name
+  title?: string; // Compound summary page title
+  synonyms?: string[]; // Alternative names and common names
   smiles: string;
   inchi: string;
   molWeight: number;

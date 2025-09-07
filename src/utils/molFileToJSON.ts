@@ -32,6 +32,9 @@ interface MolObject {
 
 interface PubChemMetadata {
   cid?: string;
+  name?: string;
+  title?: string;
+  synonyms?: string[];
   molecularFormula?: string;
   molecularWeight?: string;
   smiles?: string;

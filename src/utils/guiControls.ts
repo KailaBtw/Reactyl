@@ -34,56 +34,21 @@ export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene)
  * Molecule loading controls
  */
 function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
-  const loadingFolder = gui.addFolder('🧬 Load Molecules');
+  const loadingFolder = gui;
   
   // Initialize chemical data service
   const chemicalService = new ChemicalDataService();
   
   // Loading parameters
   const loadingParams = {
-    pubchemCID: '222', // Water as default
-    moleculeName: '',
-    loadingStatus: 'Ready',
-    searchQuery: '', // For autocomplete
+    searchQuery: '', // Unified search for name, CID, or formula
     searchResults: [] as Array<{cid: string, name: string, formula: string}>,
     selectedResult: null as {cid: string, name: string, formula: string} | null
   };
   
   // PubChem loading
-  const pubchemFolder = loadingFolder.addFolder('📡 PubChem');
-  pubchemFolder.open();
+  const pubchemFolder = loadingFolder;
   
-  // CID input
-  pubchemFolder.add(loadingParams, 'pubchemCID').name('CID');
-  pubchemFolder.add(loadingParams, 'loadingStatus').name('Status').listen();
-  
-  pubchemFolder.add({
-    loadFromCID: async () => {
-      try {
-        loadingParams.loadingStatus = 'Loading...';
-        log(`Loading molecule with CID: ${loadingParams.pubchemCID}`);
-        
-        const molecularData = await chemicalService.fetchMoleculeByCID(loadingParams.pubchemCID);
-        
-        // Draw the molecule
-        const moleculeName = `mol_${loadingParams.pubchemCID}`;
-        drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-        
-        loadingParams.loadingStatus = `Loaded: ${molecularData.formula}`;
-        log(`Successfully loaded ${molecularData.formula} (CID: ${molecularData.cid})`);
-        
-        // Update reaction system dropdowns
-        updateMoleculeDropdowns(moleculeManager);
-        
-        // Update cache stats
-        cacheStats.refreshStats();
-        
-      } catch (error) {
-        loadingParams.loadingStatus = `Error: ${error}`;
-        log(`Failed to load molecule: ${error}`);
-      }
-    }
-  }, 'loadFromCID').name('Load from CID');
   
   // Search functionality with dropdown
   const searchContainer = document.createElement('div');
@@ -92,7 +57,7 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   searchContainer.style.marginTop = '10px';
   
   const searchLabel = document.createElement('div');
-  searchLabel.textContent = 'Search by Name:';
+  searchLabel.textContent = 'Search (Name, CID, Formula, etc';
   searchLabel.style.color = '#fff';
   searchLabel.style.fontSize = '12px';
   searchLabel.style.marginBottom = '5px';
@@ -100,15 +65,23 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   
   const searchInput = document.createElement('input');
   searchInput.type = 'text';
-  searchInput.placeholder = 'Search for molecules...';
+  searchInput.placeholder = 'e.g., benzene, 241, C6H6, C1=CC=CC=C1, etc...';
   searchInput.style.width = '100%';
   searchInput.style.padding = '8px';
-  searchInput.style.marginBottom = '10px';
+  searchInput.style.marginBottom = '5px';
   searchInput.style.backgroundColor = '#2a2a2a';
   searchInput.style.border = '1px solid #555';
   searchInput.style.color = '#fff';
   searchInput.style.fontSize = '12px';
   searchInput.style.borderRadius = '3px';
+
+  // Status display integrated into search bar
+  const statusDisplay = document.createElement('div');
+  statusDisplay.style.color = '#81C784';
+  statusDisplay.style.fontSize = '10px';
+  statusDisplay.style.marginBottom = '10px';
+  statusDisplay.style.minHeight = '12px';
+  statusDisplay.textContent = 'Ready';
   
   const dropdown = document.createElement('div');
   dropdown.style.position = 'absolute';
@@ -126,10 +99,32 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   
   searchContainer.appendChild(searchLabel);
   searchContainer.appendChild(searchInput);
+  searchContainer.appendChild(statusDisplay);
   searchContainer.appendChild(dropdown);
   
   // Add search container directly to the PubChem folder
-  pubchemFolder.__ul.appendChild(searchContainer);
+  (pubchemFolder as any).__ul.appendChild(searchContainer);
+
+  // Helper functions for detecting input types
+  const isInChIKey = (query: string): boolean => {
+    // InChIKey: 27 characters, contains hyphens at positions 14 and 25
+    return /^[A-Z]{14}-[A-Z]{10}-[A-Z]$/.test(query);
+  };
+
+  const isSMILES = (query: string): boolean => {
+    // SMILES: must contain typical SMILES characters like brackets, parentheses, or special symbols
+    // Simple check: if it contains brackets, parentheses, or common SMILES symbols, it's likely SMILES
+    return /[\[\]\(\)=#@\\\/\.%]/.test(query) || 
+           // Or if it's a simple aromatic ring like c1ccccc1
+           /^c\d+ccccc\d+$/.test(query) ||
+           // Or contains lowercase letters (aromatic atoms)
+           /[a-z]/.test(query);
+  };
+
+  const isFormula = (query: string): boolean => {
+    // Formula: contains chemical elements (capital letter + optional lowercase)
+    return /^[A-Z][a-z]?\d*([A-Z][a-z]?\d*)*$/.test(query) && query.length > 1;
+  };
   
   // Sync search input with GUI parameter
   searchInput.addEventListener('input', (e) => {
@@ -138,15 +133,75 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
     // Debounce search
     clearTimeout((loadingParams as any).searchTimeout);
     (loadingParams as any).searchTimeout = setTimeout(async () => {
-      const query = loadingParams.searchQuery;
-      if (query && query.length >= 2) {
-        loadingParams.loadingStatus = 'Searching...';
+      const query = loadingParams.searchQuery.trim();
+      if (query && query.length >= 1) {
+        statusDisplay.textContent = 'Searching...';
         log(`Searching for: ${query}`);
+        
         try {
-          const results = await chemicalService.searchMolecules(query, 8);
+          let results: Array<{cid: string, name: string, formula: string}> = [];
+          
+          // Enhanced search routing - detect input type
+          if (/^\d+$/.test(query)) {
+            // CID search (numeric)
+            log(`Detected CID search: ${query}`);
+            try {
+              const molecularData = await chemicalService.fetchMoleculeByCID(query);
+              results = [{
+                cid: query,
+                name: molecularData.title || molecularData.name || molecularData.formula || `Molecule ${query}`,
+                formula: molecularData.formula || 'Unknown'
+              }];
+              statusDisplay.textContent = `Found CID ${query}`;
+            } catch (error) {
+              statusDisplay.textContent = `CID ${query} not found`;
+              log(`CID ${query} not found: ${error}`);
+            }
+          } else if (isInChIKey(query)) {
+            // InChIKey search (27 characters, contains hyphens)
+            log(`Detected InChIKey search: ${query}`);
+            try {
+              const molecularData = await chemicalService.fetchMoleculeByInChIKey(query);
+              results = [{
+                cid: molecularData.cid.toString(),
+                name: molecularData.title || molecularData.name || molecularData.formula || `InChIKey ${query}`,
+                formula: molecularData.formula || 'Unknown'
+              }];
+              statusDisplay.textContent = `Found InChIKey ${query}`;
+            } catch (error) {
+              statusDisplay.textContent = `InChIKey ${query} not found`;
+              log(`InChIKey ${query} not found: ${error}`);
+            }
+          } else if (isSMILES(query)) {
+            // SMILES search (contains chemical symbols and brackets)
+            log(`Detected SMILES search: ${query}`);
+            try {
+              const molecularData = await chemicalService.fetchMoleculeBySMILES(query);
+              results = [{
+                cid: molecularData.cid.toString(),
+                name: molecularData.title || molecularData.name || molecularData.formula || `SMILES ${query}`,
+                formula: molecularData.formula || 'Unknown'
+              }];
+              statusDisplay.textContent = `Found SMILES ${query}`;
+            } catch (error) {
+              statusDisplay.textContent = `SMILES ${query} not found`;
+              log(`SMILES ${query} not found: ${error}`);
+            }
+          } else if (isFormula(query)) {
+            // Formula search (contains chemical elements)
+            log(`Detected formula search: ${query}`);
+            results = await chemicalService.searchMoleculesByFormula(query, 8);
+            statusDisplay.textContent = `Found ${results.length} results for formula ${query}`;
+            log(`Found ${results.length} results for formula: ${query}`);
+          } else {
+            // Name/synonyms search
+            log(`Detected name/synonyms search: ${query}`);
+            results = await chemicalService.searchMolecules(query, 8);
+            statusDisplay.textContent = `Found ${results.length} results`;
+            log(`Found ${results.length} results for: ${query}`);
+          }
+          
           loadingParams.searchResults = results;
-          loadingParams.loadingStatus = `Found ${results.length} results`;
-          log(`Found ${results.length} results for: ${query}`);
           
           // Update dropdown
           updateDropdown(results);
@@ -154,14 +209,14 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
           // Update cache stats
           cacheStats.refreshStats();
         } catch (error) {
-          loadingParams.loadingStatus = `Search failed: ${error}`;
+          statusDisplay.textContent = `Search failed: ${error}`;
           log(`Search failed: ${error}`);
           loadingParams.searchResults = [];
           dropdown.style.display = 'none';
-    }
-  } else {
+        }
+      } else {
         loadingParams.searchResults = [];
-        loadingParams.loadingStatus = 'Ready';
+        statusDisplay.textContent = 'Ready';
         dropdown.style.display = 'none';
       }
     }, 500);
@@ -176,12 +231,19 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
       return;
     }
     
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       const item = document.createElement('div');
       item.style.padding = '8px 12px';
       item.style.cursor = 'pointer';
       item.style.borderBottom = '1px solid #444';
-      item.innerHTML = `<strong>${result.name}</strong> (${result.formula})`;
+      item.style.fontSize = '11px';
+      
+      // Enhanced display with name, formula, synonyms, and CID
+      item.innerHTML = `
+        <div style="font-weight: bold; color: #4CAF50;">${result.name}</div>
+        <div style="color: #81C784; font-size: 10px;">${result.formula}</div>
+        <div style="color: #B0BEC5; font-size: 9px;">CID: ${result.cid}</div>
+      `;
       
       item.addEventListener('mouseenter', () => {
         item.style.backgroundColor = '#444';
@@ -193,7 +255,6 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
       
       item.addEventListener('click', () => {
         loadingParams.selectedResult = result;
-        loadingParams.pubchemCID = result.cid;
         searchInput.value = result.name;
         loadingParams.searchQuery = result.name;
         dropdown.style.display = 'none';
@@ -202,14 +263,14 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
         
         // Auto-load the selected molecule
         try {
-          loadingParams.loadingStatus = 'Loading...';
+          statusDisplay.textContent = 'Loading...';
           log(`Loading selected molecule: ${result.name} (CID: ${result.cid})`);
           
           chemicalService.fetchMoleculeByCID(result.cid).then(molecularData => {
             const moleculeName = `mol_${result.cid}`;
             drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
             
-            loadingParams.loadingStatus = `Loaded: ${molecularData.formula}`;
+            statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
             log(`Successfully loaded molecule: ${molecularData.formula}`);
             
             // Update reaction system dropdowns
@@ -218,11 +279,11 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
             // Update cache stats
             cacheStats.refreshStats();
           }).catch(error => {
-            loadingParams.loadingStatus = `Error: ${error}`;
+            statusDisplay.textContent = `Error: ${error}`;
             log(`Failed to load molecule: ${error}`);
           });
         } catch (error) {
-          loadingParams.loadingStatus = `Error: ${error}`;
+          statusDisplay.textContent = `Error: ${error}`;
           log(`Failed to load molecule: ${error}`);
         }
       });
@@ -233,38 +294,136 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
     dropdown.style.display = 'block';
   };
   
+  // Add Enter key support for direct loading
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const query = loadingParams.searchQuery.trim();
+      if (query) {
+        // Enhanced Enter key support for all search types
+        if (/^\d+$/.test(query)) {
+          // CID search
+          loadMoleculeByCID(query);
+        } else if (isInChIKey(query)) {
+          // InChIKey search
+          loadMoleculeByInChIKey(query);
+        } else if (isSMILES(query)) {
+          // SMILES search
+          loadMoleculeBySMILES(query);
+        } else {
+          // For everything else (common names, formulas, etc.), do a general search
+          if (isFormula(query)) {
+            // Formula search
+            const results = await chemicalService.searchMoleculesByFormula(query, 8);
+            if (results.length > 0) {
+              const firstResult = results[0];
+              loadMoleculeByCID(firstResult.cid);
+            } else {
+              statusDisplay.textContent = `No results found for formula ${query}`;
+            }
+          } else {
+            // Name/synonyms search
+            const results = await chemicalService.searchMolecules(query, 8);
+            if (results.length > 0) {
+              const firstResult = results[0];
+              loadMoleculeByCID(firstResult.cid);
+            } else {
+              statusDisplay.textContent = `No results found for ${query}`;
+            }
+          }
+        }
+        dropdown.style.display = 'none';
+      }
+    }
+  });
+
   // Hide dropdown when clicking outside
   document.addEventListener('click', (e) => {
     if (!searchContainer.contains(e.target as Node)) {
       dropdown.style.display = 'none';
     }
   });
-  
-  // Quick load common molecules
-  const quickLoadFolder = loadingFolder.addFolder('⚡ Quick Load');
-  
-  quickLoadFolder.add({
-    loadWater: async () => {
-      try {
-        loadingParams.loadingStatus = 'Loading Water...';
-        log('Loading Water (CID: 962)');
-        
-        const molecularData = await chemicalService.fetchMoleculeByCID('962');
-        const moleculeName = 'mol_water';
-        drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-        
-        loadingParams.loadingStatus = 'Loaded: Water';
-        log('Successfully loaded Water');
-        
-        // Update reaction system dropdowns
-        updateMoleculeDropdowns(moleculeManager);
-        
-      } catch (error) {
-        loadingParams.loadingStatus = `Error loading Water: ${error}`;
-        log(`Failed to load Water: ${error}`);
-      }
+
+  // Helper function to load molecule by CID
+  const loadMoleculeByCID = async (cid: string) => {
+    try {
+      statusDisplay.textContent = 'Loading...';
+      log(`Loading molecule with CID: ${cid}`);
+      
+      const molecularData = await chemicalService.fetchMoleculeByCID(cid);
+      
+      // Draw the molecule
+      const moleculeName = `mol_${cid}`;
+      drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
+      
+      statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
+      log(`Successfully loaded ${molecularData.formula} (CID: ${molecularData.cid})`);
+      
+      // Update reaction system dropdowns
+      updateMoleculeDropdowns(moleculeManager);
+      
+      // Update cache stats
+      cacheStats.refreshStats();
+      
+    } catch (error) {
+      statusDisplay.textContent = `Error: ${error}`;
+      log(`Failed to load molecule: ${error}`);
     }
-  }, 'loadWater').name('Load Water');
+  };
+
+  // Helper function to load molecule by InChIKey
+  const loadMoleculeByInChIKey = async (inchikey: string) => {
+    try {
+      statusDisplay.textContent = 'Loading...';
+      log(`Loading molecule with InChIKey: ${inchikey}`);
+      
+      const molecularData = await chemicalService.fetchMoleculeByInChIKey(inchikey);
+      
+      // Draw the molecule
+      const moleculeName = `mol_${molecularData.cid}`;
+      drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
+      
+      statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
+      log(`Successfully loaded ${molecularData.formula} (CID: ${molecularData.cid})`);
+      
+      // Update reaction system dropdowns
+      updateMoleculeDropdowns(moleculeManager);
+      
+      // Update cache stats
+      cacheStats.refreshStats();
+      
+    } catch (error) {
+      statusDisplay.textContent = `Error: ${error}`;
+      log(`Failed to load molecule: ${error}`);
+    }
+  };
+
+  // Helper function to load molecule by SMILES
+  const loadMoleculeBySMILES = async (smiles: string) => {
+    try {
+      statusDisplay.textContent = 'Loading...';
+      log(`Loading molecule with SMILES: ${smiles}`);
+      
+      const molecularData = await chemicalService.fetchMoleculeBySMILES(smiles);
+      
+      // Draw the molecule
+      const moleculeName = `mol_${molecularData.cid}`;
+      drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
+      
+      statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
+      log(`Successfully loaded ${molecularData.formula} (CID: ${molecularData.cid})`);
+      
+      // Update reaction system dropdowns
+      updateMoleculeDropdowns(moleculeManager);
+      
+      // Update cache stats
+      cacheStats.refreshStats();
+      
+    } catch (error) {
+      statusDisplay.textContent = `Error: ${error}`;
+      log(`Failed to load molecule: ${error}`);
+    }
+  };
+
   
   
   // Cache stats
@@ -279,10 +438,9 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
       cacheStats.searches = stats.searches;
       cacheStats.lastUpdated = stats.lastUpdated;
     },
-    clearCache: () => {
-      simpleCacheService.clearCache();
+    refreshFromBackend: async () => {
+      await simpleCacheService.refreshFromBackend();
       cacheStats.refreshStats();
-      log('Cache cleared');
     },
     downloadCache: () => {
       simpleCacheService.downloadCache();
@@ -293,8 +451,8 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   cacheFolder.add(cacheStats, 'searches').name('Searches').listen();
   cacheFolder.add(cacheStats, 'lastUpdated').name('Last Updated').listen();
   cacheFolder.add(cacheStats, 'refreshStats').name('Refresh Stats');
+  cacheFolder.add(cacheStats, 'refreshFromBackend').name('🔄 Refresh from Backend');
   cacheFolder.add(cacheStats, 'downloadCache').name('Download Cache');
-  cacheFolder.add(cacheStats, 'clearCache').name('Clear Cache');
   
   // Initial stats
   cacheStats.refreshStats();
@@ -324,41 +482,7 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
     }
   }, 'loadFile').name('Load .mol File');
   
-  // Test molecule (simple water molecule)
-  fileFolder.add({
-    loadTestMolecule: () => {
-      try {
-        loadingParams.loadingStatus = 'Loading test molecule...';
-        
-        // Simple water molecule in MOL format
-        const waterMol = `water
-Generated by test
-  3  2  0  0  0  0  0  0  0  0999 V2000
-    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-    0.9572    0.0000    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-   -0.2393    0.9265    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  1  0  0  0  0
-  1  3  1  0  0  0  0
-M  END`;
-        
-        const moleculeName = 'test_water';
-        drawMolecule(waterMol, moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-        
-        loadingParams.loadingStatus = 'Loaded: Test Water';
-        log(`Successfully loaded test water molecule`);
-        updateMoleculeDropdowns(moleculeManager);
-        
-      } catch (error) {
-        loadingParams.loadingStatus = `Error: ${error}`;
-        log(`Failed to load test molecule: ${error}`);
-      }
-    }
-  }, 'loadTestMolecule').name('Load Test Water');
   
-  loadingFolder.open();
-  pubchemFolder.open();
-  quickLoadFolder.open();
-  fileFolder.open();
   
   log('Molecule loading controls added to GUI');
 }
@@ -588,14 +712,7 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
     }
   }, 100);
   
-  // Open folders (reaction system first, then time controls)
-  reactionFolder.open();
-  timeFolder.open();
-  envFolder.open();
-  collisionFolder.open();
-  moleculeFolder.open();
-  controlFolder.open();
-  statsFolder.open();
+  // All folders start closed for cleaner interface
   
   log('Reaction system controls added to GUI');
 }
@@ -643,7 +760,6 @@ function addEssentialDebugControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
   
   debugFolder.add(physicsStats, 'getStats').name('📊 Physics Stats');
   
-  debugFolder.open();
   log('Essential debug controls added to GUI');
 }
 

@@ -13,6 +13,8 @@ MolMod is a web application for visualizing and interacting with 3D molecular st
 * Interactive 3D scene controls
 * GUI for molecule selection and manipulation
 * Multiple molecules move and interact
+* PubChem integration with smart caching
+* Real-time molecular data fetching
 
 ## Configuration Directions
 
@@ -35,6 +37,12 @@ vite dev
 npm run dev
 ```
 
+### Start backend server (for cache API)
+
+```
+npm run backend
+```
+
 
 ### Deploy the application to GitHub Pages:
 
@@ -49,6 +57,32 @@ npm run deploy
 ```
 sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
 ```
+
+</details>
+
+<details><summary>Cache System (Click to expand)</summary>
+
+### Development Mode
+- Backend server saves cache to project files
+- Real-time updates to `public/cache/chemical_cache.json`
+- PubChem API integration with throttling
+
+### Production Mode  
+- Cache loaded from localStorage on startup
+- All processing done in memory
+- Updates saved back to localStorage automatically
+- Download cache as JSON file (optional)
+- Works on static hosting (GitHub Pages)
+
+### Cache Workflow
+1. **User searches for molecule** → Check cache first
+2. **Cache miss** → Fetch from PubChem API (with throttling)
+3. **Process molecule data** → Parse MOL file, extract properties
+4. **Update in-memory cache** → Store molecule and search results
+5. **Save to storage**:
+   - **Development**: POST to backend → Write to project file
+   - **Production**: Save to localStorage
+6. **Future searches** → Load from cache (instant)
 
 </details>
 
@@ -78,32 +112,7 @@ sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
 
 </details>
 
-## Todo List
 
-<details><summary>Backend Changes (click to expand)</summary>
-
-- move to gitlab? Use a sync task to keep both updated?
-- Clean up Documentation and javadoc
-- Clean up readme
-- fix github pages being unable to access script.json or anything in assets
-- switch to typescript
-- Move deployment into a docker container!
-- Add prettier formatter
-- Add code linter for static analysis
-- Make bot for fetching .mol files from ChemSpider
-  - iterate over to get many
-- Export .mol
-
-</details>
-<details><summary>Frontend Changes (click to expand)</summary>
-
-- User can enter moler concentrations of inputs, and reaction rate makes the finished one
-- Add a confined space parameter so molecules bounce back toward center and dont fly off to infinity and beyond.
-- add Favicon
-  - https://stackoverflow.com/questions/1837261/how-to-animate-a-favicon
-  - https://favicon.io/
-
-</details>
 
 ## Deliverables
 
