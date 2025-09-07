@@ -27,6 +27,8 @@ export class SimpleCacheService {
   private cacheData: CacheData;
   private readonly VERSION = '1.0.0';
   private readonly CACHE_URL = 'data/cache/chemical_cache.json';
+  private readonly LOCALSTORAGE_KEY = 'molMod_cache';
+  private isDev: boolean;
 
   constructor() {
     this.cacheData = {
@@ -39,20 +41,33 @@ export class SimpleCacheService {
         totalSearches: 0
       }
     };
+    
+    // Simple dev detection
+    this.isDev = window.location.hostname === 'localhost' || window.location.port === '5173';
+    log(`Running in ${this.isDev ? 'development' : 'production'} mode`);
+    
     this.loadCache();
   }
 
   /**
-   * Load cache from JSON file
+   * Load cache from file or localStorage
    */
   private async loadCache(): Promise<void> {
     try {
-      const response = await fetch(this.CACHE_URL);
-      if (response.ok) {
-        this.cacheData = await response.json();
-        log(`Loaded cache: ${this.cacheData.metadata.totalMolecules} molecules, ${this.cacheData.metadata.totalSearches} searches`);
+      if (this.isDev) {
+        // Try to load from file first
+        const response = await fetch(this.CACHE_URL);
+        if (response.ok) {
+          this.cacheData = await response.json();
+          log(`Loaded cache from file: ${this.cacheData.metadata.totalMolecules} molecules`);
+        }
       } else {
-        log('No cache file found, starting fresh');
+        // Load from localStorage
+        const stored = localStorage.getItem(this.LOCALSTORAGE_KEY);
+        if (stored) {
+          this.cacheData = JSON.parse(stored);
+          log(`Loaded cache from localStorage: ${this.cacheData.metadata.totalMolecules} molecules`);
+        }
       }
     } catch (error) {
       log(`Error loading cache: ${error}`);
@@ -60,30 +75,35 @@ export class SimpleCacheService {
   }
 
   /**
-   * Save cache to downloadable JSON file
+   * Save cache using dev server API or localStorage
    */
-  private saveCache(): void {
+  private async saveCache(): Promise<void> {
     try {
       this.cacheData.metadata.lastUpdated = new Date().toISOString();
       this.cacheData.metadata.totalMolecules = Object.keys(this.cacheData.molecules).length;
       this.cacheData.metadata.totalSearches = Object.keys(this.cacheData.searches).length;
 
-      // Create downloadable file
-      const jsonString = JSON.stringify(this.cacheData, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      if (this.isDev) {
+        // Try to save to dev server first
+        try {
+          const response = await fetch('http://localhost:3000/api/save-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.cacheData)
+          });
+          
+          if (response.ok) {
+            log(`✅ Cache saved to project file: ${this.cacheData.metadata.totalMolecules} molecules`);
+            return;
+          }
+        } catch (error) {
+          log('Dev server not available, falling back to localStorage');
+        }
+      }
       
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'data/cache/chemical_cache.json';
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      log(`Cache saved: ${this.cacheData.metadata.totalMolecules} molecules, ${this.cacheData.metadata.totalSearches} searches`);
+      // Fallback to localStorage
+      localStorage.setItem(this.LOCALSTORAGE_KEY, JSON.stringify(this.cacheData, null, 2));
+      log(`Cache saved to localStorage: ${this.cacheData.metadata.totalMolecules} molecules`);
     } catch (error) {
       log(`Error saving cache: ${error}`);
     }
@@ -101,7 +121,7 @@ export class SimpleCacheService {
    */
   setMolecule(cid: string, data: MolecularData): void {
     this.cacheData.molecules[cid] = data;
-    this.saveCache();
+    this.saveCache(); // Fire and forget
   }
 
   /**
@@ -118,7 +138,7 @@ export class SimpleCacheService {
   setSearchResults(query: string, results: SearchResult[]): void {
     const normalizedQuery = query.toLowerCase();
     this.cacheData.searches[normalizedQuery] = results;
-    this.saveCache();
+    this.saveCache(); // Fire and forget
   }
 
   /**
@@ -157,10 +177,45 @@ export class SimpleCacheService {
   }
 
   /**
+   * Download cache as JSON file (manual download)
+   */
+  downloadCache(): void {
+    try {
+      const jsonString = JSON.stringify(this.cacheData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `chemical_cache_${new Date().toISOString().split('T')[0]}.json`;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      log('Cache downloaded as JSON file');
+    } catch (error) {
+      log(`Error downloading cache: ${error}`);
+    }
+  }
+
+  /**
    * Export cache as JSON string
    */
   exportCache(): string {
     return JSON.stringify(this.cacheData, null, 2);
+  }
+
+  /**
+   * Get environment info for debugging
+   */
+  getEnvironmentInfo(): { isDev: boolean; method: string } {
+    return {
+      isDev: this.isDev,
+      method: 'localStorage'
+    };
   }
 }
 
