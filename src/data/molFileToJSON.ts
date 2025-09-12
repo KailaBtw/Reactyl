@@ -8,7 +8,7 @@ interface MolHeader {
 
 interface MolCounts {
   molecules: string; // Number of atoms
-  bonds: string;     // Number of bonds
+  bonds: string; // Number of bonds
   lists: string;
   chiral: boolean;
   stext: string;
@@ -84,15 +84,15 @@ interface PubChemMetadata {
  * }
  */
 export function molFileToJSON(molFile: string): MolObject {
-  let molObj: MolObject = {} as MolObject; // Initialize the object to store the parsed data.
-  
+  const molObj: MolObject = {} as MolObject; // Initialize the object to store the parsed data.
+
   // Handle PubChem's extended format - extract just the MOL part
   let molContent = molFile;
   const molEndIndex = molFile.indexOf('$$$$');
   if (molEndIndex !== -1) {
     molContent = molFile.substring(0, molEndIndex + 4); // Include the $$$$ line
   }
-  
+
   const split: string[] = molContent.split('\n'); // Split the molFile content into lines.
 
   // --- Parse Header Section ---
@@ -112,15 +112,15 @@ export function molFileToJSON(molFile: string): MolObject {
   }
 
   molObj.counts.molecules = countChunks[0].trim(); // Number of atoms.
-  molObj.counts.bonds = countChunks[1].trim();     // Number of bonds.
+  molObj.counts.bonds = countChunks[1].trim(); // Number of bonds.
   molObj.counts.lists = countChunks[2].trim();
-  molObj.counts.chiral = countChunks[4].trim() == '1' ? true : false; // Chiral flag.
-  molObj.counts.stext = countChunks[5];           // Stext
+  molObj.counts.chiral = countChunks[4].trim() === '1'; // Chiral flag.
+  molObj.counts.stext = countChunks[5]; // Stext
 
   // --- Parse Atom Data ---
   const atomsArray: Atom[] = [];
   // Iterate through the lines containing atom data. Starts at line 5 (index 4).
-  for (let i = 4; i < 4 + parseInt(molObj.counts.molecules); i++) {
+  for (let i = 4; i < 4 + parseInt(molObj.counts.molecules, 10); i++) {
     const atom: Atom = {} as Atom;
     atom.position = {} as Atom['position'];
     // Extract x, y, z coordinates from the line (character positions are fixed in .mol format).
@@ -135,8 +135,8 @@ export function molFileToJSON(molFile: string): MolObject {
   // --- Parse Bond Data ---
   const bondsArray: [string, string][] = [];
   // Iterate through the lines containing bond data.
-  const bondsStartIndex: number = 4 + parseInt(molObj.counts.molecules);
-  const bondsEndIndex: number = bondsStartIndex + parseInt(molObj.counts.bonds);
+  const bondsStartIndex: number = 4 + parseInt(molObj.counts.molecules, 10);
+  const bondsEndIndex: number = bondsStartIndex + parseInt(molObj.counts.bonds, 10);
   for (let i = bondsStartIndex; i < bondsEndIndex; i++) {
     // Extract the atom indices that are connected by the bond.
     const bond: [string, string] = [split[i].slice(0, 3).trim(), split[i].slice(3, 6).trim()];
@@ -152,17 +152,17 @@ export function molFileToJSON(molFile: string): MolObject {
  */
 export function extractPubChemMetadata(molFile: string): PubChemMetadata {
   const metadata: PubChemMetadata = {};
-  
+
   // Look for PubChem metadata after the MOL structure
   const lines = molFile.split('\n');
   let inPropertyTable = false;
-  
+
   for (const line of lines) {
     if (line.includes('PropertyTable')) {
       inPropertyTable = true;
       continue;
     }
-    
+
     if (inPropertyTable) {
       if (line.includes('CID')) {
         const match = line.match(/CID\s+(\d+)/);
@@ -182,6 +182,6 @@ export function extractPubChemMetadata(molFile: string): PubChemMetadata {
       }
     }
   }
-  
+
   return metadata;
-} 
+}

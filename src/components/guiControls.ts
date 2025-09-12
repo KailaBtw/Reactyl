@@ -3,23 +3,23 @@
  * Focused on reaction mechanics with minimal debug clutter
  */
 
-import * as THREE from "three";
-import * as dat from "dat.gui";
-import { MoleculeManager } from "../types";
-import { log } from "../utils/debug";
-import { physicsEngine } from "../physics/cannonPhysicsEngine";
-import { getReactionType } from "../chemistry/reactionDatabase";
-import { CollisionTrajectoryController } from "../physics/collisionTrajectoryController";
-import { ChemicalDataService } from "../chemistry/chemicalDataService";
-import { drawMolecule } from "./moleculeDrawer";
-import { simpleCacheService } from "../services/simpleCacheService";
+import * as dat from 'dat.gui';
+import * as THREE from 'three';
+import { ChemicalDataService } from '../chemistry/chemicalDataService';
+import { getReactionType } from '../chemistry/reactionDatabase';
+import { physicsEngine } from '../physics/cannonPhysicsEngine';
+import { CollisionTrajectoryController } from '../physics/collisionTrajectoryController';
+import { simpleCacheService } from '../services/simpleCacheService';
+import type { MoleculeManager } from '../types';
+import { log } from '../utils/debug';
+import { drawMolecule } from './moleculeDrawer';
 
 /**
  * Sets up the main GUI for the reaction system
  */
 export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene): void {
   const gui = new dat.GUI({ width: 300 });
-  
+
   // --- Molecule Loading Controls ---
   addMoleculeLoadingControls(gui, scene, moleculeManager);
 
@@ -33,36 +33,39 @@ export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene)
 /**
  * Molecule loading controls
  */
-function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
+function addMoleculeLoadingControls(
+  gui: dat.GUI,
+  scene: THREE.Scene,
+  moleculeManager: MoleculeManager
+): void {
   const loadingFolder = gui;
-  
+
   // Initialize chemical data service
   const chemicalService = new ChemicalDataService();
-  
+
   // Loading parameters
   const loadingParams = {
     searchQuery: '', // Unified search for name, CID, or formula
-    searchResults: [] as Array<{cid: string, name: string, formula: string}>,
-    selectedResult: null as {cid: string, name: string, formula: string} | null
+    searchResults: [] as Array<{ cid: string; name: string; formula: string }>,
+    selectedResult: null as { cid: string; name: string; formula: string } | null,
   };
-  
+
   // PubChem loading
   const pubchemFolder = loadingFolder;
-  
-  
+
   // Search functionality with dropdown
   const searchContainer = document.createElement('div');
   searchContainer.style.position = 'relative';
   searchContainer.style.width = '100%';
   searchContainer.style.marginTop = '10px';
-  
+
   const searchLabel = document.createElement('div');
   searchLabel.textContent = 'Search (Name, CID, Formula, etc';
   searchLabel.style.color = '#fff';
   searchLabel.style.fontSize = '12px';
   searchLabel.style.marginBottom = '5px';
   searchLabel.style.fontWeight = 'bold';
-  
+
   const searchInput = document.createElement('input');
   searchInput.type = 'text';
   searchInput.placeholder = 'e.g., benzene, 241, C6H6, C1=CC=CC=C1, etc...';
@@ -82,7 +85,7 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   statusDisplay.style.marginBottom = '10px';
   statusDisplay.style.minHeight = '12px';
   statusDisplay.textContent = 'Ready';
-  
+
   const dropdown = document.createElement('div');
   dropdown.style.position = 'absolute';
   dropdown.style.top = '100%';
@@ -96,12 +99,12 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   dropdown.style.zIndex = '1000';
   dropdown.style.display = 'none';
   dropdown.style.borderRadius = '0 0 3px 3px';
-  
+
   searchContainer.appendChild(searchLabel);
   searchContainer.appendChild(searchInput);
   searchContainer.appendChild(statusDisplay);
   searchContainer.appendChild(dropdown);
-  
+
   // Add search container directly to the PubChem folder
   (pubchemFolder as any).__ul.appendChild(searchContainer);
 
@@ -114,18 +117,18 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   const isSMILES = (query: string): boolean => {
     // SMILES: must contain typical SMILES syntax
     // Only match if it contains actual SMILES-specific characters
-    return /[\[\]\(\)=#@\\\/\.%]/.test(query);
+    return /[[\]()=#@\\/.%]/.test(query);
   };
 
   const isFormula = (query: string): boolean => {
     // Formula: contains chemical elements (capital letter + optional lowercase)
     return /^[A-Z][a-z]?\d*([A-Z][a-z]?\d*)*$/.test(query) && query.length > 1;
   };
-  
+
   // Sync search input with GUI parameter
-  searchInput.addEventListener('input', (e) => {
+  searchInput.addEventListener('input', e => {
     loadingParams.searchQuery = (e.target as HTMLInputElement).value;
-    
+
     // Debounce search
     clearTimeout((loadingParams as any).searchTimeout);
     (loadingParams as any).searchTimeout = setTimeout(async () => {
@@ -133,21 +136,27 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
       if (query && query.length >= 1) {
         statusDisplay.textContent = 'Searching...';
         log(`Searching for: ${query}`);
-        
+
         try {
-          let results: Array<{cid: string, name: string, formula: string}> = [];
-          
+          let results: Array<{ cid: string; name: string; formula: string }> = [];
+
           // Enhanced search routing - detect input type
           if (/^\d+$/.test(query)) {
             // CID search (numeric)
             log(`Detected CID search: ${query}`);
             try {
               const molecularData = await chemicalService.fetchMoleculeByCID(query);
-              results = [{
-                cid: query,
-                name: molecularData.title || molecularData.name || molecularData.formula || `Molecule ${query}`,
-                formula: molecularData.formula || 'Unknown'
-              }];
+              results = [
+                {
+                  cid: query,
+                  name:
+                    molecularData.title ||
+                    molecularData.name ||
+                    molecularData.formula ||
+                    `Molecule ${query}`,
+                  formula: molecularData.formula || 'Unknown',
+                },
+              ];
               statusDisplay.textContent = `Found CID ${query}`;
             } catch (error) {
               statusDisplay.textContent = `CID ${query} not found`;
@@ -158,11 +167,17 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
             log(`Detected InChIKey search: ${query}`);
             try {
               const molecularData = await chemicalService.fetchMoleculeByInChIKey(query);
-              results = [{
-                cid: molecularData.cid.toString(),
-                name: molecularData.title || molecularData.name || molecularData.formula || `InChIKey ${query}`,
-                formula: molecularData.formula || 'Unknown'
-              }];
+              results = [
+                {
+                  cid: molecularData.cid.toString(),
+                  name:
+                    molecularData.title ||
+                    molecularData.name ||
+                    molecularData.formula ||
+                    `InChIKey ${query}`,
+                  formula: molecularData.formula || 'Unknown',
+                },
+              ];
               statusDisplay.textContent = `Found InChIKey ${query}`;
             } catch (error) {
               statusDisplay.textContent = `InChIKey ${query} not found`;
@@ -173,11 +188,17 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
             log(`Detected SMILES search: ${query}`);
             try {
               const molecularData = await chemicalService.fetchMoleculeBySMILES(query);
-              results = [{
-                cid: molecularData.cid.toString(),
-                name: molecularData.title || molecularData.name || molecularData.formula || `SMILES ${query}`,
-                formula: molecularData.formula || 'Unknown'
-              }];
+              results = [
+                {
+                  cid: molecularData.cid.toString(),
+                  name:
+                    molecularData.title ||
+                    molecularData.name ||
+                    molecularData.formula ||
+                    `SMILES ${query}`,
+                  formula: molecularData.formula || 'Unknown',
+                },
+              ];
               statusDisplay.textContent = `Found SMILES ${query}`;
             } catch (error) {
               statusDisplay.textContent = `SMILES ${query} not found`;
@@ -196,12 +217,12 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
             statusDisplay.textContent = `Found ${results.length} results`;
             log(`Found ${results.length} results for: ${query}`);
           }
-          
+
           loadingParams.searchResults = results;
-          
+
           // Update dropdown
           updateDropdown(results);
-          
+
           // Update cache stats
           cacheStats.refreshStats();
         } catch (error) {
@@ -217,81 +238,90 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
       }
     }, 500);
   });
-  
+
   // Update dropdown with results
-  const updateDropdown = (results: Array<{cid: string, name: string, formula: string}>) => {
+  const updateDropdown = (results: Array<{ cid: string; name: string; formula: string }>) => {
     dropdown.innerHTML = '';
-    
+
     if (results.length === 0) {
       dropdown.style.display = 'none';
       return;
     }
-    
-    results.forEach((result) => {
+
+    results.forEach(result => {
       const item = document.createElement('div');
       item.style.padding = '8px 12px';
       item.style.cursor = 'pointer';
       item.style.borderBottom = '1px solid #444';
       item.style.fontSize = '11px';
-      
+
       // Enhanced display with name, formula, synonyms, and CID
       item.innerHTML = `
         <div style="font-weight: bold; color: #4CAF50;">${result.name}</div>
         <div style="color: #81C784; font-size: 10px;">${result.formula}</div>
         <div style="color: #B0BEC5; font-size: 9px;">CID: ${result.cid}</div>
       `;
-      
+
       item.addEventListener('mouseenter', () => {
         item.style.backgroundColor = '#444';
       });
-      
+
       item.addEventListener('mouseleave', () => {
         item.style.backgroundColor = 'transparent';
       });
-      
+
       item.addEventListener('click', () => {
         loadingParams.selectedResult = result;
         searchInput.value = result.name;
         loadingParams.searchQuery = result.name;
         dropdown.style.display = 'none';
-        
+
         log(`Selected: ${result.name} (${result.formula}) - CID: ${result.cid}`);
-        
+
         // Auto-load the selected molecule
         try {
           statusDisplay.textContent = 'Loading...';
           log(`Loading selected molecule: ${result.name} (CID: ${result.cid})`);
-          
-          chemicalService.fetchMoleculeByCID(result.cid).then(molecularData => {
-            const moleculeName = `mol_${result.cid}`;
-            drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-            
-            statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
-            log(`Successfully loaded molecule: ${molecularData.formula}`);
-            
-            // Update reaction system dropdowns
-            updateMoleculeDropdowns(moleculeManager);
-            
-            // Update cache stats
-            cacheStats.refreshStats();
-          }).catch(error => {
-            statusDisplay.textContent = `Error: ${error}`;
-            log(`Failed to load molecule: ${error}`);
-          });
+
+          chemicalService
+            .fetchMoleculeByCID(result.cid)
+            .then(molecularData => {
+              const moleculeName = `mol_${result.cid}`;
+              drawMolecule(
+                molecularData.mol3d || '',
+                moleculeManager,
+                scene,
+                { x: 0, y: 0, z: 0 },
+                moleculeName
+              );
+
+              statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
+              log(`Successfully loaded molecule: ${molecularData.formula}`);
+
+              // Update reaction system dropdowns
+              updateMoleculeDropdowns(moleculeManager);
+
+              // Update cache stats
+              cacheStats.refreshStats();
+            })
+            .catch(error => {
+              statusDisplay.textContent = `Error: ${error}`;
+              log(`Failed to load molecule: ${error}`);
+            });
         } catch (error) {
           statusDisplay.textContent = `Error: ${error}`;
           log(`Failed to load molecule: ${error}`);
         }
       });
-      
+
       dropdown.appendChild(item);
     });
-    
+
     dropdown.style.display = 'block';
   };
-  
+
   // Add Enter key support for direct loading
-  searchInput.addEventListener('keydown', async (e) => {
+  searchInput.addEventListener('keydown', async e => {
     if (e.key === 'Enter') {
       const query = loadingParams.searchQuery.trim();
       if (query) {
@@ -333,7 +363,7 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   });
 
   // Hide dropdown when clicking outside
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', e => {
     if (!searchContainer.contains(e.target as Node)) {
       dropdown.style.display = 'none';
     }
@@ -344,22 +374,27 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
     try {
       statusDisplay.textContent = 'Loading...';
       log(`Loading molecule with CID: ${cid}`);
-      
+
       const molecularData = await chemicalService.fetchMoleculeByCID(cid);
-      
+
       // Draw the molecule
       const moleculeName = `mol_${cid}`;
-      drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-      
+      drawMolecule(
+        molecularData.mol3d || '',
+        moleculeManager,
+        scene,
+        { x: 0, y: 0, z: 0 },
+        moleculeName
+      );
+
       statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
       log(`Successfully loaded ${molecularData.formula} (CID: ${molecularData.cid})`);
-      
+
       // Update reaction system dropdowns
       updateMoleculeDropdowns(moleculeManager);
-      
+
       // Update cache stats
       cacheStats.refreshStats();
-      
     } catch (error) {
       statusDisplay.textContent = `Error: ${error}`;
       log(`Failed to load molecule: ${error}`);
@@ -371,22 +406,27 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
     try {
       statusDisplay.textContent = 'Loading...';
       log(`Loading molecule with InChIKey: ${inchikey}`);
-      
+
       const molecularData = await chemicalService.fetchMoleculeByInChIKey(inchikey);
-      
+
       // Draw the molecule
       const moleculeName = `mol_${molecularData.cid}`;
-      drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-      
+      drawMolecule(
+        molecularData.mol3d || '',
+        moleculeManager,
+        scene,
+        { x: 0, y: 0, z: 0 },
+        moleculeName
+      );
+
       statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
       log(`Successfully loaded ${molecularData.formula} (CID: ${molecularData.cid})`);
-      
+
       // Update reaction system dropdowns
       updateMoleculeDropdowns(moleculeManager);
-      
+
       // Update cache stats
       cacheStats.refreshStats();
-      
     } catch (error) {
       statusDisplay.textContent = `Error: ${error}`;
       log(`Failed to load molecule: ${error}`);
@@ -398,30 +438,33 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
     try {
       statusDisplay.textContent = 'Loading...';
       log(`Loading molecule with SMILES: ${smiles}`);
-      
+
       const molecularData = await chemicalService.fetchMoleculeBySMILES(smiles);
-      
+
       // Draw the molecule
       const moleculeName = `mol_${molecularData.cid}`;
-      drawMolecule(molecularData.mol3d || '', moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-      
+      drawMolecule(
+        molecularData.mol3d || '',
+        moleculeManager,
+        scene,
+        { x: 0, y: 0, z: 0 },
+        moleculeName
+      );
+
       statusDisplay.textContent = `Loaded: ${molecularData.formula}`;
       log(`Successfully loaded ${molecularData.formula} (CID: ${molecularData.cid})`);
-      
+
       // Update reaction system dropdowns
       updateMoleculeDropdowns(moleculeManager);
-      
+
       // Update cache stats
       cacheStats.refreshStats();
-      
     } catch (error) {
       statusDisplay.textContent = `Error: ${error}`;
       log(`Failed to load molecule: ${error}`);
     }
   };
 
-  
-  
   // Cache stats
   const cacheFolder = loadingFolder.addFolder('💾 Cache Stats');
   const cacheStats = {
@@ -440,51 +483,60 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
     },
     downloadCache: () => {
       simpleCacheService.downloadCache();
-    }
+    },
   };
-  
+
   cacheFolder.add(cacheStats, 'molecules').name('Molecules').listen();
   cacheFolder.add(cacheStats, 'searches').name('Searches').listen();
   cacheFolder.add(cacheStats, 'lastUpdated').name('Last Updated').listen();
   cacheFolder.add(cacheStats, 'refreshStats').name('Refresh Stats');
   cacheFolder.add(cacheStats, 'refreshFromBackend').name('🔄 Refresh from Backend');
   cacheFolder.add(cacheStats, 'downloadCache').name('Download Cache');
-  
+
   // Initial stats
   cacheStats.refreshStats();
-  
+
   // File loading
   const fileFolder = loadingFolder.addFolder('📁 Local Files');
-  fileFolder.add({
-    loadFile: () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.mol';
-      input.onchange = (event) => {
-        const file = (event.target as HTMLInputElement).files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const molContent = e.target?.result as string;
-            const moleculeName = `mol_${file.name.replace('.mol', '')}`;
-            drawMolecule(molContent, moleculeManager, scene, { x: 0, y: 0, z: 0 }, moleculeName);
-            log(`Loaded molecule from file: ${file.name}`);
-            updateMoleculeDropdowns(moleculeManager);
+  fileFolder
+    .add(
+      {
+        loadFile: () => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.mol';
+          input.onchange = event => {
+            const file = (event.target as HTMLInputElement).files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = e => {
+                const molContent = e.target?.result as string;
+                const moleculeName = `mol_${file.name.replace('.mol', '')}`;
+                drawMolecule(
+                  molContent,
+                  moleculeManager,
+                  scene,
+                  { x: 0, y: 0, z: 0 },
+                  moleculeName
+                );
+                log(`Loaded molecule from file: ${file.name}`);
+                updateMoleculeDropdowns(moleculeManager);
+              };
+              reader.readAsText(file);
+            }
           };
-          reader.readAsText(file);
-        }
-      };
-      input.click();
-    }
-  }, 'loadFile').name('Load .mol File');
-  
-  
-  
+          input.click();
+        },
+      },
+      'loadFile'
+    )
+    .name('Load .mol File');
+
   log('Molecule loading controls added to GUI');
 }
 
 // Global reference to refresh function (will be set by reaction system)
-let globalRefreshMoleculeDropdowns: (() => void) | null = null;
+const globalRefreshMoleculeDropdowns: (() => void) | null = null;
 
 /**
  * Update molecule dropdowns in reaction system
@@ -500,15 +552,19 @@ function updateMoleculeDropdowns(_moleculeManager: MoleculeManager): void {
 /**
  * Main reaction system controls
  */
-function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
+function addReactionSystemControls(
+  gui: dat.GUI,
+  scene: THREE.Scene,
+  moleculeManager: MoleculeManager
+): void {
   const reactionFolder = gui.addFolder('🧪 Reaction System');
-  
+
   // Initialize reaction system components
   const trajectoryController = new CollisionTrajectoryController(scene);
-  
+
   // Get available molecules (will be updated dynamically)
-  let availableMolecules = moleculeManager.getAllMolecules().map(mol => mol.name);
-  
+  const availableMolecules = moleculeManager.getAllMolecules().map(mol => mol.name);
+
   // Reaction parameters
   const reactionParams = {
     reactionType: 'SN2_REACTION',
@@ -517,9 +573,9 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
     impactParameter: 0.0,
     relativeVelocity: 5.0,
     substrateMolecule: availableMolecules[0] || '',
-    nucleophileMolecule: availableMolecules[1] || ''
+    nucleophileMolecule: availableMolecules[1] || '',
   };
-  
+
   // Time controls (at the top)
   const timeControls = {
     isPlaying: false,
@@ -539,24 +595,28 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
       physicsEngine.pause();
       trajectoryController.reset();
       log('Reaction simulation reset');
-    }
+    },
   };
 
   const timeFolder = reactionFolder.addFolder('⏱️ Time Controls');
-  
-  const timeScaleController = timeFolder.add(timeControls, 'timeScale', 0.1, 3.0).name('Time Scale');
+
+  const timeScaleController = timeFolder
+    .add(timeControls, 'timeScale', 0.1, 3.0)
+    .name('Time Scale');
   timeScaleController.onChange((value: number) => {
     physicsEngine.setTimeScale(value);
   });
-  
+
   timeFolder.add(timeControls, 'play').name('▶️ Play');
   timeFolder.add(timeControls, 'pause').name('⏸️ Pause');
   timeFolder.add(timeControls, 'reset').name('⏹️ Reset');
 
   // Environment parameters
   const envFolder = reactionFolder.addFolder('🌡️ Environment');
-  const tempController = envFolder.add(reactionParams, 'temperature', 100, 600).name('Temperature (K)');
-  
+  const tempController = envFolder
+    .add(reactionParams, 'temperature', 100, 600)
+    .name('Temperature (K)');
+
   // Connect temperature to all rotation controllers
   tempController.onChange((value: number) => {
     // Update all molecule rotation controllers with new temperature
@@ -569,25 +629,29 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
     });
     log(`Temperature updated to ${value}K for all molecules`);
   });
-  
+
   // Collision parameters
   const collisionFolder = reactionFolder.addFolder('💥 Collision Parameters');
   collisionFolder.add(reactionParams, 'approachAngle', 0, 360).name('Approach Angle (°)');
   collisionFolder.add(reactionParams, 'impactParameter', 0, 5).name('Impact Parameter');
   collisionFolder.add(reactionParams, 'relativeVelocity', 1, 20).name('Relative Velocity');
-  
+
   // Molecule selection
   const moleculeFolder = reactionFolder.addFolder('🧬 Molecules');
-  const substrateController = moleculeFolder.add(reactionParams, 'substrateMolecule', availableMolecules).name('Substrate');
-  const nucleophileController = moleculeFolder.add(reactionParams, 'nucleophileMolecule', availableMolecules).name('Nucleophile');
-  
+  const substrateController = moleculeFolder
+    .add(reactionParams, 'substrateMolecule', availableMolecules)
+    .name('Substrate');
+  const nucleophileController = moleculeFolder
+    .add(reactionParams, 'nucleophileMolecule', availableMolecules)
+    .name('Nucleophile');
+
   // Function to refresh molecule dropdowns
   const refreshMoleculeDropdowns = () => {
     const newMolecules = moleculeManager.getAllMolecules().map(mol => mol.name);
     if (newMolecules.length > 0) {
       substrateController.options(newMolecules);
       nucleophileController.options(newMolecules);
-      
+
       // Set default selections if current ones are empty
       if (!reactionParams.substrateMolecule && newMolecules[0]) {
         reactionParams.substrateMolecule = newMolecules[0];
@@ -595,133 +659,155 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
       if (!reactionParams.nucleophileMolecule && newMolecules[1]) {
         reactionParams.nucleophileMolecule = newMolecules[1];
       }
-      
+
       log(`Updated molecule dropdowns: ${newMolecules.join(', ')}`);
     }
   };
-  
+
   // Add refresh button
-  moleculeFolder.add({
-    refreshDropdowns: () => {
-      refreshMoleculeDropdowns();
-    }
-  }, 'refreshDropdowns').name('🔄 Refresh Dropdowns');
-  
+  moleculeFolder
+    .add(
+      {
+        refreshDropdowns: () => {
+          refreshMoleculeDropdowns();
+        },
+      },
+      'refreshDropdowns'
+    )
+    .name('🔄 Refresh Dropdowns');
+
   // Reaction control buttons
   const controlFolder = reactionFolder.addFolder('🎮 Controls');
-  
-  controlFolder.add({
-    setupCollision: () => {
-      const substrate = moleculeManager.getMolecule(reactionParams.substrateMolecule);
-      const nucleophile = moleculeManager.getMolecule(reactionParams.nucleophileMolecule);
-      
-      if (!substrate || !nucleophile) {
-        log('Please select both substrate and nucleophile molecules');
-        return;
-      }
-      
-      const reactionType = getReactionType(reactionParams.reactionType);
-      if (!reactionType) {
-        log('Invalid reaction type');
-        return;
-      }
-      
-      // Setup collision
-      trajectoryController.setupCollision({
-        substrate,
-        nucleophile,
-        approachAngle: reactionParams.approachAngle,
-        impactParameter: reactionParams.impactParameter,
-        relativeVelocity: reactionParams.relativeVelocity,
-        temperature: reactionParams.temperature
-      });
-      
-      // Set reaction type for detection (placeholder)
-      log(`Reaction type set: ${reactionType.name}`);
-      
-      // Auto-pause after setup
-      timeControls.isPlaying = false;
-      
-      log(`Collision setup: ${substrate.name} + ${nucleophile.name} (${reactionType.name})`);
-      log('Ready to play - click ▶️ Play to start simulation');
-    }
-  }, 'setupCollision').name('Setup Collision');
-  
-  controlFolder.add({
-    startReaction: () => {
-      const substrate = moleculeManager.getMolecule(reactionParams.substrateMolecule);
-      const nucleophile = moleculeManager.getMolecule(reactionParams.nucleophileMolecule);
-      
-      if (!substrate || !nucleophile) {
-        log('Please select both substrate and nucleophile molecules first');
-        return;
-      }
-      
-      // Placeholder for reaction animation
-      log('Starting reaction animation...');
-      timeControls.isPlaying = true;
-      log('Reaction animation started');
-    }
-  }, 'startReaction').name('Start Reaction Animation');
-  
-  controlFolder.add({
-    stopReaction: () => {
-      trajectoryController.reset();
-      timeControls.isPlaying = false;
-      log('Reaction stopped');
-    }
-  }, 'stopReaction').name('Stop Reaction');
-  
+
+  controlFolder
+    .add(
+      {
+        setupCollision: () => {
+          const substrate = moleculeManager.getMolecule(reactionParams.substrateMolecule);
+          const nucleophile = moleculeManager.getMolecule(reactionParams.nucleophileMolecule);
+
+          if (!substrate || !nucleophile) {
+            log('Please select both substrate and nucleophile molecules');
+            return;
+          }
+
+          const reactionType = getReactionType(reactionParams.reactionType);
+          if (!reactionType) {
+            log('Invalid reaction type');
+            return;
+          }
+
+          // Setup collision
+          trajectoryController.setupCollision({
+            substrate,
+            nucleophile,
+            approachAngle: reactionParams.approachAngle,
+            impactParameter: reactionParams.impactParameter,
+            relativeVelocity: reactionParams.relativeVelocity,
+            temperature: reactionParams.temperature,
+          });
+
+          // Set reaction type for detection (placeholder)
+          log(`Reaction type set: ${reactionType.name}`);
+
+          // Auto-pause after setup
+          timeControls.isPlaying = false;
+
+          log(`Collision setup: ${substrate.name} + ${nucleophile.name} (${reactionType.name})`);
+          log('Ready to play - click ▶️ Play to start simulation');
+        },
+      },
+      'setupCollision'
+    )
+    .name('Setup Collision');
+
+  controlFolder
+    .add(
+      {
+        startReaction: () => {
+          const substrate = moleculeManager.getMolecule(reactionParams.substrateMolecule);
+          const nucleophile = moleculeManager.getMolecule(reactionParams.nucleophileMolecule);
+
+          if (!substrate || !nucleophile) {
+            log('Please select both substrate and nucleophile molecules first');
+            return;
+          }
+
+          // Placeholder for reaction animation
+          log('Starting reaction animation...');
+          timeControls.isPlaying = true;
+          log('Reaction animation started');
+        },
+      },
+      'startReaction'
+    )
+    .name('Start Reaction Animation');
+
+  controlFolder
+    .add(
+      {
+        stopReaction: () => {
+          trajectoryController.reset();
+          timeControls.isPlaying = false;
+          log('Reaction stopped');
+        },
+      },
+      'stopReaction'
+    )
+    .name('Stop Reaction');
+
   // Real-time stats
   const statsDisplay = {
     distance: 0,
     relativeVelocity: 0,
     timeToCollision: 0,
-    reactionProbability: 0
+    reactionProbability: 0,
   };
-  
+
   const statsFolder = reactionFolder.addFolder('📊 Live Stats');
   statsFolder.add(statsDisplay, 'distance').name('Distance').listen();
   statsFolder.add(statsDisplay, 'relativeVelocity').name('Relative Velocity').listen();
   statsFolder.add(statsDisplay, 'timeToCollision').name('Time to Collision').listen();
   statsFolder.add(statsDisplay, 'reactionProbability').name('Reaction Probability (%)').listen();
-  
+
   // Update stats periodically
   setInterval(() => {
     const setup = trajectoryController.getCurrentSetup();
     if (setup) {
       const substrate = moleculeManager.getMolecule(reactionParams.substrateMolecule);
       const nucleophile = moleculeManager.getMolecule(reactionParams.nucleophileMolecule);
-      
+
       if (substrate && nucleophile) {
-        const distance = new THREE.Vector3().copy(substrate.position).distanceTo(new THREE.Vector3().copy(nucleophile.position));
+        const distance = new THREE.Vector3()
+          .copy(substrate.position)
+          .distanceTo(new THREE.Vector3().copy(nucleophile.position));
         const velocity = (substrate as any).userData?.velocity?.length() || 0;
         const timeToCollision = distance / (velocity || 1);
-        
+
         statsDisplay.distance = distance;
         statsDisplay.relativeVelocity = velocity;
         statsDisplay.timeToCollision = timeToCollision;
-        
+
         // Calculate reaction probability (placeholder)
         statsDisplay.reactionProbability = Math.random() * 100; // Placeholder calculation
       }
     }
   }, 100);
-  
+
   // Products display
   const productsDisplay = {
     lastReaction: 'None',
     mainProduct: 'None',
     leavingGroup: 'None',
-    reactionEquation: 'No reaction yet'
+    reactionEquation: 'No reaction yet',
   };
-  
+
   const productsFolder = reactionFolder.addFolder('📦 Reaction Products');
   productsFolder.add(productsDisplay, 'lastReaction').name('Last Reaction').listen();
   productsFolder.add(productsDisplay, 'mainProduct').name('Main Product').listen();
   productsFolder.add(productsDisplay, 'leavingGroup').name('Leaving Group').listen();
   productsFolder.add(productsDisplay, 'reactionEquation').name('Reaction Equation').listen();
-  
+
   // Store reference for updates
   (window as any).updateProductsDisplay = (productInfo: any) => {
     productsDisplay.lastReaction = productInfo.reactionType || 'Unknown';
@@ -731,16 +817,20 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
   };
 
   // All folders start closed for cleaner interface
-  
+
   log('Reaction system controls added to GUI');
 }
 
 /**
  * Essential debug controls - minimal set for reaction system
  */
-function addEssentialDebugControls(gui: dat.GUI, scene: THREE.Scene, moleculeManager: MoleculeManager): void {
+function addEssentialDebugControls(
+  gui: dat.GUI,
+  scene: THREE.Scene,
+  moleculeManager: MoleculeManager
+): void {
   const debugFolder = gui.addFolder('🔧 Essential Debug');
-  
+
   // Basic scene controls
   const sceneControls = {
     showAxes: true,
@@ -753,31 +843,39 @@ function addEssentialDebugControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
         moleculeManager.removeMolecule(mol.name);
       });
       log('Scene cleared');
-    }
+    },
   };
-  
-  debugFolder.add(sceneControls, 'showAxes').name('Show Axes').onChange((value: boolean) => {
-    const axes = scene.getObjectByName('axesHelper');
-    if (axes) axes.visible = value;
-  });
-  
-  debugFolder.add(sceneControls, 'showStats').name('Show Stats').onChange((value: boolean) => {
-    const stats = document.getElementById('stats');
-    if (stats) stats.style.display = value ? 'block' : 'none';
-  });
-  
+
+  debugFolder
+    .add(sceneControls, 'showAxes')
+    .name('Show Axes')
+    .onChange((value: boolean) => {
+      const axes = scene.getObjectByName('axesHelper');
+      if (axes) axes.visible = value;
+    });
+
+  debugFolder
+    .add(sceneControls, 'showStats')
+    .name('Show Stats')
+    .onChange((value: boolean) => {
+      const stats = document.getElementById('stats');
+      if (stats) stats.style.display = value ? 'block' : 'none';
+    });
+
   debugFolder.add(sceneControls, 'clearScene').name('🗑️ Clear All Molecules');
-  
+
   // Physics engine stats (minimal)
   const physicsStats = {
     getStats: () => {
       const stats = physicsEngine.getStats();
-      log(`Physics: ${(stats as any).activeBodies || 0} bodies, ${(stats as any).contacts || 0} contacts`);
-    }
+      log(
+        `Physics: ${(stats as any).activeBodies || 0} bodies, ${(stats as any).contacts || 0} contacts`
+      );
+    },
   };
-  
+
   debugFolder.add(physicsStats, 'getStats').name('📊 Physics Stats');
-  
+
   log('Essential debug controls added to GUI');
 }
 

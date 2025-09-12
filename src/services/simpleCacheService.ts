@@ -3,14 +3,15 @@
  * Loads from individual JSON files, saves individual molecules
  */
 
-import { MolecularData } from '../types';
+import type { MolecularData } from '../types';
 import { log } from '../utils/debug';
 
 export class SimpleCacheService {
   private molecules: Map<string, MolecularData> = new Map();
   private searchCount = 0;
   private readonly LOCALSTORAGE_KEY = 'molMod_cache';
-  private readonly isDev = window.location.hostname === 'localhost' || window.location.port === '5173';
+  private readonly isDev =
+    window.location.hostname === 'localhost' || window.location.port === '5173';
 
   constructor() {
     log(`Running in ${this.isDev ? 'development' : 'production'} mode`);
@@ -29,7 +30,7 @@ export class SimpleCacheService {
           if (response.ok) {
             const data = await response.json();
             log(`📖 Found ${data.count} molecules in backend`);
-            
+
             // Load each molecule individually
             for (const cid of data.molecules) {
               try {
@@ -42,11 +43,11 @@ export class SimpleCacheService {
                 log(`Failed to load molecule ${cid}: ${error}`);
               }
             }
-            
+
             log(`✅ Loaded ${this.molecules.size} molecules from backend`);
             return;
           }
-        } catch (error) {
+        } catch (_error) {
           log('Backend not available, trying localStorage...');
         }
       }
@@ -84,10 +85,10 @@ export class SimpleCacheService {
         molecules: Object.fromEntries(this.molecules),
         metadata: {
           lastUpdated: new Date().toISOString(),
-          totalMolecules: this.molecules.size
-        }
+          totalMolecules: this.molecules.size,
+        },
       };
-      
+
       localStorage.setItem(this.LOCALSTORAGE_KEY, JSON.stringify(data, null, 2));
       log(`💾 Cache saved to localStorage: ${this.molecules.size} molecules`);
     } catch (error) {
@@ -101,7 +102,7 @@ export class SimpleCacheService {
   async saveMolecule(cid: string, molecularData: MolecularData): Promise<void> {
     try {
       this.molecules.set(cid, molecularData);
-      
+
       if (this.isDev) {
         // Save to backend
         try {
@@ -110,7 +111,7 @@ export class SimpleCacheService {
           const response = await fetch('http://localhost:3000/api/save-molecule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cid, molecularData })
+            body: JSON.stringify({ cid, molecularData }),
           });
 
           if (response.ok) {
@@ -150,8 +151,11 @@ export class SimpleCacheService {
   /**
    * Search molecules by name, formula, or synonyms
    */
-  searchMolecules(query: string, limit: number = 10): Array<{cid: string, name: string, formula: string}> {
-    const results: Array<{cid: string, name: string, formula: string}> = [];
+  searchMolecules(
+    query: string,
+    limit: number = 10
+  ): Array<{ cid: string; name: string; formula: string }> {
+    const results: Array<{ cid: string; name: string; formula: string }> = [];
     const lowerQuery = query.toLowerCase();
 
     for (const [cid, molecule] of this.molecules) {
@@ -162,7 +166,7 @@ export class SimpleCacheService {
         results.push({
           cid,
           name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
-          formula: molecule.formula || 'Unknown'
+          formula: molecule.formula || 'Unknown',
         });
         continue;
       }
@@ -172,7 +176,7 @@ export class SimpleCacheService {
         results.push({
           cid,
           name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
-          formula: molecule.formula || 'Unknown'
+          formula: molecule.formula || 'Unknown',
         });
         continue;
       }
@@ -182,7 +186,7 @@ export class SimpleCacheService {
         results.push({
           cid,
           name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
-          formula: molecule.formula || 'Unknown'
+          formula: molecule.formula || 'Unknown',
         });
         continue;
       }
@@ -192,9 +196,8 @@ export class SimpleCacheService {
         results.push({
           cid,
           name: molecule.title || molecule.name || molecule.formula || `Molecule ${cid}`,
-          formula: molecule.formula || 'Unknown'
+          formula: molecule.formula || 'Unknown',
         });
-        continue;
       }
     }
 
@@ -215,7 +218,7 @@ export class SimpleCacheService {
     return {
       molecules: this.molecules.size,
       searches: this.searchCount,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
   }
 
@@ -239,8 +242,8 @@ export class SimpleCacheService {
       molecules: Object.fromEntries(this.molecules),
       metadata: {
         lastUpdated: new Date().toISOString(),
-        totalMolecules: this.molecules.size
-      }
+        totalMolecules: this.molecules.size,
+      },
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -252,7 +255,7 @@ export class SimpleCacheService {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     log(`📥 Cache downloaded: ${this.molecules.size} molecules`);
   }
 

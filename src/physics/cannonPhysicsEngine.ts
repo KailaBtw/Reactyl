@@ -1,9 +1,9 @@
-import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { MoleculeGroup } from '../types';
-import { MolecularProperties } from '../chemistry/molecularPropertiesCalculator';
-import { collisionEventSystem, createCollisionEvent } from './collisionEventSystem';
+import type * as THREE from 'three';
+import type { MolecularProperties } from '../chemistry/molecularPropertiesCalculator';
+import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
+import { collisionEventSystem, createCollisionEvent } from './collisionEventSystem';
 
 export interface PhysicsBodyData {
   body: CANNON.Body;
@@ -26,10 +26,10 @@ export class CannonPhysicsEngine {
   private defaultMaterial: CANNON.Material;
   private isPaused = false;
   private timeScale = 1.0;
-  
+
   constructor() {
     log('Initializing Cannon.js Physics Engine...');
-    
+
     // Initialize Cannon.js world
     this.world = new CANNON.World();
     this.world.gravity.set(0, 0, 0); // No gravity for molecular simulation
@@ -38,27 +38,23 @@ export class CannonPhysicsEngine {
     solver.tolerance = 0.003; // looser tolerance for speed
     this.world.solver = solver;
     this.world.allowSleep = true; // enable body sleeping
-    
+
     // Use SAP broadphase for better performance with many objects
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
-    
+
     // Create default material for molecular collisions
     this.defaultMaterial = new CANNON.Material('molecule');
-    this.contactMaterial = new CANNON.ContactMaterial(
-      this.defaultMaterial, 
-      this.defaultMaterial, 
-      {
-        friction: 0.05,
-        restitution: 0.6,
-        contactEquationStiffness: 5e6,
-        contactEquationRelaxation: 4,
-      }
-    );
+    this.contactMaterial = new CANNON.ContactMaterial(this.defaultMaterial, this.defaultMaterial, {
+      friction: 0.05,
+      restitution: 0.6,
+      contactEquationStiffness: 5e6,
+      contactEquationRelaxation: 4,
+    });
     this.world.addContactMaterial(this.contactMaterial);
-    
+
     // Setup collision event listeners
     this.setupCollisionEvents();
-    
+
     log('Cannon.js Physics Engine initialized successfully');
   }
 
@@ -80,7 +76,7 @@ export class CannonPhysicsEngine {
         mass: mass,
         shape: shape,
         material: this.defaultMaterial,
-        type: CANNON.Body.DYNAMIC
+        type: CANNON.Body.DYNAMIC,
       });
 
       // Set initial position and rotation
@@ -97,11 +93,7 @@ export class CannonPhysicsEngine {
       );
 
       // Set initial velocity
-      body.velocity.set(
-        molecule.velocity.x,
-        molecule.velocity.y,
-        molecule.velocity.z
-      );
+      body.velocity.set(molecule.velocity.x, molecule.velocity.y, molecule.velocity.z);
 
       // Set angular velocity if rotation controller exists
       if ((molecule as any).rotationController) {
@@ -126,7 +118,7 @@ export class CannonPhysicsEngine {
       this.moleculeBodies.set(molecule, {
         body,
         molecule,
-        lastSync: performance.now()
+        lastSync: performance.now(),
       });
 
       log(`Added ${molecule.name} to physics world with mass ${mass.toFixed(2)}`);
@@ -164,7 +156,7 @@ export class CannonPhysicsEngine {
 
     // Apply time scale
     const scaledDeltaTime = deltaTime * this.timeScale;
-    
+
     // Accumulate time and step with fixed timestep for stability and performance
     this.accumulator += Math.min(scaledDeltaTime, 0.1); // avoid spiral of death
     let substeps = 0;
@@ -183,7 +175,10 @@ export class CannonPhysicsEngine {
   /**
    * Create physics shape from molecule
    */
-  private createMoleculeShape(molecule: MoleculeGroup, properties: MolecularProperties): CANNON.Shape | null {
+  private createMoleculeShape(
+    molecule: MoleculeGroup,
+    properties: MolecularProperties
+  ): CANNON.Shape | null {
     if (!molecule.molObject || !molecule.molObject.atoms) {
       return null;
     }
@@ -215,10 +210,10 @@ export class CannonPhysicsEngine {
     if ((molecule as any).rotationController) {
       const rotController = (molecule as any).rotationController;
       const rotState = rotController.getRotationState();
-      
+
       // Apply physics angular velocity to rotation controller
       rotState.angularVelocity.copy(body.angularVelocity as any);
-      
+
       // Update quaternion from physics
       rotState.quaternion.copy(body.quaternion as any);
     }
@@ -232,7 +227,7 @@ export class CannonPhysicsEngine {
   private setupCollisionEvents(): void {
     this.world.addEventListener('beginContact', (event: any) => {
       const { bodyA, bodyB } = event;
-      
+
       // Find corresponding molecules
       let molA: MoleculeGroup | undefined;
       let molB: MoleculeGroup | undefined;
@@ -246,12 +241,12 @@ export class CannonPhysicsEngine {
         // Create collision event for reaction system
         const collisionEvent = createCollisionEvent(molA, molB);
         collisionEventSystem.emitCollision(collisionEvent);
-        
+
         log(`Physics collision detected between ${molA.name} and ${molB.name}`);
       }
     });
 
-    this.world.addEventListener('endContact', (event: any) => {
+    this.world.addEventListener('endContact', (_event: any) => {
       // Handle collision end events if needed for reactions
     });
   }
@@ -322,7 +317,7 @@ export class CannonPhysicsEngine {
       contactCount: this.world.contacts.length,
       broadphaseType: this.world.broadphase.constructor.name,
       solverIterations: (this.world.solver as CANNON.GSSolver).iterations,
-      worldTime: this.world.time
+      worldTime: this.world.time,
     };
   }
 
@@ -395,16 +390,16 @@ export class CannonPhysicsEngine {
    */
   dispose(): void {
     log('Disposing Cannon.js Physics Engine...');
-    
+
     // Remove all bodies
     for (const [, bodyData] of this.moleculeBodies.entries()) {
       this.world.removeBody(bodyData.body);
     }
     this.moleculeBodies.clear();
-    
+
     // Clear world
     this.world.contacts.length = 0;
-    
+
     log('Cannon.js Physics Engine disposed');
   }
 }

@@ -1,29 +1,29 @@
-import { MolecularData, ReactivityData } from '../types';
-import { log } from '../utils/debug';
 import { extractPubChemMetadata } from '../data/molFileToJSON';
 import { simpleCacheService } from '../services/simpleCacheService';
+import type { MolecularData, ReactivityData } from '../types';
+import { log } from '../utils/debug';
 
 export class ChemicalDataService {
   private readonly PUBCHEM_BASE = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
   private lastRequestTime = 0;
   private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second between requests
-  
+
   /**
    * Throttle requests to respect PubChem limits
    */
   private async throttleRequest(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
       const delay = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
       log(`⏳ Throttling request: waiting ${delay}ms`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
-    
+
     this.lastRequestTime = Date.now();
   }
-  
+
   /**
    * Fetch molecular data by CID from PubChem
    */
@@ -34,35 +34,37 @@ export class ChemicalDataService {
       log(`Using cached data for CID ${cid}`);
       return cachedData;
     }
-    
+
     try {
       log(`Fetching data for CID ${cid} from PubChem...`);
-      
+
       // Throttle request to respect PubChem limits
       await this.throttleRequest();
-      
+
       // Get properties using correct PubChem REST API format
       const propUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,SMILES,InChI,IUPACName,Title/JSON`;
       log(`Fetching properties from: ${propUrl}`);
-      
+
       const propResponse = await fetch(propUrl);
-      
+
       if (!propResponse.ok) {
         const errorText = await propResponse.text();
         log(`PubChem API error: ${propResponse.status} ${propResponse.statusText}`);
         log(`Error response: ${errorText}`);
-        throw new Error(`Failed to fetch properties for CID ${cid}: ${propResponse.status} ${propResponse.statusText}`);
+        throw new Error(
+          `Failed to fetch properties for CID ${cid}: ${propResponse.status} ${propResponse.statusText}`
+        );
       }
-      
+
       const propData = await propResponse.json();
       const props = propData.PropertyTable.Properties[0];
-      
+
       // Fetch synonyms
       let synonyms: string[] = [];
       try {
         const synonymsUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/synonyms/JSON`;
         log(`Fetching synonyms from: ${synonymsUrl}`);
-        
+
         const synonymsResponse = await fetch(synonymsUrl);
         if (synonymsResponse.ok) {
           const synonymsData = await synonymsResponse.json();
@@ -72,85 +74,88 @@ export class ChemicalDataService {
       } catch (error) {
         log(`Failed to fetch synonyms for CID ${cid}: ${error}`);
       }
-      
+
       // Get 3D structure using correct PubChem REST API format
       const mol3dUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/SDF?record_type=3d`;
       log(`Fetching 3D structure from: ${mol3dUrl}`);
-      
+
       const mol3dResponse = await fetch(mol3dUrl);
-      
+
       if (!mol3dResponse.ok) {
         // Fallback to 2D if 3D not available
         log(`3D structure not available for CID ${cid}, trying 2D...`);
         const mol2dUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/SDF`;
         log(`Fetching 2D structure from: ${mol2dUrl}`);
-        
+
         const mol2dResponse = await fetch(mol2dUrl);
-        
+
         if (!mol2dResponse.ok) {
           const errorText = await mol2dResponse.text();
           log(`PubChem SDF error: ${mol2dResponse.status} ${mol2dResponse.statusText}`);
           log(`Error response: ${errorText}`);
-          throw new Error(`Failed to fetch structure for CID ${cid}: ${mol2dResponse.status} ${mol2dResponse.statusText}`);
+          throw new Error(
+            `Failed to fetch structure for CID ${cid}: ${mol2dResponse.status} ${mol2dResponse.statusText}`
+          );
         }
-        
+
         const molData = await mol2dResponse.text();
-        
+
         // Extract metadata from the MOL data itself (in case API properties are missing)
         const molMetadata = extractPubChemMetadata(molData);
-        
+
         const molecularData: MolecularData = {
-          cid: parseInt(cid),
+          cid: parseInt(cid, 10),
           name: props.IUPACName || molMetadata.name || undefined,
           title: props.Title || molMetadata.title || undefined,
           synonyms: synonyms.length > 0 ? synonyms : molMetadata.synonyms || undefined,
           smiles: props.SMILES || molMetadata.smiles || '',
           inchi: props.InChI || molMetadata.inchi || '',
-          molWeight: parseFloat(props.MolecularWeight) || parseFloat(molMetadata.molecularWeight || '0'),
+          molWeight:
+            parseFloat(props.MolecularWeight) || parseFloat(molMetadata.molecularWeight || '0'),
           formula: props.MolecularFormula || molMetadata.molecularFormula || 'Unknown',
           mol3d: molData,
           properties: {
             pka: undefined,
             logP: undefined,
-            polarSurfaceArea: undefined
-          }
+            polarSurfaceArea: undefined,
+          },
         };
-        
+
         // Cache the result
         await simpleCacheService.saveMolecule(cid, molecularData);
-        
+
         log(`Successfully fetched 2D data for CID ${cid}: ${molecularData.formula}`);
         return molecularData;
       }
-      
+
       const mol3dData = await mol3dResponse.text();
-      
+
       // Extract metadata from the MOL data itself (in case API properties are missing)
       const molMetadata = extractPubChemMetadata(mol3dData);
-      
+
       const molecularData: MolecularData = {
-        cid: parseInt(cid),
+        cid: parseInt(cid, 10),
         name: props.IUPACName || molMetadata.name || undefined,
         title: props.Title || molMetadata.title || undefined,
         synonyms: synonyms.length > 0 ? synonyms : molMetadata.synonyms || undefined,
         smiles: props.SMILES || molMetadata.smiles || '',
         inchi: props.InChI || molMetadata.inchi || '',
-        molWeight: parseFloat(props.MolecularWeight) || parseFloat(molMetadata.molecularWeight || '0'),
+        molWeight:
+          parseFloat(props.MolecularWeight) || parseFloat(molMetadata.molecularWeight || '0'),
         formula: props.MolecularFormula || molMetadata.molecularFormula || 'Unknown',
         mol3d: mol3dData,
         properties: {
           pka: undefined,
           logP: undefined,
-          polarSurfaceArea: undefined
-        }
+          polarSurfaceArea: undefined,
+        },
       };
-      
+
       // Cache the result
       await simpleCacheService.saveMolecule(cid, molecularData);
-      
+
       log(`Successfully fetched 3D data for CID ${cid}`);
       return molecularData;
-      
     } catch (error) {
       log(`Error fetching data for CID ${cid}: ${error}`);
       throw error;
@@ -167,67 +172,64 @@ export class ChemicalDataService {
       log(`Using cached data for ${name}`);
       return cachedData;
     }
-    
+
     try {
       log(`Fetching data for ${name} from PubChem...`);
-      
+
       // Get CID from name
       const cidResponse = await fetch(
         `${this.PUBCHEM_BASE}/compound/name/${encodeURIComponent(name)}/cids/JSON`
       );
-      
+
       if (!cidResponse.ok) {
         throw new Error(`Failed to fetch CID for ${name}: ${cidResponse.statusText}`);
       }
-      
+
       const cidData = await cidResponse.json();
       const cid = cidData.IdentifierList.CID[0];
-      
+
       if (!cid) {
         throw new Error(`No CID found for ${name}`);
       }
-      
+
       // Get properties
       const propResponse = await fetch(
         `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,SMILES,InChI/JSON`
       );
-      
+
       if (!propResponse.ok) {
         throw new Error(`Failed to fetch properties for ${name}: ${propResponse.statusText}`);
       }
-      
+
       const propData = await propResponse.json();
       const props = propData.PropertyTable.Properties[0];
-      
+
       // Get 3D structure
-      const mol3dResponse = await fetch(
-        `${this.PUBCHEM_BASE}/compound/cid/${cid}/SDF`
-      );
-      
+      const mol3dResponse = await fetch(`${this.PUBCHEM_BASE}/compound/cid/${cid}/SDF`);
+
       let mol3d: string | undefined;
       if (mol3dResponse.ok) {
         mol3d = await mol3dResponse.text();
       }
-      
+
       const molecularData: MolecularData = {
         cid,
         smiles: props.SMILES,
         inchi: props.InChI,
         molWeight: props.MolecularWeight,
         formula: props.MolecularFormula,
-        mol3d
+        mol3d,
       };
-      
+
       await simpleCacheService.saveMolecule(name, molecularData);
       log(`Successfully fetched and cached data for ${name}`);
       return molecularData;
-      
     } catch (error) {
       log(`Failed to fetch data for ${name}: ${error}`);
       throw error;
     }
   }
-  
+
   /**
    * Fetch reactivity data for a molecule
    */
@@ -236,7 +238,7 @@ export class ChemicalDataService {
     // For now, return estimated values based on functional groups
     return this.estimateReactivity(smiles);
   }
-  
+
   /**
    * Estimate reactivity based on SMILES pattern matching
    */
@@ -244,9 +246,9 @@ export class ChemicalDataService {
     const reactivity: ReactivityData = {
       nucleophilicity: 0,
       electrophilicity: 0,
-      leavingGroupAbility: 0
+      leavingGroupAbility: 0,
     };
-    
+
     // Simple pattern matching for common groups
     if (smiles.includes('[O-]')) reactivity.nucleophilicity = 8;
     if (smiles.includes('[S-]')) reactivity.nucleophilicity = 7;
@@ -254,7 +256,7 @@ export class ChemicalDataService {
     if (smiles.includes('CN')) reactivity.nucleophilicity = 6;
     if (smiles.includes('NH2')) reactivity.nucleophilicity = 5;
     if (smiles.includes('OH')) reactivity.nucleophilicity = 4;
-    
+
     // Leaving group ability
     if (smiles.includes('I')) reactivity.leavingGroupAbility = 9;
     if (smiles.includes('Br')) reactivity.leavingGroupAbility = 7;
@@ -263,16 +265,16 @@ export class ChemicalDataService {
     if (smiles.includes('OTs')) reactivity.leavingGroupAbility = 8;
     if (smiles.includes('OMs')) reactivity.leavingGroupAbility = 7;
     if (smiles.includes('OTf')) reactivity.leavingGroupAbility = 9;
-    
+
     // Electrophilicity (cations, electron-deficient centers)
     if (smiles.includes('[C+]')) reactivity.electrophilicity = 8;
     if (smiles.includes('[N+]')) reactivity.electrophilicity = 7;
     if (smiles.includes('C=O')) reactivity.electrophilicity = 6;
     if (smiles.includes('C#N')) reactivity.electrophilicity = 5;
-    
+
     return reactivity;
   }
-  
+
   /**
    * Get cache statistics
    */
@@ -280,11 +282,10 @@ export class ChemicalDataService {
     const stats = simpleCacheService.getStats();
     return {
       size: stats.molecules,
-      molecules: [] // Not needed for the simplified system
+      molecules: [], // Not needed for the simplified system
     };
   }
 
-  
   /**
    * Fetch molecular data by InChIKey from PubChem
    */
@@ -295,31 +296,30 @@ export class ChemicalDataService {
       log(`Using cached data for InChIKey ${inchikey}`);
       return cachedData;
     }
-    
+
     try {
       log(`Fetching data for InChIKey ${inchikey} from PubChem...`);
-      
+
       // Throttle request to respect PubChem limits
       await this.throttleRequest();
-      
+
       // Get CID from InChIKey first
       const cidUrl = `${this.PUBCHEM_BASE}/compound/inchikey/${inchikey}/cids/JSON`;
       const cidResponse = await fetch(cidUrl);
-      
+
       if (!cidResponse.ok) {
         throw new Error(`Failed to get CID for InChIKey ${inchikey}: ${cidResponse.status}`);
       }
-      
+
       const cidData = await cidResponse.json();
       const cid = cidData.IdentifierList?.CID?.[0];
-      
+
       if (!cid) {
         throw new Error(`No CID found for InChIKey ${inchikey}`);
       }
-      
+
       // Now fetch the molecular data using the CID
       return await this.fetchMoleculeByCID(cid.toString());
-      
     } catch (error) {
       log(`Failed to fetch data for InChIKey ${inchikey}: ${error}`);
       throw error;
@@ -336,31 +336,30 @@ export class ChemicalDataService {
       log(`Using cached data for SMILES ${smiles}`);
       return cachedData;
     }
-    
+
     try {
       log(`Fetching data for SMILES ${smiles} from PubChem...`);
-      
+
       // Throttle request to respect PubChem limits
       await this.throttleRequest();
-      
+
       // Get CID from SMILES first
       const cidUrl = `${this.PUBCHEM_BASE}/compound/smiles/${encodeURIComponent(smiles)}/cids/JSON`;
       const cidResponse = await fetch(cidUrl);
-      
+
       if (!cidResponse.ok) {
         throw new Error(`Failed to get CID for SMILES ${smiles}: ${cidResponse.status}`);
       }
-      
+
       const cidData = await cidResponse.json();
       const cid = cidData.IdentifierList?.CID?.[0];
-      
+
       if (!cid) {
         throw new Error(`No CID found for SMILES ${smiles}`);
       }
-      
+
       // Now fetch the molecular data using the CID
       return await this.fetchMoleculeByCID(cid.toString());
-      
     } catch (error) {
       log(`Failed to fetch data for SMILES ${smiles}: ${error}`);
       throw error;
@@ -370,9 +369,12 @@ export class ChemicalDataService {
   /**
    * Search for molecules by formula
    */
-  async searchMoleculesByFormula(formula: string, limit: number = 10): Promise<Array<{cid: string, name: string, formula: string}>> {
+  async searchMoleculesByFormula(
+    formula: string,
+    limit: number = 10
+  ): Promise<Array<{ cid: string; name: string; formula: string }>> {
     if (!formula || formula.length < 1) return [];
-    
+
     // First check local cache
     const localResults = simpleCacheService.searchMolecules(formula, limit);
     if (localResults.length > 0) {
@@ -381,64 +383,66 @@ export class ChemicalDataService {
       simpleCacheService.incrementSearchCount();
       return localResults;
     }
-    
+
     try {
       log(`Searching for formula: ${formula}`);
-      
+
       // Throttle request to respect PubChem limits
       await this.throttleRequest();
-      
+
       // Search by formula
       const searchUrl = `${this.PUBCHEM_BASE}/compound/fastformula/${formula}/cids/JSON?MaxRecords=${limit}`;
       const response = await fetch(searchUrl);
-      
+
       if (!response.ok) {
         throw new Error(`Formula search failed: ${response.status}`);
       }
-      
+
       const data = await response.json();
       const cids = data.IdentifierList?.CID || [];
-      
+
       // Get basic info for immediate display using batched request
-      const results: Array<{cid: string, name: string, formula: string}> = [];
+      const results: Array<{ cid: string; name: string; formula: string }> = [];
       const cidsToFetch = cids.slice(0, limit);
-      
+
       if (cidsToFetch.length > 0) {
         try {
           // Single batched request for all CIDs
           const batchUrl = `${this.PUBCHEM_BASE}/compound/cid/${cidsToFetch.join(',')}/property/MolecularFormula,IUPACName,Title,SMILES/JSON`;
           log(`Batched properties request: ${batchUrl}`);
-          
+
           const batchResponse = await fetch(batchUrl);
           if (batchResponse.ok) {
             const batchData = await batchResponse.json();
             const properties = batchData.PropertyTable?.Properties || [];
-            
+
             // Map results back to CIDs
             const cidToProps = new Map();
             properties.forEach((prop: any) => {
               cidToProps.set(prop.CID.toString(), prop);
             });
-            
+
             // Create results array maintaining CID order
             cidsToFetch.forEach(cid => {
               const props = cidToProps.get(cid.toString());
               results.push({
                 cid: cid.toString(),
                 name: props?.Title || props?.IUPACName || `CID ${cid}`,
-                formula: props?.MolecularFormula || 'Unknown'
+                formula: props?.MolecularFormula || 'Unknown',
               });
             });
           } else {
-            log(`Batched request failed: ${batchResponse.status}, falling back to individual requests`);
+            log(
+              `Batched request failed: ${batchResponse.status}, falling back to individual requests`
+            );
             // Fallback to individual requests if batch fails
             const fallbackResults = await Promise.all(
-              cidsToFetch.map(async (cid) => {
+              cidsToFetch.map(async cid => {
                 const basicInfo = await this.getBasicMoleculeInfo(cid.toString());
                 return {
                   cid: cid.toString(),
                   name: basicInfo.name,
-                  formula: basicInfo.formula
+                  formula: basicInfo.formula,
                 };
               })
             );
@@ -448,30 +452,31 @@ export class ChemicalDataService {
           log(`Batched request error: ${error}, falling back to individual requests`);
           // Fallback to individual requests
           const fallbackResults = await Promise.all(
-            cidsToFetch.map(async (cid) => {
+            cidsToFetch.map(async cid => {
               const basicInfo = await this.getBasicMoleculeInfo(cid.toString());
               return {
                 cid: cid.toString(),
                 name: basicInfo.name,
-                formula: basicInfo.formula
+                formula: basicInfo.formula,
               };
             })
           );
           results.push(...fallbackResults);
         }
       }
-      
+
       // Fetch detailed data in background for caching (don't await)
-      log(`Starting background fetch for ${cids.slice(0, limit).length} molecules: ${cids.slice(0, limit).join(', ')}`);
+      log(
+        `Starting background fetch for ${cids.slice(0, limit).length} molecules: ${cids.slice(0, limit).join(', ')}`
+      );
       this.fetchMoleculeDetailsInBackground(cids.slice(0, limit));
-      
+
       log(`Found ${results.length} results for formula: ${formula}`);
-      
+
       // Increment search counter
       simpleCacheService.incrementSearchCount();
-      
+
       return results;
-      
     } catch (error) {
       log(`Formula search failed for ${formula}: ${error}`);
       return [];
@@ -481,31 +486,31 @@ export class ChemicalDataService {
   /**
    * Get basic molecule info without 3D structure (faster)
    */
-  private async getBasicMoleculeInfo(cid: string): Promise<{name: string, formula: string}> {
+  private async getBasicMoleculeInfo(cid: string): Promise<{ name: string; formula: string }> {
     try {
       // Throttle request
       await this.throttleRequest();
-      
+
       // Get basic properties only
       const propertiesUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,IUPACName,Title,SMILES/JSON`;
       const response = await fetch(propertiesUrl);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to get properties: ${response.status}`);
       }
-      
+
       const data = await response.json();
       const props = data.PropertyTable?.Properties?.[0] || {};
-      
+
       return {
         name: props.Title || props.IUPACName || `CID ${cid}`,
-        formula: props.MolecularFormula || 'Unknown'
+        formula: props.MolecularFormula || 'Unknown',
       };
     } catch (error) {
       log(`Failed to get basic info for CID ${cid}: ${error}`);
       return {
         name: `CID ${cid}`,
-        formula: 'Unknown'
+        formula: 'Unknown',
       };
     }
   }
@@ -519,9 +524,9 @@ export class ChemicalDataService {
     const batchSize = 3;
     for (let i = 0; i < cids.length; i += batchSize) {
       const batch = cids.slice(i, i + batchSize);
-      
+
       // Process batch in parallel
-      const promises = batch.map(async (cid) => {
+      const promises = batch.map(async cid => {
         try {
           // Check if already cached
           const cached = simpleCacheService.getMolecule(cid.toString());
@@ -529,7 +534,7 @@ export class ChemicalDataService {
             log(`CID ${cid} already cached, skipping`);
             return;
           }
-          
+
           log(`Background fetching CID ${cid}...`);
           await this.fetchMoleculeByCID(cid.toString());
           log(`Background fetch completed for CID ${cid}`);
@@ -537,10 +542,10 @@ export class ChemicalDataService {
           log(`Background fetch failed for CID ${cid}: ${error}`);
         }
       });
-      
+
       // Wait for batch to complete before next batch
       await Promise.all(promises);
-      
+
       // Small delay between batches to be respectful to API
       if (i + batchSize < cids.length) {
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -551,9 +556,12 @@ export class ChemicalDataService {
   /**
    * Search for molecules by partial name with enhanced results
    */
-  async searchMolecules(query: string, limit: number = 10): Promise<Array<{cid: string, name: string, formula: string}>> {
+  async searchMolecules(
+    query: string,
+    limit: number = 10
+  ): Promise<Array<{ cid: string; name: string; formula: string }>> {
     if (!query || query.length < 2) return [];
-    
+
     // First check local cache
     const localResults = simpleCacheService.searchMolecules(query, limit);
     if (localResults.length > 0) {
@@ -562,89 +570,91 @@ export class ChemicalDataService {
       simpleCacheService.incrementSearchCount();
       return localResults;
     }
-    
+
     try {
       log(`Searching PubChem for: ${query}`);
-      
+
       // Throttle request to respect PubChem limits
       await this.throttleRequest();
-      
+
       // Use PubChem's compound name search
       const searchUrl = `${this.PUBCHEM_BASE}/compound/name/${encodeURIComponent(query)}/cids/JSON?MaxRecords=${limit}`;
       log(`Search URL: ${searchUrl}`);
-      
+
       const response = await fetch(searchUrl);
-      
+
       if (!response.ok) {
         log(`PubChem search error: ${response.status} ${response.statusText}`);
         return [];
       }
-      
+
       const data = await response.json();
       const cids = data.IdentifierList?.CID || [];
-      
+
       if (cids.length === 0) {
         log(`No compounds found for: ${query}`);
         return [];
       }
-      
+
       // Get basic info using batched request
-      const results: Array<{cid: string, name: string, formula: string}> = [];
+      const results: Array<{ cid: string; name: string; formula: string }> = [];
       const cidsToFetch = cids.slice(0, limit);
-      
+
       if (cidsToFetch.length > 0) {
         try {
           // Single batched request for all CIDs
           const batchUrl = `${this.PUBCHEM_BASE}/compound/cid/${cidsToFetch.join(',')}/property/MolecularFormula,MolecularWeight,Title,SMILES/JSON`;
           log(`Batched properties request: ${batchUrl}`);
-          
+
           const batchResponse = await fetch(batchUrl);
           if (batchResponse.ok) {
             const batchData = await batchResponse.json();
             const properties = batchData.PropertyTable?.Properties || [];
-            
+
             // Map results back to CIDs
             const cidToProps = new Map();
             properties.forEach((prop: any) => {
               cidToProps.set(prop.CID.toString(), prop);
             });
-            
+
             // Create results array maintaining CID order
             cidsToFetch.forEach(cid => {
               const props = cidToProps.get(cid.toString());
               results.push({
                 cid: cid.toString(),
                 name: props?.Title || `CID ${cid}`,
-                formula: props?.MolecularFormula || 'Unknown'
+                formula: props?.MolecularFormula || 'Unknown',
               });
             });
           } else {
-            log(`Batched request failed: ${batchResponse.status}, falling back to individual requests`);
+            log(
+              `Batched request failed: ${batchResponse.status}, falling back to individual requests`
+            );
             // Fallback to individual requests
             const fallbackResults = await Promise.all(
               cidsToFetch.map(async (cid: number) => {
                 try {
                   const propUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,Title/JSON`;
                   const propResponse = await fetch(propUrl);
-                  
+
                   if (propResponse.ok) {
                     const propData = await propResponse.json();
                     const props = propData.PropertyTable.Properties[0];
-                    
+
                     return {
                       cid: cid.toString(),
                       name: props.Title || `CID ${cid}`,
-                      formula: props.MolecularFormula || 'Unknown'
+                      formula: props.MolecularFormula || 'Unknown',
                     };
                   }
                 } catch (error) {
                   log(`Error fetching properties for CID ${cid}: ${error}`);
                 }
-                
+
                 return {
                   cid: cid.toString(),
                   name: `CID ${cid}`,
-                  formula: 'Unknown'
+                  formula: 'Unknown',
                 };
               })
             );
@@ -658,49 +668,50 @@ export class ChemicalDataService {
               try {
                 const propUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,Title/JSON`;
                 const propResponse = await fetch(propUrl);
-                
+
                 if (propResponse.ok) {
                   const propData = await propResponse.json();
                   const props = propData.PropertyTable.Properties[0];
-                  
+
                   return {
                     cid: cid.toString(),
                     name: props.Title || `CID ${cid}`,
-                    formula: props.MolecularFormula || 'Unknown'
+                    formula: props.MolecularFormula || 'Unknown',
                   };
                 }
               } catch (error) {
                 log(`Error fetching properties for CID ${cid}: ${error}`);
               }
-              
+
               return {
                 cid: cid.toString(),
                 name: `CID ${cid}`,
-                formula: 'Unknown'
+                formula: 'Unknown',
               };
             })
           );
           results.push(...fallbackResults);
         }
       }
-      
+
       // Results are automatically cached when molecules are fetched
-      
+
       log(`Found ${results.length} compounds for: ${query}`);
-      log(`Search results:`, results.map(r => `${r.name} (${r.formula}) - CID: ${r.cid}`));
-      
+      log(
+        `Search results:`,
+        results.map(r => `${r.name} (${r.formula}) - CID: ${r.cid}`)
+      );
+
       // Increment search counter
       simpleCacheService.incrementSearchCount();
-      
+
       return results;
-      
     } catch (error) {
       log(`Error searching PubChem: ${error}`);
       return [];
     }
   }
 
-  
   /**
    * Get molecular properties from PubChem
    */
@@ -714,21 +725,20 @@ export class ChemicalDataService {
       const response = await fetch(
         `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,SMILES,InChI/JSON`
       );
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch properties: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       const props = data.PropertyTable.Properties[0];
-      
+
       return {
         formula: props.MolecularFormula,
         weight: props.MolecularWeight,
         smiles: props.SMILES,
-        inchi: props.InChI
+        inchi: props.InChI,
       };
-      
     } catch (error) {
       log(`Failed to get molecular properties: ${error}`);
       throw error;
@@ -746,25 +756,35 @@ export const REACTION_DATABASE = {
       { name: 'Methyl bromide', smiles: 'CBr', leaving: 'Br', molFile: 'methyl_bromide.mol' },
       { name: 'Ethyl chloride', smiles: 'CCCl', leaving: 'Cl', molFile: 'ethyl_chloride.mol' },
       { name: 'Methyl iodide', smiles: 'CI', leaving: 'I', molFile: 'methyl_iodide.mol' },
-      { name: 'Methyl tosylate', smiles: 'COS(=O)(=O)c1ccc(C)cc1', leaving: 'OTs', molFile: 'methyl_tosylate.mol' }
+      {
+        name: 'Methyl tosylate',
+        smiles: 'COS(=O)(=O)c1ccc(C)cc1',
+        leaving: 'OTs',
+        molFile: 'methyl_tosylate.mol',
+      },
     ],
     nucleophiles: [
       { name: 'Hydroxide', smiles: '[OH-]', attacking: 'O', molFile: 'hydroxide.mol' },
       { name: 'Cyanide', smiles: '[C-]#N', attacking: 'C', molFile: 'cyanide.mol' },
       { name: 'Ammonia', smiles: 'N', attacking: 'N', molFile: 'ammonia.mol' },
-      { name: 'Methoxide', smiles: 'C[O-]', attacking: 'O', molFile: 'methoxide.mol' }
-    ]
+      { name: 'Methoxide', smiles: 'C[O-]', attacking: 'O', molFile: 'methoxide.mol' },
+    ],
   },
   E2: {
     substrates: [
       { name: '2-Bromobutane', smiles: 'CC(Br)CC', leaving: 'Br', molFile: '2_bromobutane.mol' },
-      { name: '2-Chlorobutane', smiles: 'CC(Cl)CC', leaving: 'Cl', molFile: '2_chlorobutane.mol' }
+      { name: '2-Chlorobutane', smiles: 'CC(Cl)CC', leaving: 'Cl', molFile: '2_chlorobutane.mol' },
     ],
     bases: [
-      { name: 'Potassium tert-butoxide', smiles: 'CC(C)(C)[O-]', pKa: 19, molFile: 't_butoxide.mol' },
-      { name: 'DBU', smiles: 'C1CCC2=NCCCN2CC1', pKa: 12, molFile: 'dbu.mol' }
-    ]
-  }
+      {
+        name: 'Potassium tert-butoxide',
+        smiles: 'CC(C)(C)[O-]',
+        pKa: 19,
+        molFile: 't_butoxide.mol',
+      },
+      { name: 'DBU', smiles: 'C1CCC2=NCCCN2CC1', pKa: 12, molFile: 'dbu.mol' },
+    ],
+  },
 };
 
 /**
@@ -772,11 +792,11 @@ export const REACTION_DATABASE = {
  */
 export class ReactionDataManager {
   private dataService: ChemicalDataService;
-  
+
   constructor() {
     this.dataService = chemicalDataService;
   }
-  
+
   /**
    * Load reaction participants for a specific reaction type
    */
@@ -785,29 +805,29 @@ export class ReactionDataManager {
     reactants: MolecularData[];
   }> {
     const participants = (REACTION_DATABASE as any)[reactionType];
-    
+
     if (!participants) {
       throw new Error(`Unknown reaction type: ${reactionType}`);
     }
-    
+
     const substrates = await Promise.all(
       participants.substrates.map((s: any) => this.dataService.fetchMoleculeByName(s.name))
     );
-    
+
     const reactants = await Promise.all(
       participants.nucleophiles?.map((n: any) => this.dataService.fetchMoleculeByName(n.name)) || []
     );
-    
+
     return { substrates, reactants };
   }
-  
+
   /**
    * Get available reaction types
    */
   getAvailableReactionTypes(): string[] {
     return Object.keys(REACTION_DATABASE);
   }
-  
+
   /**
    * Get reaction participants for a type
    */

@@ -12,7 +12,12 @@
     "start": "node ./src/script.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "check": "biome check .",
+    "fix": "biome check --write .",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "lint:ci": "biome ci ."
   },
   "repository": {
     "type": "git",
@@ -35,6 +40,7 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
     "@types/awesomplete": "^1.1.16",
     "@types/cannon": "^0.1.13",
     "@types/dat.gui": "^0.7.13",

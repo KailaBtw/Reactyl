@@ -1,5 +1,5 @@
-import * as THREE from "three";
-import { MoleculeGroup } from "../types";
+import * as THREE from 'three';
+import type { MoleculeGroup } from '../types';
 
 /**
  * Cached transform data for a molecule
@@ -29,9 +29,9 @@ export function initializeTransformCache(molecule: MoleculeGroup): void {
     worldQuaternion: new THREE.Quaternion(),
     worldScale: new THREE.Vector3(),
     lastUpdate: 0,
-    isDirty: true
+    isDirty: true,
   };
-  
+
   transformCache.set(molecule, cache);
 }
 
@@ -64,14 +64,10 @@ export function updateTransformCache(molecule: MoleculeGroup): void {
   // Update world matrix
   molecule.group.updateMatrixWorld(true);
   cache.worldMatrix.copy(molecule.group.matrixWorld);
-  
+
   // Extract position, rotation, scale
-  cache.worldMatrix.decompose(
-    cache.worldPosition,
-    cache.worldQuaternion,
-    cache.worldScale
-  );
-  
+  cache.worldMatrix.decompose(cache.worldPosition, cache.worldQuaternion, cache.worldScale);
+
   cache.lastUpdate = performance.now();
   cache.isDirty = false;
 }
@@ -110,22 +106,22 @@ export function getFastAABB(molecule: MoleculeGroup): THREE.Box3 | null {
 
   updateTransformCache(molecule);
   const cache = transformCache.get(molecule)!;
-  
+
   // Use cached world matrix for fast AABB computation
   const aabb = new THREE.Box3();
-  
+
   for (const atom of molecule.molObject.atoms) {
     const localPos = new THREE.Vector3(
       parseFloat(atom.position.x),
       parseFloat(atom.position.y),
       parseFloat(atom.position.z)
     );
-    
+
     // Transform using cached matrix
     const worldPos = localPos.clone().applyMatrix4(cache.worldMatrix);
     aabb.expandByPoint(worldPos);
   }
-  
+
   return aabb;
 }
 
@@ -152,9 +148,9 @@ export function getCacheStats(): { totalCached: number; dirtyCount: number } {
   for (const cache of transformCache.values()) {
     if (cache.isDirty) dirtyCount++;
   }
-  
+
   return {
     totalCached: transformCache.size,
-    dirtyCount
+    dirtyCount,
   };
 }

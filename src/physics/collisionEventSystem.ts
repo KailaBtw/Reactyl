@@ -1,7 +1,7 @@
-import * as THREE from "three";
-import { MoleculeGroup, ReactionType, CollisionData } from "../types";
-import { ReactionDetector, ReactionResult } from "../chemistry/reactionDetector";
-import { reactionProductGenerator } from "../chemistry/reactionProductGenerator";
+import * as THREE from 'three';
+import { ReactionDetector, type ReactionResult } from '../chemistry/reactionDetector';
+import { reactionProductGenerator } from '../chemistry/reactionProductGenerator';
+import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
 
 /**
  * Collision event data passed to reaction handlers
@@ -92,22 +92,22 @@ class CollisionEventSystem {
     // Check cooldown to prevent spam
     const key = this.getCollisionKey(event.moleculeA, event.moleculeB);
     const now = performance.now() / 1000;
-    
+
     if (this.collisionHistory.has(key)) {
       const lastCollision = this.collisionHistory.get(key)!;
       if (now - lastCollision < this.collisionCooldown) {
         return; // Still in cooldown
       }
     }
-    
+
     // Update collision history
     this.collisionHistory.set(key, now);
-    
+
     // Process reaction detection if reaction type is set
     if (this.currentReactionType) {
       this.processReactionDetection(event);
     }
-    
+
     // Emit to all handlers
     for (const handler of this.eventHandlers) {
       try {
@@ -132,8 +132,8 @@ class CollisionEventSystem {
       impactPoint: event.collisionPoint,
       moleculeOrientations: {
         substrate: event.moleculeA.group.quaternion,
-        nucleophile: event.moleculeB.group.quaternion
-      }
+        nucleophile: event.moleculeB.group.quaternion,
+      },
     };
 
     // Detect reaction
@@ -163,7 +163,7 @@ class CollisionEventSystem {
     const massA = (event.moleculeA as any).molecularProperties?.totalMass || 1.0;
     const massB = (event.moleculeB as any).molecularProperties?.totalMass || 1.0;
     const relativeVelocity = event.relativeVelocity.length();
-    
+
     return this.reactionDetector.calculateCollisionEnergy(massA, massB, relativeVelocity);
   }
 
@@ -194,20 +194,19 @@ class CollisionEventSystem {
 
       // Generate products
       const products = reactionProductGenerator.generateProducts(event.reactionResult, scene);
-      
+
       if (products) {
         const productInfo = reactionProductGenerator.getProductInfo(products);
         console.log(`🎉 Reaction successful! Products: ${productInfo.reactionEquation}`);
-        
+
         // Update GUI display
         if ((window as any).updateProductsDisplay) {
           (window as any).updateProductsDisplay({
             ...productInfo,
-            reactionType: event.reactionResult.reactionType.name
+            reactionType: event.reactionResult.reactionType.name,
           });
         }
       }
-      
     } catch (error) {
       console.error('Error generating reaction products:', error);
     }
@@ -224,7 +223,7 @@ class CollisionEventSystem {
         const reactionEvent = {
           ...event,
           type: 'reaction' as const,
-          reactionType: this.currentReactionType!.id
+          reactionType: this.currentReactionType?.id,
         };
         handler(reactionEvent);
       } catch (error) {
@@ -258,7 +257,7 @@ class CollisionEventSystem {
   getStats(): { totalHandlers: number; historySize: number } {
     return {
       totalHandlers: this.eventHandlers.length,
-      historySize: this.collisionHistory.size
+      historySize: this.collisionHistory.size,
     };
   }
 }
@@ -276,20 +275,19 @@ export function createCollisionEvent(molA: MoleculeGroup, molB: MoleculeGroup): 
   const collisionPoint = new THREE.Vector3()
     .addVectors(molA.group.position, molB.group.position)
     .multiplyScalar(0.5);
-  
+
   const collisionNormal = new THREE.Vector3()
     .subVectors(molB.group.position, molA.group.position)
     .normalize();
-  
-  const relativeVelocity = new THREE.Vector3()
-    .subVectors(molB.velocity, molA.velocity);
-  
+
+  const relativeVelocity = new THREE.Vector3().subVectors(molB.velocity, molA.velocity);
+
   return {
     moleculeA: molA,
     moleculeB: molB,
     collisionPoint,
     collisionNormal,
     relativeVelocity,
-    timestamp: performance.now() / 1000
+    timestamp: performance.now() / 1000,
   };
 }

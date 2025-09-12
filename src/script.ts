@@ -7,27 +7,28 @@
  */
 
 // Package Imports
-import * as THREE from "three"; // Import the Three.js library.
-import "../node_modules/awesomplete/awesomplete.css"; // Import CSS for autocompletion (if used). // TODO: Check if used
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; // Import OrbitControls for interactive camera movement.
+import * as THREE from 'three'; // Import the Three.js library.
+import '../node_modules/awesomplete/awesomplete.css'; // Import CSS for autocompletion (if used). // TODO: Check if used
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; // Import OrbitControls for interactive camera movement.
+
 // import { generateUUID } from "three/src/math/MathUtils.js"; // Import for generating unique IDs (not currently used).
 
-// My Imports - Application-Specific Modules
-import { createMoleculeManager } from "./services/moleculeManager"; // Import the MoleculeManager factory.
+import { set_up_gui } from './components/guiControls'; // Import functions for setting up the graphical user interface.
 import {
   applyLighting,
-  updateSpotlightPosition,
   updateSkyLightPosition,
-} from "./components/lightingControls"; // Import functions for managing scene lighting.
+  updateSpotlightPosition,
+} from './components/lightingControls'; // Import functions for managing scene lighting.
+import { drawMolecule } from './components/moleculeDrawer'; // Import functions for fetching and drawing molecules.
 // Legacy spatial grid imports removed - now using physics engine
-import { physicsEngine } from "./physics/cannonPhysicsEngine"; // Import Cannon.js physics engine
-import { visualizeHulls } from "./physics/convexHullCollision"; // Import hull visualization
-import { log, DEBUG_MODE, addObjectDebug, initFpsDebug, updateFpsDebug } from "./utils/debug"; // Import debugging utilities.
-import { set_up_gui } from "./components/guiControls"; // Import functions for setting up the graphical user interface.
-import { drawMolecule } from "./components/moleculeDrawer"; // Import functions for fetching and drawing molecules.
+import { physicsEngine } from './physics/cannonPhysicsEngine'; // Import Cannon.js physics engine
+import { visualizeHulls } from './physics/convexHullCollision'; // Import hull visualization
+// My Imports - Application-Specific Modules
+import { createMoleculeManager } from './services/moleculeManager'; // Import the MoleculeManager factory.
+import { addObjectDebug, DEBUG_MODE, initFpsDebug, log, updateFpsDebug } from './utils/debug'; // Import debugging utilities.
 // import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
 
-import { MoleculeManager } from "./types";
+import type { MoleculeManager } from './types';
 
 // ===============================
 //  Module-Level Variables
@@ -55,10 +56,10 @@ let deltaTime: number = 0;
 /**
  * Stores the total time the application has been running. Updated in the `animate` function.
  */
-let totalTime: number = 0;
+let _totalTime: number = 0;
 
 // Performance optimization variables
-let frameCount: number = 0;
+let _frameCount: number = 0;
 
 // ===============================
 //  Scene Setup
@@ -102,7 +103,7 @@ document.body.appendChild(renderer.domElement); // Add the renderer's canvas to 
  * OrbitControls allow the user to rotate and pan the scene using the mouse.
  */
 const controls: OrbitControls = new OrbitControls(camera, renderer.domElement);
-log("Scene and renderer initialized.");
+log('Scene and renderer initialized.');
 
 // ===============================
 //  Initialization and Animation
@@ -121,7 +122,7 @@ animate();
 
 // Auto-reload for demo purposes (every 1.5 minutes)
 setInterval(() => {
-  console.log("[DEMO]: Auto-reloading simulation...");
+  console.log('[DEMO]: Auto-reloading simulation...');
   location.reload();
 }, 90000); // 90 seconds = 1.5 minutes
 
@@ -133,17 +134,17 @@ setInterval(() => {
  * Handles file input for loading molecule data from a .mol file.
  * This event listener is attached to the file input element.
  */
-const moleculeFileInput = document.getElementById("fileInput") as HTMLInputElement;
+const moleculeFileInput = document.getElementById('fileInput') as HTMLInputElement;
 if (moleculeFileInput) {
-  moleculeFileInput.addEventListener("change", function (e: Event) {
+  moleculeFileInput.addEventListener('change', (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0]; // Get the selected file.
     if (file) {
       const reader = new FileReader(); // Create a FileReader to read the file content.
-        reader.onload = function () {
-    const molFile = reader.result as string; // Get the file content as text.
-    drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, "test"); // Draw the molecule. // TODO: Fix position.
-  };
+      reader.onload = () => {
+        const molFile = reader.result as string; // Get the file content as text.
+        drawMolecule(molFile, moleculeManager, scene, { x: 0, y: 0, z: 0 }, 'test'); // Draw the molecule. // TODO: Fix position.
+      };
       reader.readAsText(file); // Read the file as text.
     }
   });
@@ -163,7 +164,7 @@ function onWindowResize(): void {
 onWindowResize();
 
 // Event listener for window resize.
-window.addEventListener("resize", onWindowResize, false);
+window.addEventListener('resize', onWindowResize, false);
 
 // ===============================
 //  Helper Functions
@@ -177,8 +178,8 @@ function animate(): void {
   requestAnimationFrame(animate); // Request the next animation frame.
 
   deltaTime = clock.getDelta(); // Get the time elapsed since the last frame.
-  totalTime += deltaTime; // Update the total time.
-  frameCount++; // Increment frame counter for performance optimization
+  _totalTime += deltaTime; // Update the total time.
+  _frameCount++; // Increment frame counter for performance optimization
 
   // Update FPS overlay in debug mode
   if (DEBUG_MODE) {
@@ -190,7 +191,7 @@ function animate(): void {
 
   // PHYSICS ENGINE STEP - Replaces custom collision detection
   physicsEngine.step(deltaTime);
-  
+
   // Get all molecules for additional processing
   const allMolecules = moleculeManager.getAllMolecules();
 
@@ -199,7 +200,7 @@ function animate(): void {
   if (!isPhysicsPaused) {
     for (const moleculeObject of allMolecules) {
       const group = moleculeObject.getGroup();
-      
+
       // Apply rotation for all molecules with rotation controllers
       if ((moleculeObject as any).rotationController) {
         const rotationController = (moleculeObject as any).rotationController;
@@ -234,13 +235,13 @@ function init(CSID: number): void {
   log(`Initializing scene with molecule CSID: ${CSID}`);
 
   // Initialize physics engine (already initialized globally)
-  log("Physics engine ready for collision detection and response");
+  log('Physics engine ready for collision detection and response');
 
   // Clear the scene:
   while (scene.children.length > 0) {
     scene.remove(scene.children[0]);
   }
-  log("Scene cleared.");
+  log('Scene cleared.');
 
   // Add a Three.js AxesHelper for debugging if DEBUG_MODE is enabled.
   if (DEBUG_MODE) {
@@ -273,5 +274,5 @@ function init(CSID: number): void {
   // Position and orient the camera.
   camera.position.set(10, 10, 10);
   camera.lookAt(0, 0, 0);
-  log("Camera positioned and oriented.");
+  log('Camera positioned and oriented.');
 }

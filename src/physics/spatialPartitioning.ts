@@ -1,6 +1,6 @@
-import * as THREE from "three";
-import { log } from "../utils/debug";
-import { MoleculeGroup } from "../types";
+import * as THREE from 'three';
+import type { MoleculeGroup } from '../types';
+import { log } from '../utils/debug';
 
 interface GridStats {
   totalChecks: number;
@@ -9,16 +9,14 @@ interface GridStats {
   moleculesInGrid: number;
 }
 
-
-
 /**
  * Spatial Hash Grid for efficient collision detection
- * 
+ *
  * This class implements a spatial partitioning system that divides 3D space
  * into uniform grid cells. Molecules are assigned to cells based on their
  * position, allowing for efficient collision detection by only checking
  * molecules in nearby cells.
- * 
+ *
  * Performance: Reduces collision checks from O(n²) to O(n) average case
  */
 export class SpatialHashGrid {
@@ -40,22 +38,20 @@ export class SpatialHashGrid {
       totalChecks: 0,
       actualCollisions: 0,
       cellsChecked: 0,
-      moleculesInGrid: 0
+      moleculesInGrid: 0,
     };
   }
 
   /**
    * Generates a unique key for a grid cell based on its coordinates
    * @param x - X coordinate of cell
-   * @param y - Y coordinate of cell  
+   * @param y - Y coordinate of cell
    * @param z - Z coordinate of cell
    * @returns Unique cell key
    */
   private _getCellKey(x: number, y: number, z: number): string {
     return `${x},${y},${z}`;
   }
-
-
 
   /**
    * Gets all grid cells that a molecule might occupy based on its position and radius
@@ -66,7 +62,7 @@ export class SpatialHashGrid {
     const cells = new Set<string>();
     const pos = molecule.group.position;
     const radius = molecule.radius || 3;
-    
+
     // Calculate grid bounds for molecule's radius
     const minX = Math.floor((pos.x - radius) / this.cellSize);
     const maxX = Math.floor((pos.x + radius) / this.cellSize);
@@ -93,18 +89,18 @@ export class SpatialHashGrid {
    */
   insert(molecule: MoleculeGroup): void {
     if (!molecule || !molecule.group) {
-      log("Warning: Attempted to insert invalid molecule into spatial grid");
+      log('Warning: Attempted to insert invalid molecule into spatial grid');
       return;
     }
 
     const cells = this._getMoleculeCells(molecule);
-    
+
     // Add molecule to each cell it occupies
     for (const cellKey of cells) {
       if (!this.grid.has(cellKey)) {
         this.grid.set(cellKey, new Set());
       }
-      this.grid.get(cellKey)!.add(molecule);
+      this.grid.get(cellKey)?.add(molecule);
     }
 
     // Track which cells this molecule occupies
@@ -166,7 +162,7 @@ export class SpatialHashGrid {
       if (!this.grid.has(cellKey)) {
         this.grid.set(cellKey, new Set());
       }
-      this.grid.get(cellKey)!.add(molecule);
+      this.grid.get(cellKey)?.add(molecule);
     }
 
     this.moleculeToCells.set(molecule, newCells);
@@ -233,7 +229,7 @@ export class SpatialHashGrid {
     return {
       ...this.stats,
       totalCells: this.grid.size,
-      averageMoleculesPerCell: this.stats.moleculesInGrid / Math.max(this.grid.size, 1)
+      averageMoleculesPerCell: this.stats.moleculesInGrid / Math.max(this.grid.size, 1),
     };
   }
 
@@ -245,7 +241,7 @@ export class SpatialHashGrid {
       totalChecks: 0,
       actualCollisions: 0,
       cellsChecked: 0,
-      moleculesInGrid: 0
+      moleculesInGrid: 0,
     };
   }
 
@@ -256,7 +252,9 @@ export class SpatialHashGrid {
   debugVisualize(scene: THREE.Scene): void {
     // Remove existing debug objects
     const existingDebug = scene.children.filter(child => child.userData.isGridDebug);
-    existingDebug.forEach(obj => scene.remove(obj));
+    existingDebug.forEach(obj => {
+      scene.remove(obj);
+    });
 
     // Track which cells we've already visualized to avoid duplicates
     const visualizedCells = new Set<string>();
@@ -265,7 +263,7 @@ export class SpatialHashGrid {
     for (const [cellKey, molecules] of this.grid) {
       if (molecules.size > 0 && !visualizedCells.has(cellKey)) {
         visualizedCells.add(cellKey);
-        
+
         const [x, y, z] = cellKey.split(',').map(Number);
         const center = new THREE.Vector3(
           (x + 0.5) * this.cellSize,
@@ -279,7 +277,7 @@ export class SpatialHashGrid {
           color: 0x00ff00,
           wireframe: true,
           transparent: true,
-          opacity: 0.5
+          opacity: 0.5,
         });
         const box = new THREE.Mesh(geometry, material);
         box.position.copy(center);
@@ -290,10 +288,10 @@ export class SpatialHashGrid {
         if (molecules.size > 1) {
           // Use a red sphere to indicate multiple molecules
           const sphereGeometry = new THREE.SphereGeometry(0.4, 8, 8);
-          const sphereMaterial = new THREE.MeshBasicMaterial({ 
+          const sphereMaterial = new THREE.MeshBasicMaterial({
             color: 0xff0000,
             transparent: true,
-            opacity: 0.7
+            opacity: 0.7,
           });
           const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
           sphere.position.copy(center);
@@ -304,4 +302,4 @@ export class SpatialHashGrid {
       }
     }
   }
-} 
+}

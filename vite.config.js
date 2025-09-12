@@ -15,8 +15,8 @@ export default defineConfig({
         // Disable file name hashing for consistent file names
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
-      }
-    }
+        assetFileNames: 'assets/[name].[ext]',
+      },
+    },
   },
 });

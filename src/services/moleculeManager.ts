@@ -1,7 +1,6 @@
-import * as THREE from "three";
-import { getNormalizedVectorAB } from "../utils/vectorHelper";
-import { Position, MoleculeGroup, MoleculeManager } from "../types";
-
+import * as THREE from 'three';
+import type { MoleculeGroup, MoleculeManager, Position } from '../types';
+import { getNormalizedVectorAB } from '../utils/vectorHelper';
 
 /**
  * Factory function to create a molecule group.  A molecule group is a Three.js Group
@@ -14,8 +13,8 @@ import { Position, MoleculeGroup, MoleculeManager } from "../types";
  * @returns An object representing the molecule group with methods to manage its properties.
  */
 export const createMoleculeGroup = (
-  name: string, 
-  position: Position = { x: 0, y: 0, z: 0 }, 
+  name: string,
+  position: Position,
   radius: number
 ): MoleculeGroup => {
   const group = new THREE.Group();
@@ -56,15 +55,16 @@ export const createMoleculeManager = (): MoleculeManager => {
      */
     newMolecule: (name: string, position?: Position): MoleculeGroup => {
       // Default position if none is provided.
-      const defaultPosition: Position = position === undefined ? {
-        x: Math.random() * 20 - 10,
-        y: Math.random() * 20 - 10,
-        z: Math.random() * 20 - 10,
-      } : position;
+      const defaultPosition: Position =
+        position === undefined
+          ? {
+              x: Math.random() * 20 - 10,
+              y: Math.random() * 20 - 10,
+              z: Math.random() * 20 - 10,
+            }
+          : position;
       const radius = 3;
       const newMolecule = createMoleculeGroup(name, defaultPosition, radius);
-
-
 
       molecules = { ...molecules, [name]: newMolecule }; // Add to the molecules object.  Immutably update the object.
       return newMolecule; // Return the new molecule object.
@@ -77,17 +77,17 @@ export const createMoleculeManager = (): MoleculeManager => {
      */
     getMolecule: (name: string): MoleculeGroup | undefined => molecules[name],
     /**
-   * Retrieves all molecules in the manager.
-   *
-   * @returns An array of all molecule objects.
-   */
+     * Retrieves all molecules in the manager.
+     *
+     * @returns An array of all molecule objects.
+     */
     getAllMolecules: (): MoleculeGroup[] => Object.values(molecules),
     /**
-   * Removes a molecule from the manager by its name.
-   *
-   * @param name - The name of the molecule to remove.
-   * @returns True if the molecule was removed, false otherwise.
-   */
+     * Removes a molecule from the manager by its name.
+     *
+     * @param name - The name of the molecule to remove.
+     * @returns True if the molecule was removed, false otherwise.
+     */
     removeMolecule: (name: string): boolean => {
       if (molecules[name]) {
         const { [name]: removed, ...rest } = molecules; // Destructure to remove
@@ -97,17 +97,18 @@ export const createMoleculeManager = (): MoleculeManager => {
       return false;
     },
     /**
-   * Logs the current state of the molecules object to the console for debugging.
-   * This is helpful for inspecting the molecules being managed.
-   */
-    debugMolecules: (): void => { // Add this method
+     * Logs the current state of the molecules object to the console for debugging.
+     * This is helpful for inspecting the molecules being managed.
+     */
+    debugMolecules: (): void => {
+      // Add this method
       console.log("[DEBUG] The 'molecules' object:", molecules);
     },
     /**
-   * Sets the initial velocities of all molecules in the manager to random values.
-   *
-   * @param initialSpeed - The initial speed of the molecules. Defaults to 10.
-   */
+     * Sets the initial velocities of all molecules in the manager to random values.
+     *
+     * @param initialSpeed - The initial speed of the molecules. Defaults to 10.
+     */
     setInitialVelocities: (initialSpeed: number = 10): void => {
       for (const molecule of Object.values(molecules)) {
         molecule.velocity.set(
@@ -126,7 +127,11 @@ export const createMoleculeManager = (): MoleculeManager => {
      * @param targetPosition - The world position to point towards.
      * @param speed - The speed of the initial velocity.
      */
-    setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed: number = 2): void => {
+    setMoleculeVelocity: (
+      moleculeName: string,
+      targetPosition: THREE.Vector3,
+      speed: number = 2
+    ): void => {
       const molecule = molecules[moleculeName];
       if (!molecule) {
         console.warn(`Molecule with name "${moleculeName}" not found.`);
@@ -140,11 +145,7 @@ export const createMoleculeManager = (): MoleculeManager => {
       const vectorAB = getNormalizedVectorAB(moleculePosition, targetPosition);
 
       // Set the velocity of the molecule from the normalized direction vector and a scalar (speed)
-      molecule.velocity.set(
-        vectorAB.x * speed,
-        vectorAB.y * speed,
-        vectorAB.z * speed
-      );
+      molecule.velocity.set(vectorAB.x * speed, vectorAB.y * speed, vectorAB.z * speed);
     },
   };
-}; 
+};

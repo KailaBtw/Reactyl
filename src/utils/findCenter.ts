@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from 'three';
 
 // Type definitions
 interface Atom {
@@ -32,56 +32,52 @@ interface Limits {
  * @returns A THREE.Vector3 object representing the calculated center point of the molecule.
  */
 export function findCenter(molObject: MolObject): THREE.Vector3 {
-    // Get the first point in the molecule.
-    let firstPoint = new THREE.Vector3(
-        molObject.atoms[0].position.x,
-        molObject.atoms[0].position.y,
-        molObject.atoms[0].position.z
-    );
+  // Get the first point in the molecule.
+  const firstPoint = new THREE.Vector3(
+    molObject.atoms[0].position.x,
+    molObject.atoms[0].position.y,
+    molObject.atoms[0].position.z
+  );
 
-    // Set the initial limits to the first point. These limits will be expanded
-    // to encompass the entire molecule.
-    let limits: Limits = {
-        x: { min: firstPoint.x, max: firstPoint.x },
-        y: { min: firstPoint.y, max: firstPoint.y },
-        z: { min: firstPoint.z, max: firstPoint.z },
-    };
+  // Set the initial limits to the first point. These limits will be expanded
+  // to encompass the entire molecule.
+  const limits: Limits = {
+    x: { min: firstPoint.x, max: firstPoint.x },
+    y: { min: firstPoint.y, max: firstPoint.y },
+    z: { min: firstPoint.z, max: firstPoint.z },
+  };
 
-    // Iterate over all atoms in the molecule to find the bounding box.
-    for (let item of molObject.atoms) {
-        let point = new THREE.Vector3(
-            item.position.x,
-            item.position.y,
-            item.position.z
-        );
+  // Iterate over all atoms in the molecule to find the bounding box.
+  for (const item of molObject.atoms) {
+    const point = new THREE.Vector3(item.position.x, item.position.y, item.position.z);
 
-        // Update the limits if we find more extreme coordinates.
-        if (Number(point.x) < Number(limits.x.min)) {
-            limits.x.min = point.x;
-        }
-        if (Number(point.x) > Number(limits.x.max)) {
-            limits.x.max = point.x;
-        }
-        if (Number(point.y) < Number(limits.y.min)) {
-            limits.y.min = point.y;
-        }
-        if (Number(point.y) > Number(limits.y.max)) {
-            limits.y.max = point.y;
-        }
-        if (Number(point.z) < Number(limits.z.min)) {
-            limits.z.min = point.z;
-        }
-        if (Number(point.z) > Number(limits.z.max)) {
-            limits.z.max = point.z;
-        }
+    // Update the limits if we find more extreme coordinates.
+    if (Number(point.x) < Number(limits.x.min)) {
+      limits.x.min = point.x;
     }
+    if (Number(point.x) > Number(limits.x.max)) {
+      limits.x.max = point.x;
+    }
+    if (Number(point.y) < Number(limits.y.min)) {
+      limits.y.min = point.y;
+    }
+    if (Number(point.y) > Number(limits.y.max)) {
+      limits.y.max = point.y;
+    }
+    if (Number(point.z) < Number(limits.z.min)) {
+      limits.z.min = point.z;
+    }
+    if (Number(point.z) > Number(limits.z.max)) {
+      limits.z.max = point.z;
+    }
+  }
 
-    // Calculate the center point by averaging the min and max coordinates.
-    let moleculeCenter = new THREE.Vector3(
-        (Number(limits.x.min) + Number(limits.x.max)) / 2,
-        (Number(limits.y.min) + Number(limits.y.max)) / 2,
-        (Number(limits.z.min) + Number(limits.z.max)) / 2
-    );
+  // Calculate the center point by averaging the min and max coordinates.
+  const moleculeCenter = new THREE.Vector3(
+    (Number(limits.x.min) + Number(limits.x.max)) / 2,
+    (Number(limits.y.min) + Number(limits.y.max)) / 2,
+    (Number(limits.z.min) + Number(limits.z.max)) / 2
+  );
 
-    return moleculeCenter; // Return the calculated center point.
-} 
+  return moleculeCenter; // Return the calculated center point.
+}

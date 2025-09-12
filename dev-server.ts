@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import express, { Request, Response } from 'express';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import express, { type Request, type Response } from 'express';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,12 +17,15 @@ app.use(express.json());
 // CORS middleware
 app.use((req, res, next) => {
   console.log(`🌐 ${req.method} ${req.path} from ${req.get('Origin') || 'unknown'}`);
-  
+
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+  );
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
     console.log('✅ CORS preflight handled');
@@ -38,48 +41,48 @@ app.use(express.static('.'));
 app.post('/api/save-molecule', async (req: Request, res: Response) => {
   try {
     const { cid, molecularData } = req.body;
-    
+
     if (!cid || !molecularData) {
       return res.status(400).json({ success: false, error: 'CID and molecularData are required' });
     }
-    
+
     console.log(`🔄 POST /api/save-molecule - Saving CID ${cid}`);
-    
+
     // Create molecules directory
     const moleculesDir = path.join(__dirname, 'public', 'cache', 'molecules');
     await fs.mkdir(moleculesDir, { recursive: true });
-    
+
     // Save individual molecule file
     const moleculePath = path.join(moleculesDir, `${cid}.json`);
     await fs.writeFile(moleculePath, JSON.stringify(molecularData, null, 2));
-    
+
     console.log(`✅ Molecule saved to: ${moleculePath}`);
     res.json({ success: true, message: `Molecule ${cid} saved successfully` });
   } catch (error) {
     console.error('❌ Error saving molecule:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
 
 // API endpoint to get all molecules
-app.get('/api/molecules', async (req: Request, res: Response) => {
+app.get('/api/molecules', async (_req: Request, res: Response) => {
   try {
     const moleculesDir = path.join(__dirname, 'public', 'cache', 'molecules');
     console.log(`📖 GET /api/molecules - Reading from: ${moleculesDir}`);
-    
+
     try {
       const files = await fs.readdir(moleculesDir);
       const jsonFiles = files.filter(file => file.endsWith('.json'));
-      
+
       console.log(`📖 Found ${jsonFiles.length} molecule files`);
-      res.json({ 
+      res.json({
         molecules: jsonFiles.map(file => file.replace('.json', '')),
-        count: jsonFiles.length 
+        count: jsonFiles.length,
       });
-    } catch (error) {
+    } catch (_error) {
       // Directory doesn't exist yet
       console.log(`📖 No molecules directory found`);
       res.json({ molecules: [], count: 0 });
@@ -95,12 +98,12 @@ app.get('/api/molecule/:cid', async (req: Request, res: Response) => {
   try {
     const { cid } = req.params;
     const moleculePath = path.join(__dirname, 'public', 'cache', 'molecules', `${cid}.json`);
-    
+
     console.log(`📖 GET /api/molecule/${cid} - Reading from: ${moleculePath}`);
-    
+
     const moleculeData = await fs.readFile(moleculePath, 'utf-8');
     const parsed = JSON.parse(moleculeData);
-    
+
     console.log(`📖 Molecule loaded: ${parsed.formula || 'Unknown'}`);
     res.json(parsed);
   } catch (error) {

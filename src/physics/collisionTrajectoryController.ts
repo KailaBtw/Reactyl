@@ -1,14 +1,14 @@
+import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
-import { MoleculeGroup, CollisionSetup } from '../types';
-import { physicsEngine } from './cannonPhysicsEngine';
+import type { CollisionSetup } from '../types';
 import { log } from '../utils/debug';
+import { physicsEngine } from './cannonPhysicsEngine';
 
 export class CollisionTrajectoryController {
   private trajectoryLine?: THREE.Line;
   private scene: THREE.Scene;
   private currentSetup?: CollisionSetup;
-  
+
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     log('CollisionTrajectoryController initialized');
@@ -19,10 +19,10 @@ export class CollisionTrajectoryController {
    */
   setupCollision(params: CollisionSetup): void {
     this.currentSetup = params;
-    
+
     const substrateBody = physicsEngine.getPhysicsBody(params.substrate);
     const nucleophileBody = physicsEngine.getPhysicsBody(params.nucleophile);
-    
+
     if (!substrateBody || !nucleophileBody) {
       console.error('Physics bodies not found for collision setup');
       return;
@@ -33,34 +33,36 @@ export class CollisionTrajectoryController {
     // Reset positions
     const separation = 15; // units apart
     substrateBody.position.set(0, 0, 0);
-    
+
     // Calculate approach vector based on angle and impact parameter
-    const angle = params.approachAngle * Math.PI / 180;
+    const angle = (params.approachAngle * Math.PI) / 180;
     const offset = params.impactParameter;
-    
+
     const approachVector = new THREE.Vector3(
       Math.cos(angle) * separation,
       offset,
       Math.sin(angle) * separation
     );
-    
+
     nucleophileBody.position.copy(approachVector as any);
-    
+
     // Set velocity toward substrate
     const velocity = approachVector.normalize().multiplyScalar(-params.relativeVelocity);
     nucleophileBody.velocity.set(velocity.x, velocity.y, velocity.z);
-    
+
     // Add thermal motion for realism
     this.addThermalMotion(substrateBody, params.temperature);
     this.addThermalMotion(nucleophileBody, params.temperature);
-    
+
     // Visualize trajectory
     this.visualizeTrajectory(
       new THREE.Vector3().copy(nucleophileBody.position as any),
       new THREE.Vector3().copy(substrateBody.position as any)
     );
 
-    log(`Collision setup complete: approach angle ${params.approachAngle}°, velocity ${params.relativeVelocity} m/s`);
+    log(
+      `Collision setup complete: approach angle ${params.approachAngle}°, velocity ${params.relativeVelocity} m/s`
+    );
   }
 
   /**
@@ -68,8 +70,8 @@ export class CollisionTrajectoryController {
    */
   private addThermalMotion(body: CANNON.Body, temperature: number): void {
     const k_B = 1.38e-23; // Boltzmann constant
-    const thermalEnergy = Math.sqrt(k_B * temperature / body.mass);
-    
+    const thermalEnergy = Math.sqrt((k_B * temperature) / body.mass);
+
     // Random thermal velocity components (scaled for molecular simulation)
     const scale = 1e-12; // Scale factor for molecular simulation
     body.velocity.x += (Math.random() - 0.5) * thermalEnergy * scale;
@@ -89,13 +91,13 @@ export class CollisionTrajectoryController {
     // Create trajectory points
     const points = [start, end];
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({ 
+    const material = new THREE.LineBasicMaterial({
       color: 0x00ff00,
       opacity: 0.7,
       transparent: true,
-      linewidth: 3
+      linewidth: 3,
     });
-    
+
     this.trajectoryLine = new THREE.Line(geometry, material);
     this.scene.add(this.trajectoryLine);
 
@@ -107,21 +109,21 @@ export class CollisionTrajectoryController {
    * Add directional arrow to trajectory
    */
   private addTrajectoryArrow(start: THREE.Vector3, end: THREE.Vector3): void {
-    const direction = new THREE.Vector3().subVectors(end, start).normalize();
+    const _direction = new THREE.Vector3().subVectors(end, start).normalize();
     const arrowLength = 2;
     const arrowGeometry = new THREE.ConeGeometry(0.2, arrowLength, 8);
     const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
-    
+
     // Position arrow at start point
     arrow.position.copy(start);
-    
+
     // Orient arrow toward end point
     arrow.lookAt(end);
     arrow.rotateX(Math.PI / 2); // Adjust for cone orientation
-    
+
     this.scene.add(arrow);
-    
+
     // Store reference for cleanup
     (this.trajectoryLine as any).arrow = arrow;
   }
@@ -134,7 +136,7 @@ export class CollisionTrajectoryController {
 
     const substrateBody = physicsEngine.getPhysicsBody(this.currentSetup.substrate);
     const nucleophileBody = physicsEngine.getPhysicsBody(this.currentSetup.nucleophile);
-    
+
     if (!substrateBody || !nucleophileBody) return null;
 
     // Simple linear prediction (ignoring acceleration)
@@ -152,7 +154,7 @@ export class CollisionTrajectoryController {
     if (relativeSpeed === 0) return null;
 
     const timeToCollision = -relativePos.dot(relativeVel) / (relativeSpeed * relativeSpeed);
-    
+
     if (timeToCollision < 0) return null; // Moving apart
 
     // Predicted collision point
@@ -178,7 +180,7 @@ export class CollisionTrajectoryController {
 
     const substrateBody = physicsEngine.getPhysicsBody(this.currentSetup.substrate);
     const nucleophileBody = physicsEngine.getPhysicsBody(this.currentSetup.nucleophile);
-    
+
     if (!substrateBody || !nucleophileBody) return;
 
     const substratePos = new THREE.Vector3().copy(substrateBody.position as any);
@@ -188,14 +190,14 @@ export class CollisionTrajectoryController {
     if (this.trajectoryLine) {
       const geometry = this.trajectoryLine.geometry as THREE.BufferGeometry;
       const positions = geometry.attributes.position.array as Float32Array;
-      
+
       positions[0] = nucleophilePos.x;
       positions[1] = nucleophilePos.y;
       positions[2] = nucleophilePos.z;
       positions[3] = substratePos.x;
       positions[4] = substratePos.y;
       positions[5] = substratePos.z;
-      
+
       geometry.attributes.position.needsUpdate = true;
     }
   }
@@ -215,12 +217,12 @@ export class CollisionTrajectoryController {
   clearTrajectoryVisualization(): void {
     if (this.trajectoryLine) {
       this.scene.remove(this.trajectoryLine);
-      
+
       // Remove arrow if it exists
       if ((this.trajectoryLine as any).arrow) {
         this.scene.remove((this.trajectoryLine as any).arrow);
       }
-      
+
       this.trajectoryLine = undefined;
     }
   }
@@ -239,7 +241,7 @@ export class CollisionTrajectoryController {
 
     const substrateBody = physicsEngine.getPhysicsBody(this.currentSetup.substrate);
     const nucleophileBody = physicsEngine.getPhysicsBody(this.currentSetup.nucleophile);
-    
+
     if (!substrateBody || !nucleophileBody) {
       return { distance: 0, relativeVelocity: 0, timeToCollision: null };
     }
@@ -255,12 +257,15 @@ export class CollisionTrajectoryController {
 
     // Calculate time to collision
     const relativePos = new THREE.Vector3().subVectors(nucleophilePos, substratePos);
-    const timeToCollision = relativeVelocity > 0 ? -relativePos.dot(relativeVel) / (relativeVelocity * relativeVelocity) : null;
+    const timeToCollision =
+      relativeVelocity > 0
+        ? -relativePos.dot(relativeVel) / (relativeVelocity * relativeVelocity)
+        : null;
 
     return {
       distance,
       relativeVelocity,
-      timeToCollision: timeToCollision && timeToCollision > 0 ? timeToCollision : null
+      timeToCollision: timeToCollision && timeToCollision > 0 ? timeToCollision : null,
     };
   }
 

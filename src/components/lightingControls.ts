@@ -1,5 +1,5 @@
-import * as THREE from "three";
-import { log, addLightingDebug, LIGHTING_DEBUG } from "../utils/debug"; // Import debugging utilities.
+import * as THREE from 'three';
+import { addLightingDebug, LIGHTING_DEBUG, log } from '../utils/debug'; // Import debugging utilities.
 
 // ===============================
 //  Lighting Setup
@@ -51,14 +51,14 @@ const spotlightOffset: THREE.Vector3 = new THREE.Vector3(2, 4, -4); // Right, Up
  * @param scene - The Three.js scene to add the lights to.
  */
 export function applyLighting(scene: THREE.Scene): void {
-  addAmbientLight(scene);       // Add ambient light.
-  addSpotLight(scene);         // Add spot light.
-  addDirectionalLight(scene);   // Add directional light.
+  addAmbientLight(scene); // Add ambient light.
+  addSpotLight(scene); // Add spot light.
+  addDirectionalLight(scene); // Add directional light.
 
   // Add lighting debug helpers if LIGHTING_DEBUG is enabled.
   addLightingDebug(scene, spotLightHelper, directionalLightHelper);
 
-  log("Finished Initializing Lighting"); // Log a message indicating lighting setup is complete.
+  log('Finished Initializing Lighting'); // Log a message indicating lighting setup is complete.
 }
 
 /**
@@ -144,7 +144,7 @@ export function updateSkyLightPosition(camera: THREE.Camera): void {
  */
 function addAmbientLight(scene: THREE.Scene): void {
   scene.add(ambientLight); // Add the ambient light to the scene.
-  log("AmbientLight added to the Scene");
+  log('AmbientLight added to the Scene');
 }
 
 /**
@@ -155,17 +155,17 @@ function addAmbientLight(scene: THREE.Scene): void {
 function addSpotLight(scene: THREE.Scene): void {
   // Configure the spot light.
   spotLight.position.set(3, 8, 3); // Initial position.
-  spotLight.castShadow = true;     // Enable shadow casting.
-  spotLight.shadow.mapSize.width = 1024;  // Shadow map resolution.
+  spotLight.castShadow = true; // Enable shadow casting.
+  spotLight.shadow.mapSize.width = 1024; // Shadow map resolution.
   spotLight.shadow.mapSize.height = 1024;
-  spotLight.shadow.camera.near = 500;    // Shadow camera near plane. TODO: Adjust these values
-  spotLight.shadow.camera.far = 4000;     // Shadow camera far plane.   based on scene
-  spotLight.shadow.camera.fov = 30;      // Shadow camera field of view.
-  spotLight.penumbra = 1;          // Softness of the shadow edge (0 to 1).
+  spotLight.shadow.camera.near = 500; // Shadow camera near plane. TODO: Adjust these values
+  spotLight.shadow.camera.far = 4000; // Shadow camera far plane.   based on scene
+  spotLight.shadow.camera.fov = 30; // Shadow camera field of view.
+  spotLight.penumbra = 1; // Softness of the shadow edge (0 to 1).
 
-  scene.add(spotLight);           // Add the spot light to the scene.
+  scene.add(spotLight); // Add the spot light to the scene.
   spotLightHelper.update();
-  log("SpotLight added to the Scene");
+  log('SpotLight added to the Scene');
 }
 
 /**
@@ -190,5 +190,5 @@ function addDirectionalLight(scene: THREE.Scene): void {
   directionalLight.shadow.camera.bottom = -shadowMapSize;
 
   scene.add(directionalLight);
-  log("DirectionalLight added to the Scene");
+  log('DirectionalLight added to the Scene');
 }

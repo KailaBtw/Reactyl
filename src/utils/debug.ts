@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from 'three';
 
 /**
  * Global flag to enable or disable debug log messages.
@@ -35,7 +35,7 @@ const light: THREE.PointLight = new THREE.PointLight(0xffffff, 1, 100); // White
 export function log(...messages: any[]): void {
   if (!DEBUG_MODE) return; // If DEBUG_MODE is false, do nothing.
 
-  console.log("[DEBUG]: ", ...messages); // Log the messages to the console.
+  console.log('[DEBUG]: ', ...messages); // Log the messages to the console.
 }
 
 /**
@@ -47,8 +47,8 @@ export function log(...messages: any[]): void {
  * @param scene - The Three.js scene to add the debug objects to.
  */
 export function addObjectDebug(scene: THREE.Scene): void {
-  const GROUND_DEBUG: boolean = false;  // Flag to enable/disable ground plane debug.
-  const SHAPE_DEBUG: boolean = false;   // Flag to enable/disable shape (cube) debug.
+  const GROUND_DEBUG: boolean = false; // Flag to enable/disable ground plane debug.
+  const SHAPE_DEBUG: boolean = false; // Flag to enable/disable shape (cube) debug.
 
   if (!OBJECT_DEBUG) return; // If OBJECT_DEBUG is false, do nothing.
 
@@ -59,9 +59,9 @@ export function addObjectDebug(scene: THREE.Scene): void {
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal.
-    ground.position.y = -1;             // Position slightly below the origin.
-    ground.receiveShadow = true;       // Ground can receive shadows.
-    scene.add(ground);                  // Add to the scene.
+    ground.position.y = -1; // Position slightly below the origin.
+    ground.receiveShadow = true; // Ground can receive shadows.
+    scene.add(ground); // Add to the scene.
   }
 
   // Create a basic shape (cube)
@@ -69,8 +69,8 @@ export function addObjectDebug(scene: THREE.Scene): void {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green.
     const cube = new THREE.Mesh(geometry, material);
-    cube.castShadow = true;           // Cube casts shadows.
-    scene.add(cube);                  // Add to the scene.
+    cube.castShadow = true; // Cube casts shadows.
+    scene.add(cube); // Add to the scene.
   }
 }
 
@@ -87,22 +87,22 @@ let fpsAccumulatedTimeMs = 0;
  */
 export function initFpsDebug(): void {
   if (!DEBUG_MODE) return;
-  if (typeof document === "undefined") return;
+  if (typeof document === 'undefined') return;
   if (fpsContainer) return; // already initialized
 
-  const div = document.createElement("div");
-  div.id = "fps-meter";
-  div.style.position = "fixed";
-  div.style.left = "6px";
-  div.style.top = "6px";
-  div.style.padding = "4px 6px";
-  div.style.background = "rgba(0,0,0,0.45)";
-  div.style.color = "#0f0";
-  div.style.fontFamily = "monospace";
-  div.style.fontSize = "12px";
-  div.style.lineHeight = "14px";
-  div.style.zIndex = "10000";
-  div.textContent = "FPS: -- | ms: --";
+  const div = document.createElement('div');
+  div.id = 'fps-meter';
+  div.style.position = 'fixed';
+  div.style.left = '6px';
+  div.style.top = '6px';
+  div.style.padding = '4px 6px';
+  div.style.background = 'rgba(0,0,0,0.45)';
+  div.style.color = '#0f0';
+  div.style.fontFamily = 'monospace';
+  div.style.fontSize = '12px';
+  div.style.lineHeight = '14px';
+  div.style.zIndex = '10000';
+  div.textContent = 'FPS: -- | ms: --';
   document.body.appendChild(div);
   fpsContainer = div;
 }
@@ -117,14 +117,15 @@ export function updateFpsDebug(deltaSeconds: number): void {
   fpsAccumulatedTimeMs += deltaSeconds * 1000;
 
   // Update more frequently for better responsiveness
-  if (fpsAccumulatedTimeMs >= 250) { // Update 4 times per second instead of 2
+  if (fpsAccumulatedTimeMs >= 250) {
+    // Update 4 times per second instead of 2
     const fps = (fpsFramesSinceUpdate * 1000) / fpsAccumulatedTimeMs;
     const ms = fpsAccumulatedTimeMs / fpsFramesSinceUpdate;
-    
+
     // Add some validation to prevent NaN or infinite values
-    const validFps = isFinite(fps) ? fps : 0;
-    const validMs = isFinite(ms) ? ms : 0;
-    
+    const validFps = Number.isFinite(fps) ? fps : 0;
+    const validMs = Number.isFinite(ms) ? ms : 0;
+
     fpsContainer.textContent = `FPS: ${validFps.toFixed(1)} | ms: ${validMs.toFixed(1)}`;
     fpsFramesSinceUpdate = 0;
     fpsAccumulatedTimeMs = 0;
@@ -135,7 +136,7 @@ export function updateFpsDebug(deltaSeconds: number): void {
  * Removes the FPS overlay (optional cleanup).
  */
 export function disposeFpsDebug(): void {
-  if (fpsContainer && fpsContainer.parentElement) {
+  if (fpsContainer?.parentElement) {
     fpsContainer.parentElement.removeChild(fpsContainer);
   }
   fpsContainer = null;
@@ -155,12 +156,12 @@ export function disposeFpsDebug(): void {
  * @param directionalLightHelper - The helper for the directional light.
  */
 export function addLightingDebug(
-  scene: THREE.Scene, 
-  spotLightHelper: THREE.SpotLightHelper, 
+  scene: THREE.Scene,
+  spotLightHelper: THREE.SpotLightHelper,
   directionalLightHelper: THREE.DirectionalLightHelper
 ): void {
-  const SHADOW_DEBUG: boolean = false;           // Flag to enable/disable shadow debugging.
-  const SPOTLIGHT_DEBUG: boolean = true;        // Flag to enable/disable spot light helper.
+  const SHADOW_DEBUG: boolean = false; // Flag to enable/disable shadow debugging.
+  const SPOTLIGHT_DEBUG: boolean = true; // Flag to enable/disable spot light helper.
   const DIRECTIONAL_LIGHT_DEBUG: boolean = false; // Flag for directional light
 
   if (!LIGHTING_DEBUG) return; // If LIGHTING_DEBUG is false, do nothing.
@@ -187,4 +188,4 @@ export function addLightingDebug(
     // Add a DirectionalLightHelper to visualize the light's direction
     scene.add(directionalLightHelper);
   }
-} 
+}

@@ -1,10 +1,10 @@
-import * as THREE from "three";
-import { log } from "./debug"; // Assuming this is your debug logging utility
-import { SpatialHashGrid } from "../physics/spatialPartitioning";
-import { MoleculeGroup, GridStats } from "../types";
-import { createWorldSpaceHull, checkHullIntersection } from "../physics/convexHullCollision";
-import { collisionEventSystem, createCollisionEvent } from "../physics/collisionEventSystem";
-import { getFastAABB, markTransformDirty } from "../services/transformCache";
+import * as THREE from 'three';
+import { collisionEventSystem, createCollisionEvent } from '../physics/collisionEventSystem';
+import { checkHullIntersection, createWorldSpaceHull } from '../physics/convexHullCollision';
+import { SpatialHashGrid } from '../physics/spatialPartitioning';
+import { getFastAABB } from '../services/transformCache';
+import type { GridStats, MoleculeGroup } from '../types';
+import { log } from './debug'; // Assuming this is your debug logging utility
 
 // Type alias for backward compatibility
 type Position = { x: number; y: number; z: number };
@@ -15,7 +15,10 @@ type Position = { x: number; y: number; z: number };
  * @param positionB - Target position
  * @returns Normalized direction vector from A to B
  */
-export function getNormalizedVectorAB(positionA: THREE.Vector3, positionB: THREE.Vector3): THREE.Vector3 {
+export function getNormalizedVectorAB(
+  positionA: THREE.Vector3,
+  positionB: THREE.Vector3
+): THREE.Vector3 {
   return new THREE.Vector3().subVectors(positionB, positionA).normalize();
 }
 
@@ -66,7 +69,7 @@ export function resetSpatialGridStats(): void {
  * @param molecule - The molecule to create sphere for
  * @returns Three.js Sphere or null
  */
-function createMoleculeBoundingSphere(molecule: MoleculeGroup): THREE.Sphere | null {
+function _createMoleculeBoundingSphere(molecule: MoleculeGroup): THREE.Sphere | null {
   if (!molecule.molObject || !molecule.molObject.atoms) {
     return null;
   }
@@ -76,10 +79,10 @@ function createMoleculeBoundingSphere(molecule: MoleculeGroup): THREE.Sphere | n
   for (const atom of molecule.molObject.atoms) {
     const localPos = new THREE.Vector3(
       parseFloat(atom.position.x),
-      parseFloat(atom.position.y), 
+      parseFloat(atom.position.y),
       parseFloat(atom.position.z)
     );
-    
+
     // Transform to world space
     const worldPos = localPos.clone().applyMatrix4(molecule.group.matrixWorld);
     points.push(worldPos);
@@ -92,7 +95,7 @@ function createMoleculeBoundingSphere(molecule: MoleculeGroup): THREE.Sphere | n
   // Create bounding sphere from points
   const sphere = new THREE.Sphere();
   sphere.setFromPoints(points);
-  
+
   return sphere;
 }
 
@@ -106,7 +109,7 @@ export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolea
   // PHASE 1: Broad-phase - Fast AABB using transform cache
   const aabbA = getFastAABB(molA);
   const aabbB = getFastAABB(molB);
-  
+
   if (!aabbA || !aabbB || !aabbA.intersectsBox(aabbB)) {
     return false; // Early out
   }
@@ -117,7 +120,7 @@ export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolea
   // PHASE 2: Narrow-phase - Accurate hull collision detection
   const hullA = createWorldSpaceHull(molA);
   const hullB = createWorldSpaceHull(molB);
-  
+
   if (!hullA || !hullB) {
     // Fallback: if hull creation fails, we can't determine collision accurately
     // Log the issue but don't treat as collision to avoid false positives
@@ -126,30 +129,34 @@ export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolea
   }
 
   // Debug: Log hull vertex counts
-  console.log(`Hull A (${molA.name}): ${hullA.length} vertices, Hull B (${molB.name}): ${hullB.length} vertices`);
+  console.log(
+    `Hull A (${molA.name}): ${hullA.length} vertices, Hull B (${molB.name}): ${hullB.length} vertices`
+  );
 
   // Additional validation: ensure hulls aren't too large relative to molecule size
   const hullASize = getHullSize(hullA);
   const hullBSize = getHullSize(hullB);
   const molASize = getMoleculeSize(molA);
   const molBSize = getMoleculeSize(molB);
-  
+
   // If hull is significantly larger than molecule, something is wrong
   if (hullASize > molASize * 3 || hullBSize > molBSize * 3) {
-    console.warn(`Hull size mismatch detected - Hull A: ${hullASize.toFixed(2)}, Molecule A: ${molASize.toFixed(2)}, Hull B: ${hullBSize.toFixed(2)}, Molecule B: ${molBSize.toFixed(2)}`);
+    console.warn(
+      `Hull size mismatch detected - Hull A: ${hullASize.toFixed(2)}, Molecule A: ${molASize.toFixed(2)}, Hull B: ${hullBSize.toFixed(2)}, Molecule B: ${molBSize.toFixed(2)}`
+    );
     return false; // Skip collision to avoid false positives
   }
 
   // Detailed hull intersection test (narrow-phase)
   const collision = checkHullIntersection(hullA, hullB);
   console.log(`Hull intersection result: ${collision}`);
-  
+
   // Emit collision event if collision detected
   if (collision) {
     const event = createCollisionEvent(molA, molB);
     collisionEventSystem.emitCollision(event);
   }
-  
+
   return collision;
 }
 
@@ -161,9 +168,12 @@ export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolea
  * @param allMolecules - Array of all molecules in the scene
  * @returns Array of molecules that are colliding with the given molecule
  */
-export function checkCollisionsWithSpatialGrid(molecule: MoleculeGroup, allMolecules: MoleculeGroup[]): MoleculeGroup[] {
+export function checkCollisionsWithSpatialGrid(
+  molecule: MoleculeGroup,
+  allMolecules: MoleculeGroup[]
+): MoleculeGroup[] {
   if (!spatialGrid) {
-    log("Warning: Spatial grid not initialized, falling back to O(n²) collision detection");
+    log('Warning: Spatial grid not initialized, falling back to O(n²) collision detection');
     return checkCollisionsBruteForce(molecule, allMolecules);
   }
 
@@ -174,8 +184,6 @@ export function checkCollisionsWithSpatialGrid(molecule: MoleculeGroup, allMolec
   if (spatialGrid.stats) {
     spatialGrid.stats.totalChecks += nearbyMolecules.size;
   }
-
-
 
   for (const otherMolecule of nearbyMolecules) {
     if (molecule !== otherMolecule && checkCollision(molecule, otherMolecule)) {
@@ -196,19 +204,22 @@ export function checkCollisionsWithSpatialGrid(molecule: MoleculeGroup, allMolec
  * @param allMolecules - Array of all molecules in the scene
  * @returns Array of molecules that are colliding with the given molecule
  */
-export function checkCollisionsBruteForce(molecule: MoleculeGroup, allMolecules: MoleculeGroup[]): MoleculeGroup[] {
+export function checkCollisionsBruteForce(
+  molecule: MoleculeGroup,
+  allMolecules: MoleculeGroup[]
+): MoleculeGroup[] {
   const collidingMolecules: MoleculeGroup[] = [];
-  
+
   // Track collision checks for brute force method
-  if (spatialGrid && spatialGrid.stats) {
+  if (spatialGrid?.stats) {
     spatialGrid.stats.totalChecks += allMolecules.length - 1; // -1 to exclude self
   }
-  
+
   for (const otherMolecule of allMolecules) {
     if (molecule !== otherMolecule && checkCollision(molecule, otherMolecule)) {
       collidingMolecules.push(otherMolecule);
       // Track actual collisions
-      if (spatialGrid && spatialGrid.stats) {
+      if (spatialGrid?.stats) {
         spatialGrid.stats.actualCollisions++;
       }
     }
@@ -231,7 +242,10 @@ export function checkCollisionsBruteForce(molecule: MoleculeGroup, allMolecules:
  * @param moleculeObject2 - The second molecule object, with the same
  * structure as moleculeObject1.
  */
-export function handleCollision(moleculeObject1: MoleculeGroup, moleculeObject2: MoleculeGroup): void {
+export function handleCollision(
+  moleculeObject1: MoleculeGroup,
+  moleculeObject2: MoleculeGroup
+): void {
   // Get the positions of the molecules.
   const posA = moleculeObject1.group.position;
   const posB = moleculeObject2.group.position;
@@ -282,7 +296,7 @@ export function debugVisualizeSpatialGrid(scene: THREE.Scene): void {
  */
 function getHullSize(hull: THREE.Vector3[]): number {
   if (hull.length < 2) return 0;
-  
+
   let maxDistance = 0;
   for (let i = 0; i < hull.length; i++) {
     for (let j = i + 1; j < hull.length; j++) {
@@ -302,10 +316,10 @@ function getMoleculeSize(molecule: MoleculeGroup): number {
   if (!molecule.molObject || !molecule.molObject.atoms || molecule.molObject.atoms.length < 2) {
     return 0;
   }
-  
+
   let maxDistance = 0;
   const atoms = molecule.molObject.atoms;
-  
+
   for (let i = 0; i < atoms.length; i++) {
     for (let j = i + 1; j < atoms.length; j++) {
       const posA = new THREE.Vector3(
@@ -318,7 +332,7 @@ function getMoleculeSize(molecule: MoleculeGroup): number {
         parseFloat(atoms[j].position.y),
         parseFloat(atoms[j].position.z)
       );
-      
+
       const distance = posA.distanceTo(posB);
       maxDistance = Math.max(maxDistance, distance);
     }

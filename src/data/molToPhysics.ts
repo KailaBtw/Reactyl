@@ -1,15 +1,18 @@
 import * as THREE from 'three';
-import { MolecularPropertiesCalculator, type Atom as PhysicsAtom, type MolecularProperties } from '../chemistry/molecularPropertiesCalculator';
+import {
+  type MolecularProperties,
+  MolecularPropertiesCalculator,
+  type Atom as PhysicsAtom,
+} from '../chemistry/molecularPropertiesCalculator';
 
 // Import your existing MOL parsing types from molFileToJSON
-import type { MolObject, Atom as MolAtom } from './molFileToJSON';
+import type { Atom as MolAtom, MolObject } from './molFileToJSON';
 
 /**
  * Converts your parsed MOL file data to physics-ready format
  * This bridges your existing MOL parsing with the new rotation system
  */
 export class MolToPhysicsConverter {
-  
   /**
    * Convert MOL file atoms to physics atoms with proper mass data
    */
@@ -21,7 +24,7 @@ export class MolToPhysicsConverter {
         parseFloat(atom.position.y),
         parseFloat(atom.position.z)
       ),
-      mass: this.getAtomicMass(atom.type)
+      mass: MolToPhysicsConverter.getAtomicMass(atom.type),
     }));
   }
 
@@ -38,11 +41,18 @@ export class MolToPhysicsConverter {
    */
   private static getAtomicMass(element: string): number {
     const ATOMIC_MASSES: Record<string, number> = {
-      'H': 1.008, 'C': 12.011, 'N': 14.007, 'O': 15.999,
-      'F': 18.998, 'P': 30.974, 'S': 32.066, 'Cl': 35.453,
-      'Br': 79.904, 'I': 126.90
+      H: 1.008,
+      C: 12.011,
+      N: 14.007,
+      O: 15.999,
+      F: 18.998,
+      P: 30.974,
+      S: 32.066,
+      Cl: 35.453,
+      Br: 79.904,
+      I: 126.9,
     };
-    
+
     return ATOMIC_MASSES[element] || 12.0; // Default to carbon if unknown
   }
 
@@ -56,8 +66,8 @@ export class MolToPhysicsConverter {
     totalMass: number;
     boundingRadius: number;
   } {
-    const properties = this.calculateProperties(molObject);
-    
+    const properties = MolToPhysicsConverter.calculateProperties(molObject);
+
     // Count elements
     const elements: Record<string, number> = {};
     molObject.atoms.forEach(atom => {
@@ -69,7 +79,7 @@ export class MolToPhysicsConverter {
       bondCount: molObject.bonds.length,
       elements,
       totalMass: properties.totalMass,
-      boundingRadius: properties.boundingRadius
+      boundingRadius: properties.boundingRadius,
     };
   }
 
@@ -78,25 +88,27 @@ export class MolToPhysicsConverter {
    */
   static validateMolData(molObject: MolObject): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
-    
+
     if (!molObject.atoms || molObject.atoms.length === 0) {
-      errors.push("No atoms found in MOL file");
+      errors.push('No atoms found in MOL file');
     }
-    
+
     if (!molObject.bonds || molObject.bonds.length === 0) {
-      errors.push("No bonds found in MOL file");
+      errors.push('No bonds found in MOL file');
     }
-    
+
     // Check for invalid atom positions
     molObject.atoms.forEach((atom, index) => {
       const x = parseFloat(atom.position.x);
       const y = parseFloat(atom.position.y);
       const z = parseFloat(atom.position.z);
-      
-      if (isNaN(x) || isNaN(y) || isNaN(z)) {
-        errors.push(`Invalid position for atom ${index}: ${atom.position.x}, ${atom.position.y}, ${atom.position.z}`);
+
+      if (Number.isNaN(x) || Number.isNaN(y) || Number.isNaN(z)) {
+        errors.push(
+          `Invalid position for atom ${index}: ${atom.position.x}, ${atom.position.y}, ${atom.position.z}`
+        );
       }
-      
+
       if (!atom.type || atom.type.trim() === '') {
         errors.push(`Missing element type for atom ${index}`);
       }
@@ -104,7 +116,7 @@ export class MolToPhysicsConverter {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }

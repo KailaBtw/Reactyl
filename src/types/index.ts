@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import type * as THREE from 'three';
 
 // ===============================
 //  Core Types
@@ -86,10 +86,12 @@ export interface MoleculeManager {
   removeMolecule: (name: string) => boolean;
   debugMolecules: () => void;
   setInitialVelocities: (initialSpeed?: number) => void;
-  setMoleculeVelocity: (moleculeName: string, targetPosition: THREE.Vector3, speed?: number) => void;
+  setMoleculeVelocity: (
+    moleculeName: string,
+    targetPosition: THREE.Vector3,
+    speed?: number
+  ) => void;
 }
-
-
 
 // ===============================
 //  Spatial Grid Types
@@ -233,6 +235,6 @@ export interface MolecularData {
 
 export interface ReactivityData {
   nucleophilicity: number; // 0-10 scale
-  electrophilicity: number; // 0-10 scale  
+  electrophilicity: number; // 0-10 scale
   leavingGroupAbility: number; // 0-10 scale
-} 
+}
