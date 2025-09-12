@@ -708,6 +708,28 @@ function addReactionSystemControls(gui: dat.GUI, scene: THREE.Scene, moleculeMan
     }
   }, 100);
   
+  // Products display
+  const productsDisplay = {
+    lastReaction: 'None',
+    mainProduct: 'None',
+    leavingGroup: 'None',
+    reactionEquation: 'No reaction yet'
+  };
+  
+  const productsFolder = reactionFolder.addFolder('📦 Reaction Products');
+  productsFolder.add(productsDisplay, 'lastReaction').name('Last Reaction').listen();
+  productsFolder.add(productsDisplay, 'mainProduct').name('Main Product').listen();
+  productsFolder.add(productsDisplay, 'leavingGroup').name('Leaving Group').listen();
+  productsFolder.add(productsDisplay, 'reactionEquation').name('Reaction Equation').listen();
+  
+  // Store reference for updates
+  (window as any).updateProductsDisplay = (productInfo: any) => {
+    productsDisplay.lastReaction = productInfo.reactionType || 'Unknown';
+    productsDisplay.mainProduct = productInfo.mainProductName || 'None';
+    productsDisplay.leavingGroup = productInfo.leavingGroupName || 'None';
+    productsDisplay.reactionEquation = productInfo.reactionEquation || 'No reaction';
+  };
+
   // All folders start closed for cleaner interface
   
   log('Reaction system controls added to GUI');

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { MoleculeGroup, ReactionType, CollisionData } from "../types";
 import { ReactionDetector, ReactionResult } from "../chemistry/reactionDetector";
+import { reactionProductGenerator } from "../chemistry/reactionProductGenerator";
 
 /**
  * Collision event data passed to reaction handlers
@@ -151,6 +152,7 @@ class CollisionEventSystem {
     // Emit reaction event if reaction occurs
     if (reactionResult.occurs) {
       this.emitReactionEvent(event);
+      this.generateReactionProducts(event);
     }
   }
 
@@ -174,6 +176,41 @@ class CollisionEventSystem {
       event.moleculeB.group.quaternion,
       event.collisionPoint
     );
+  }
+
+  /**
+   * Generate reaction products when a reaction occurs
+   */
+  private generateReactionProducts(event: CollisionEvent): void {
+    if (!event.reactionResult) return;
+
+    try {
+      // Get the scene from one of the molecules (they should be in the same scene)
+      const scene = event.moleculeA.group.parent as THREE.Scene;
+      if (!scene) {
+        console.warn('Could not find scene for product generation');
+        return;
+      }
+
+      // Generate products
+      const products = reactionProductGenerator.generateProducts(event.reactionResult, scene);
+      
+      if (products) {
+        const productInfo = reactionProductGenerator.getProductInfo(products);
+        console.log(`🎉 Reaction successful! Products: ${productInfo.reactionEquation}`);
+        
+        // Update GUI display
+        if ((window as any).updateProductsDisplay) {
+          (window as any).updateProductsDisplay({
+            ...productInfo,
+            reactionType: event.reactionResult.reactionType.name
+          });
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error generating reaction products:', error);
+    }
   }
 
   /**

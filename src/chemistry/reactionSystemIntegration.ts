@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MoleculeGroup } from '../types';
-import { CollisionTrajectoryController } from './collisionTrajectoryController';
+import { CollisionTrajectoryController } from '../physics/collisionTrajectoryController';
 import { ReactionDetector } from './reactionDetector';
 import { ReactionVisualizer } from '../components/reactionVisualizer';
 import { getReactionType } from './reactionDatabase';
