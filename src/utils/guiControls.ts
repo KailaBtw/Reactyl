@@ -112,13 +112,9 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   };
 
   const isSMILES = (query: string): boolean => {
-    // SMILES: must contain typical SMILES characters like brackets, parentheses, or special symbols
-    // Simple check: if it contains brackets, parentheses, or common SMILES symbols, it's likely SMILES
-    return /[\[\]\(\)=#@\\\/\.%]/.test(query) || 
-           // Or if it's a simple aromatic ring like c1ccccc1
-           /^c\d+ccccc\d+$/.test(query) ||
-           // Or contains lowercase letters (aromatic atoms)
-           /[a-z]/.test(query);
+    // SMILES: must contain typical SMILES syntax
+    // Only match if it contains actual SMILES-specific characters
+    return /[\[\]\(\)=#@\\\/\.%]/.test(query);
   };
 
   const isFormula = (query: string): boolean => {
@@ -295,7 +291,7 @@ function addMoleculeLoadingControls(gui: dat.GUI, scene: THREE.Scene, moleculeMa
   };
   
   // Add Enter key support for direct loading
-  searchInput.addEventListener('keydown', (e) => {
+  searchInput.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
       const query = loadingParams.searchQuery.trim();
       if (query) {

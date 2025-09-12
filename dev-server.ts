@@ -46,7 +46,7 @@ app.post('/api/save-molecule', async (req: Request, res: Response) => {
     console.log(`🔄 POST /api/save-molecule - Saving CID ${cid}`);
     
     // Create molecules directory
-    const moleculesDir = path.join(__dirname, 'data', 'cache', 'molecules');
+    const moleculesDir = path.join(__dirname, 'public', 'cache', 'molecules');
     await fs.mkdir(moleculesDir, { recursive: true });
     
     // Save individual molecule file
@@ -67,7 +67,7 @@ app.post('/api/save-molecule', async (req: Request, res: Response) => {
 // API endpoint to get all molecules
 app.get('/api/molecules', async (req: Request, res: Response) => {
   try {
-    const moleculesDir = path.join(__dirname, 'data', 'cache', 'molecules');
+    const moleculesDir = path.join(__dirname, 'public', 'cache', 'molecules');
     console.log(`📖 GET /api/molecules - Reading from: ${moleculesDir}`);
     
     try {
@@ -94,7 +94,7 @@ app.get('/api/molecules', async (req: Request, res: Response) => {
 app.get('/api/molecule/:cid', async (req: Request, res: Response) => {
   try {
     const { cid } = req.params;
-    const moleculePath = path.join(__dirname, 'data', 'cache', 'molecules', `${cid}.json`);
+    const moleculePath = path.join(__dirname, 'public', 'cache', 'molecules', `${cid}.json`);
     
     console.log(`📖 GET /api/molecule/${cid} - Reading from: ${moleculePath}`);
     
