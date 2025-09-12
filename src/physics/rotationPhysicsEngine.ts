@@ -6,7 +6,7 @@ import type { RotationConfig, RotationState } from '../utils/rotationController'
 export class RotationPhysicsEngine {
   private rotationState: RotationState;
   private molecule: MoleculeGroup | null = null;
-  private molecularProperties: any = null;
+  private molecularProperties: unknown = null;
   private lastUpdateTime: number = 0;
 
   // Physics constants
@@ -31,7 +31,9 @@ export class RotationPhysicsEngine {
    */
   initializeMolecule(molecule: MoleculeGroup, config: RotationConfig): void {
     this.molecule = molecule;
-    this.molecularProperties = (molecule as any).molecularProperties;
+    this.molecularProperties = (
+      molecule as unknown as { molecularProperties?: unknown }
+    ).molecularProperties;
     this.rotationState.temperature = config.temperature;
     this.rotationState.mode = config.mode;
 

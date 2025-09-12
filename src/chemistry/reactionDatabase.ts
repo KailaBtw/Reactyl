@@ -161,12 +161,12 @@ export function getAllReactionTypes(): ReactionType[] {
   return Object.values(REACTION_TYPES);
 }
 
-export function getReactionParticipants(reactionType: string): any {
+export function getReactionParticipants(reactionType: string): unknown {
   return REACTION_PARTICIPANTS[reactionType] || null;
 }
 
 export function isMoleculeCompatibleWithReaction(
-  moleculeFeatures: any,
+  moleculeFeatures: unknown,
   reactionType: ReactionType,
   role: 'substrate' | 'nucleophile'
 ): boolean {

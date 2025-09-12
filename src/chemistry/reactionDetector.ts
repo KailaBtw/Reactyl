@@ -138,7 +138,10 @@ export class ReactionDetector {
   /**
    * Check if molecular features match required features
    */
-  private checkFeatureCompatibility(moleculeFeatures: any, requiredFeatures: any[]): number {
+  private checkFeatureCompatibility(
+    moleculeFeatures: unknown,
+    requiredFeatures: unknown[]
+  ): number {
     let maxCompatibility = 0;
 
     for (const requiredFeature of requiredFeatures) {

@@ -90,7 +90,7 @@ export const createMoleculeManager = (): MoleculeManager => {
      */
     removeMolecule: (name: string): boolean => {
       if (molecules[name]) {
-        const { [name]: removed, ...rest } = molecules; // Destructure to remove
+        const { [name]: _removed, ...rest } = molecules; // Destructure to remove
         molecules = rest; // Update the molecules object immutably
         return true;
       }

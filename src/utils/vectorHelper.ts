@@ -6,8 +6,8 @@ import { getFastAABB } from '../services/transformCache';
 import type { GridStats, MoleculeGroup } from '../types';
 import { log } from './debug'; // Assuming this is your debug logging utility
 
-// Type alias for backward compatibility
-type Position = { x: number; y: number; z: number };
+// Type alias for backward compatibility (currently unused)
+// type Position = { x: number; y: number; z: number };
 
 /**
  * Calculates a normalized direction vector from position A to position B

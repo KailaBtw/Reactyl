@@ -35,24 +35,30 @@
     "rules": {
       "recommended": true,
       "correctness": {
-        "noUnusedVariables": "off",
-        "noUnusedFunctionParameters": "off",
-        "noUnusedPrivateClassMembers": "off",
-        "noUnusedImports": "off"
+        "noUnusedVariables": "warn",
+        "noUnusedFunctionParameters": "warn",
+        "noUnusedPrivateClassMembers": "warn",
+        "noUnusedImports": "warn",
+        "noConstantCondition": "error",
+        "noUnreachable": "error",
+        "noSelfAssign": "error"
       },
       "style": {
-        "useNodejsImportProtocol": "off",
         "useConst": "warn",
-        "noNonNullAssertion": "off"
+        "useTemplate": "warn",
+        "noNonNullAssertion": "warn",
+        "useNodejsImportProtocol": "warn"
       },
       "suspicious": {
-        "noExplicitAny": "off",
+        "noExplicitAny": "warn",
         "noDebugger": "warn",
-        "noArrayIndexKey": "off"
+        "noArrayIndexKey": "warn",
+        "noDoubleEquals": "warn"
       },
       "complexity": {
-        "noStaticOnlyClass": "off",
-        "noUselessConstructor": "warn"
+        "noStaticOnlyClass": "warn",
+        "noUselessConstructor": "warn",
+        "noUselessTernary": "warn"
       }
     }
   },

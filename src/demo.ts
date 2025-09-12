@@ -74,7 +74,7 @@ export async function demoReaction(
 
     // 5. Set up collision monitoring
     let collisionDetected = false;
-    const collisionHandler = (event: any) => {
+    const collisionHandler = (event: unknown) => {
       if (!collisionDetected) {
         collisionDetected = true;
         log('💥 Collision detected!');

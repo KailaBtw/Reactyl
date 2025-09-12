@@ -94,8 +94,8 @@ class CollisionEventSystem {
     const now = performance.now() / 1000;
 
     if (this.collisionHistory.has(key)) {
-      const lastCollision = this.collisionHistory.get(key)!;
-      if (now - lastCollision < this.collisionCooldown) {
+      const lastCollision = this.collisionHistory.get(key);
+      if (lastCollision && now - lastCollision < this.collisionCooldown) {
         return; // Still in cooldown
       }
     }
@@ -160,8 +160,12 @@ class CollisionEventSystem {
    * Calculate collision energy from event data
    */
   private calculateCollisionEnergy(event: CollisionEvent): number {
-    const massA = (event.moleculeA as any).molecularProperties?.totalMass || 1.0;
-    const massB = (event.moleculeB as any).molecularProperties?.totalMass || 1.0;
+    const massA =
+      (event.moleculeA as unknown as { molecularProperties?: { totalMass?: number } })
+        .molecularProperties?.totalMass || 1.0;
+    const massB =
+      (event.moleculeB as unknown as { molecularProperties?: { totalMass?: number } })
+        .molecularProperties?.totalMass || 1.0;
     const relativeVelocity = event.relativeVelocity.length();
 
     return this.reactionDetector.calculateCollisionEnergy(massA, massB, relativeVelocity);
@@ -200,8 +204,8 @@ class CollisionEventSystem {
         console.log(`🎉 Reaction successful! Products: ${productInfo.reactionEquation}`);
 
         // Update GUI display
-        if ((window as any).updateProductsDisplay) {
-          (window as any).updateProductsDisplay({
+        if ((window as unknown as { updateProductsDisplay?: Function }).updateProductsDisplay) {
+          (window as unknown as { updateProductsDisplay: Function }).updateProductsDisplay({
             ...productInfo,
             reactionType: event.reactionResult.reactionType.name,
           });

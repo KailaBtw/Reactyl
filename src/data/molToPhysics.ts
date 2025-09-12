@@ -33,7 +33,7 @@ export class MolToPhysicsConverter {
    */
   static calculateProperties(molObject: MolObject): MolecularProperties {
     // Use enhanced calculator adapter to include bonds/charges/geometry
-    return MolecularPropertiesCalculator.calculateFromMolObject(molObject as any);
+    return MolecularPropertiesCalculator.calculateFromMolObject(molObject as unknown);
   }
 
   /**

@@ -202,8 +202,9 @@ function animate(): void {
       const group = moleculeObject.getGroup();
 
       // Apply rotation for all molecules with rotation controllers
-      if ((moleculeObject as any).rotationController) {
-        const rotationController = (moleculeObject as any).rotationController;
+      if ((moleculeObject as unknown as { rotationController?: unknown }).rotationController) {
+        const rotationController = (moleculeObject as unknown as { rotationController: unknown })
+          .rotationController;
         rotationController.update(deltaTime);
         rotationController.applyToObject3D(group);
       }
