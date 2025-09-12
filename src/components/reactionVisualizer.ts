@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MoleculeGroup, ReactionStep } from '../types';
-import { log } from './debug';
+import { log } from '../utils/debug';
 
 export class ReactionVisualizer {
   private currentStep: number = 0;

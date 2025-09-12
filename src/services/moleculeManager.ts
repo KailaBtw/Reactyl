@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { getNormalizedVectorAB } from "./vectorHelper";
+import { getNormalizedVectorAB } from "../utils/vectorHelper";
 import { Position, MoleculeGroup, MoleculeManager } from "../types";
 
 

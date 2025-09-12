@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ReactionType, CollisionData, MoleculeGroup } from '../types';
-import { log } from './debug';
+import { log } from '../utils/debug';
 
 export interface ReactionResult {
   occurs: boolean;

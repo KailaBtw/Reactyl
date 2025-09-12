@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { log } from "./debug";
+import { log } from "../utils/debug";
 import { MoleculeGroup } from "../types";
 
 interface GridStats {

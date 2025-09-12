@@ -6,13 +6,13 @@
 import * as THREE from "three";
 import * as dat from "dat.gui";
 import { MoleculeManager } from "../types";
-import { log } from "./debug";
-import { physicsEngine } from "./cannonPhysicsEngine";
-import { getReactionType, getAllReactionTypes } from "./reactionDatabase";
-import { CollisionTrajectoryController } from "./collisionTrajectoryController";
-import { ReactionDetector } from "./reactionDetector";
+import { log } from "../utils/debug";
+import { physicsEngine } from "../physics/cannonPhysicsEngine";
+import { getReactionType, getAllReactionTypes } from "../chemistry/reactionDatabase";
+import { CollisionTrajectoryController } from "../physics/collisionTrajectoryController";
+import { ReactionDetector } from "../chemistry/reactionDetector";
 import { ReactionVisualizer } from "./reactionVisualizer";
-import { CollisionEventSystem } from "./collisionEventSystem";
+import { CollisionEventSystem } from "../physics/collisionEventSystem";
 
 /**
  * Sets up the main GUI for the reaction system

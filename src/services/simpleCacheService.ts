@@ -4,10 +4,11 @@
  */
 
 import { MolecularData } from '../types';
-import { log } from './debug';
+import { log } from '../utils/debug';
 
 export class SimpleCacheService {
   private molecules: Map<string, MolecularData> = new Map();
+  private searchCount = 0;
   private readonly LOCALSTORAGE_KEY = 'molMod_cache';
   private readonly isDev = window.location.hostname === 'localhost' || window.location.port === '5173';
 
@@ -201,11 +202,19 @@ export class SimpleCacheService {
   }
 
   /**
+   * Increment search counter
+   */
+  incrementSearchCount(): void {
+    this.searchCount++;
+  }
+
+  /**
    * Get cache statistics
    */
-  getStats(): { molecules: number; lastUpdated: string } {
+  getStats(): { molecules: number; searches: number; lastUpdated: string } {
     return {
       molecules: this.molecules.size,
+      searches: this.searchCount,
       lastUpdated: new Date().toISOString()
     };
   }

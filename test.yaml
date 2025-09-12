@@ -1,0 +1,27 @@
+
+Resources:
+  # Custom Data Processing Layer
+  DataProcessingLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName:
+        Fn::Sub:
+          - "${prefixName}-data-processing-${envlower}"
+          - envlower: !FindInMap [EnvironmentMap, !Ref env, lowercase]
+      Description: Custom layer containing pandas, numpy, and other data processing libraries
+      ContentUri: ./layers/data_processing/
+      CompatibleRuntimes:
+        - python3.12
+      CompatibleArchitectures:
+        - x86_64
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: python3.12
+
+
+
+
+
+
+
+

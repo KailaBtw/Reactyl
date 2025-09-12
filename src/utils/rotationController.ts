@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MoleculeGroup } from '../types';
-import { RotationPhysicsEngine } from './rotationPhysicsEngine';
+import { RotationPhysicsEngine } from '../physics/rotationPhysicsEngine';
 import { log } from './debug';
 
 export interface RotationConfig {

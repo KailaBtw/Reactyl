@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { log, addLightingDebug, LIGHTING_DEBUG } from "./debug"; // Import debugging utilities.
+import { log, addLightingDebug, LIGHTING_DEBUG } from "../utils/debug"; // Import debugging utilities.
 
 // ===============================
 //  Lighting Setup

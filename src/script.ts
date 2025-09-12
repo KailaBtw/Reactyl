@@ -13,18 +13,18 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; //
 // import { generateUUID } from "three/src/math/MathUtils.js"; // Import for generating unique IDs (not currently used).
 
 // My Imports - Application-Specific Modules
-import { createMoleculeManager } from "./utils/moleculeManager"; // Import the MoleculeManager factory.
+import { createMoleculeManager } from "./services/moleculeManager"; // Import the MoleculeManager factory.
 import {
   applyLighting,
   updateSpotlightPosition,
   updateSkyLightPosition,
-} from "./utils/lightingControls"; // Import functions for managing scene lighting.
+} from "./components/lightingControls"; // Import functions for managing scene lighting.
 // Legacy spatial grid imports removed - now using physics engine
-import { physicsEngine } from "./utils/cannonPhysicsEngine"; // Import Cannon.js physics engine
-import { visualizeHulls } from "./utils/convexHullCollision"; // Import hull visualization
+import { physicsEngine } from "./physics/cannonPhysicsEngine"; // Import Cannon.js physics engine
+import { visualizeHulls } from "./physics/convexHullCollision"; // Import hull visualization
 import { log, DEBUG_MODE, addObjectDebug, initFpsDebug, updateFpsDebug } from "./utils/debug"; // Import debugging utilities.
-import { set_up_gui } from "./utils/guiControls"; // Import functions for setting up the graphical user interface.
-import { drawMolecule } from "./utils/moleculeDrawer"; // Import functions for fetching and drawing molecules.
+import { set_up_gui } from "./components/guiControls"; // Import functions for setting up the graphical user interface.
+import { drawMolecule } from "./components/moleculeDrawer"; // Import functions for fetching and drawing molecules.
 // import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
 
 import { MoleculeManager } from "./types";

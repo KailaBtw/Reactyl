@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { MoleculeGroup, CollisionSetup } from '../types';
 import { physicsEngine } from './cannonPhysicsEngine';
-import { log } from './debug';
+import { log } from '../utils/debug';
 
 export class CollisionTrajectoryController {
   private trajectoryLine?: THREE.Line;

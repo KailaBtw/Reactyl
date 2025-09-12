@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { MoleculeGroup } from '../types';
 import { CollisionTrajectoryController } from './collisionTrajectoryController';
 import { ReactionDetector } from './reactionDetector';
-import { ReactionVisualizer } from './reactionVisualizer';
+import { ReactionVisualizer } from '../components/reactionVisualizer';
 import { getReactionType } from './reactionDatabase';
-import { collisionEventSystem } from './collisionEventSystem';
+import { collisionEventSystem } from '../physics/collisionEventSystem';
 import { chemicalDataService } from './chemicalDataService';
-import { log } from './debug';
+import { log } from '../utils/debug';
 
 /**
  * Main integration class for the reaction system

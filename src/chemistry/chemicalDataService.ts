@@ -1,7 +1,7 @@
 import { MolecularData, ReactivityData } from '../types';
-import { log } from './debug';
-import { extractPubChemMetadata } from './molFileToJSON';
-import { simpleCacheService } from './simpleCacheService';
+import { log } from '../utils/debug';
+import { extractPubChemMetadata } from '../data/molFileToJSON';
+import { simpleCacheService } from '../services/simpleCacheService';
 
 export class ChemicalDataService {
   private readonly PUBCHEM_BASE = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
@@ -377,6 +377,8 @@ export class ChemicalDataService {
     const localResults = simpleCacheService.searchMolecules(formula, limit);
     if (localResults.length > 0) {
       log(`Using local cache for formula search: ${formula}`);
+      // Increment search counter even for cached results
+      simpleCacheService.incrementSearchCount();
       return localResults;
     }
     
@@ -464,6 +466,10 @@ export class ChemicalDataService {
       this.fetchMoleculeDetailsInBackground(cids.slice(0, limit));
       
       log(`Found ${results.length} results for formula: ${formula}`);
+      
+      // Increment search counter
+      simpleCacheService.incrementSearchCount();
+      
       return results;
       
     } catch (error) {
@@ -552,6 +558,8 @@ export class ChemicalDataService {
     const localResults = simpleCacheService.searchMolecules(query, limit);
     if (localResults.length > 0) {
       log(`Using local cache for search: ${query}`);
+      // Increment search counter even for cached results
+      simpleCacheService.incrementSearchCount();
       return localResults;
     }
     
@@ -680,6 +688,10 @@ export class ChemicalDataService {
       
       log(`Found ${results.length} compounds for: ${query}`);
       log(`Search results:`, results.map(r => `${r.name} (${r.formula}) - CID: ${r.cid}`));
+      
+      // Increment search counter
+      simpleCacheService.incrementSearchCount();
+      
       return results;
       
     } catch (error) {

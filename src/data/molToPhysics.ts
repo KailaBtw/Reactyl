@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MolecularPropertiesCalculator, type Atom as PhysicsAtom, type MolecularProperties } from './molecularPropertiesCalculator';
+import { MolecularPropertiesCalculator, type Atom as PhysicsAtom, type MolecularProperties } from '../chemistry/molecularPropertiesCalculator';
 
 // Import your existing MOL parsing types from molFileToJSON
 import type { MolObject, Atom as MolAtom } from './molFileToJSON';

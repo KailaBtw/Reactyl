@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { MoleculeGroup, ReactionType, CollisionData } from "../types";
-import { ReactionDetector, ReactionResult } from "./reactionDetector";
+import { ReactionDetector, ReactionResult } from "../chemistry/reactionDetector";
 
 /**
  * Collision event data passed to reaction handlers

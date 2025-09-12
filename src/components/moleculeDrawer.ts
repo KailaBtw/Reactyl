@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { molFileToJSON } from "./molFileToJSON";
-import { log } from "./debug";
-import { MolToPhysicsConverter } from "./molToPhysics";
-import { RotationController } from "./rotationController";
-import { physicsEngine } from "./cannonPhysicsEngine";
+import { molFileToJSON } from "../data/molFileToJSON";
+import { log } from "../utils/debug";
+import { MolToPhysicsConverter } from "../data/molToPhysics";
+import { RotationController } from "../utils/rotationController";
+import { physicsEngine } from "../physics/cannonPhysicsEngine";
 
 import { MoleculeGroup, MoleculeManager, Position } from "../types";
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { MoleculeGroup } from '../types';
-import { RotationConfig, RotationState } from './rotationController';
-import { log } from './debug';
+import { RotationConfig, RotationState } from '../utils/rotationController';
+import { log } from '../utils/debug';
 
 export class RotationPhysicsEngine {
   private rotationState: RotationState;

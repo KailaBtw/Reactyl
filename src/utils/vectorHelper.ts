@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { log } from "./debug"; // Assuming this is your debug logging utility
-import { SpatialHashGrid } from "./spatialPartitioning";
+import { SpatialHashGrid } from "../physics/spatialPartitioning";
 import { MoleculeGroup, GridStats } from "../types";
-import { createWorldSpaceHull, checkHullIntersection } from "./convexHullCollision";
-import { collisionEventSystem, createCollisionEvent } from "./collisionEventSystem";
-import { getFastAABB, markTransformDirty } from "./transformCache";
+import { createWorldSpaceHull, checkHullIntersection } from "../physics/convexHullCollision";
+import { collisionEventSystem, createCollisionEvent } from "../physics/collisionEventSystem";
+import { getFastAABB, markTransformDirty } from "../services/transformCache";
 
 // Type alias for backward compatibility
 type Position = { x: number; y: number; z: number };

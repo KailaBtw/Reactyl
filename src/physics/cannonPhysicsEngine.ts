@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { MoleculeGroup } from '../types';
-import { MolecularProperties } from './molecularPropertiesCalculator';
+import { MolecularProperties } from '../chemistry/molecularPropertiesCalculator';
 import { collisionEventSystem, createCollisionEvent } from './collisionEventSystem';
-import { log } from './debug';
+import { log } from '../utils/debug';
 
 export interface PhysicsBodyData {
   body: CANNON.Body;
