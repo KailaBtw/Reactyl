@@ -75,6 +75,7 @@ export interface MoleculeGroup {
   molecularProperties?: any; // Will be MolecularProperties type
   physicsBody?: any; // CANNON.Body reference for physics integration
   hasPhysics?: boolean; // Flag to indicate if molecule is in physics world
+  reactionInProgress?: boolean; // Flag to prevent race conditions during reactions
   reactionFeatures?: ReactionFeatures; // Reaction compatibility features
   compatibleReactions?: string[]; // List of compatible reaction types
 }

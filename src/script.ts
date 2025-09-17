@@ -61,6 +61,9 @@ let _totalTime: number = 0;
 // Performance optimization variables
 let _frameCount: number = 0;
 
+// Animation frame handle (must be declared before first animate() call)
+let animationId: number | null = null;
+
 // ===============================
 //  Scene Setup
 // ===============================
@@ -116,6 +119,24 @@ const defaultCSID: number = 2424;
 
 // Initialize the application.
 init(defaultCSID);
+
+// Global functions for demo control
+(window as any).pauseDemo = () => {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+    physicsEngine.pause();
+    log('Demo animation paused');
+  }
+};
+
+(window as any).resumeDemo = () => {
+  if (!animationId) {
+    animate();
+    physicsEngine.resume();
+    log('Demo animation resumed');
+  }
+};
 
 // Start the animation loop.
 animate();
@@ -175,7 +196,7 @@ window.addEventListener('resize', onWindowResize, false);
  * requestAnimationFrame() function, resulting in a continuous animation.
  */
 function animate(): void {
-  requestAnimationFrame(animate); // Request the next animation frame.
+  animationId = requestAnimationFrame(animate); // Request the next animation frame.
 
   deltaTime = clock.getDelta(); // Get the time elapsed since the last frame.
   _totalTime += deltaTime; // Update the total time.

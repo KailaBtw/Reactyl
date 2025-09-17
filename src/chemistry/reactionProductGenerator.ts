@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { MolToPhysicsConverter } from '../data/molToPhysics';
-import { createMoleculeManager } from '../services/moleculeManager';
+import { createMoleculeGroup } from '../services/moleculeManager';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
 import type { ReactionResult } from './reactionDetector';
@@ -51,10 +50,7 @@ export interface LeavingGroupProduct {
  * Creates product molecules based on reaction type and reactants
  */
 export class ReactionProductGenerator {
-  private moleculeManager: any;
-
   constructor() {
-    this.moleculeManager = createMoleculeManager();
     log('ReactionProductGenerator initialized');
   }
 
@@ -129,15 +125,17 @@ export class ReactionProductGenerator {
       const productStructure = this.buildSN2ProductStructure(substrate, nucleophile);
       const molObject = this.structureToMolObject(productStructure);
 
-      // Convert atoms to physics format
-      const physicsAtoms = MolToPhysicsConverter.convertAtoms(molObject.atoms);
+      // Optionally convert atoms (not strictly needed for demo visual spawn)
+      // const physicsAtoms = MolToPhysicsConverter.convertAtoms(molObject.atoms);
 
-      // Create molecule group
-      const productGroup = this.moleculeManager.createMoleculeGroup(
+      // Create a simple molecule group for demo
+      const productGroup = createMoleculeGroup(
         `SN2_Product_${Date.now()}`,
-        physicsAtoms,
-        molObject.bonds
+        { x: 0, y: 0, z: 0 },
+        3
       );
+      // Attach molObject for downstream use if needed
+      (productGroup as any).molObject = molObject;
 
       log(`Created SN2 main product: ${productGroup.name}`);
       return productGroup;
@@ -156,15 +154,14 @@ export class ReactionProductGenerator {
       const leavingGroupStructure = this.buildLeavingGroupStructure();
       const molObject = this.structureToMolObject(leavingGroupStructure);
 
-      // Convert atoms to physics format
-      const physicsAtoms = MolToPhysicsConverter.convertAtoms(molObject.atoms);
+      // const physicsAtoms = MolToPhysicsConverter.convertAtoms(molObject.atoms);
 
-      // Create molecule group
-      const leavingGroup = this.moleculeManager.createMoleculeGroup(
+      const leavingGroup = createMoleculeGroup(
         `LeavingGroup_${Date.now()}`,
-        physicsAtoms,
-        molObject.bonds
+        { x: 0, y: 0, z: 0 },
+        2
       );
+      (leavingGroup as any).molObject = molObject;
 
       log(`Created leaving group product: ${leavingGroup.name}`);
       return leavingGroup;
@@ -211,18 +208,28 @@ export class ReactionProductGenerator {
    * Convert structure to MOL object format
    */
   private structureToMolObject(structure: any): any {
+    // Build a MolObject compatible with MolToPhysicsConverter.convertAtoms
+    // Expected: atoms: { type: string, position: { x: string, y: string, z: string } }[]
+    const atoms = Array.isArray(structure?.atoms) ? structure.atoms : [];
+    const bonds = Array.isArray(structure?.bonds) ? structure.bonds : [];
+
     return {
-      atoms: structure.atoms.map((atom: any) => ({
-        element: atom.element,
-        x: atom.position.x,
-        y: atom.position.y,
-        z: atom.position.z,
-        charge: atom.charge || 0,
-      })),
-      bonds: structure.bonds.map((bond: any) => ({
-        atom1: bond.atom1 + 1, // MOL files are 1-indexed
-        atom2: bond.atom2 + 1,
-        order: bond.order,
+      atoms: atoms.map((atom: any) => {
+        const safeElement = atom?.element || 'C';
+        const pos = atom?.position instanceof THREE.Vector3 ? atom.position : new THREE.Vector3(0, 0, 0);
+        return {
+          type: safeElement,
+          position: {
+            x: String(pos.x ?? 0),
+            y: String(pos.y ?? 0),
+            z: String(pos.z ?? 0),
+          },
+        };
+      }),
+      bonds: bonds.map((bond: any) => ({
+        atom1: (bond?.atom1 ?? 0) + 1, // 1-indexed
+        atom2: (bond?.atom2 ?? 0) + 1,
+        order: bond?.order ?? 1,
       })),
     };
   }
@@ -241,8 +248,38 @@ export class ReactionProductGenerator {
     // Add to scene
     scene.add(product.group);
 
-    // Add physics body if needed
-    // (This would integrate with your physics engine)
+    // Add simple visual geometry so products are visible in the demo
+    try {
+      const mol = (product as any).molObject as { atoms?: Array<{ type: string; position: { x: string; y: string; z: string } }> };
+      const atoms = Array.isArray(mol?.atoms) ? mol!.atoms : [];
+
+      // Basic color map by element
+      const colorByElement: Record<string, number> = {
+        H: 0xffffff,
+        C: 0x333333,
+        O: 0xff0000,
+        N: 0x0000ff,
+        F: 0x00ff00,
+        Cl: 0x00ff00,
+        Br: 0x8a2be2,
+        I: 0x800080,
+      };
+
+      const defaultGeom = new THREE.SphereGeometry(0.5, 16, 16);
+      atoms.forEach(atom => {
+        const element = atom.type || 'C';
+        const color = colorByElement[element] ?? 0x999999;
+        const mat = new THREE.MeshPhongMaterial({ color });
+        const sphere = new THREE.Mesh(defaultGeom, mat);
+        const x = parseFloat(atom.position.x) || 0;
+        const y = parseFloat(atom.position.y) || 0;
+        const z = parseFloat(atom.position.z) || 0;
+        sphere.position.set(x, y, z);
+        product.group.add(sphere);
+      });
+    } catch (_e) {
+      // If anything goes wrong, at least keep the empty group so the demo doesn't break
+    }
 
     log(`Added product ${product.name} to scene at position`, position);
   }

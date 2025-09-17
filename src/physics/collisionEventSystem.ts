@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ReactionDetector, type ReactionResult } from '../chemistry/reactionDetector';
-import { reactionProductGenerator } from '../chemistry/reactionProductGenerator';
+import { log } from '../utils/debug';
 import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
 
 /**
@@ -32,6 +32,8 @@ class CollisionEventSystem {
   private reactionDetector: ReactionDetector;
   private currentReactionType: ReactionType | null = null;
   private temperature: number = 298; // Default room temperature
+  private demoEasyMode: boolean = false; // Forces high reaction probability for demos
+  private hasShownDemoProduct: boolean = false; // Prevent duplicate product spawns in demos
 
   constructor() {
     this.reactionDetector = new ReactionDetector();
@@ -42,6 +44,7 @@ class CollisionEventSystem {
    */
   setReactionType(reactionType: ReactionType): void {
     this.currentReactionType = reactionType;
+    log(`✅ Reaction type set: ${reactionType.name} (${reactionType.id})`);
   }
 
   /**
@@ -49,6 +52,16 @@ class CollisionEventSystem {
    */
   setTemperature(temperature: number): void {
     this.temperature = temperature;
+  }
+
+  // No default scene; we always resolve via object ancestry
+
+  /**
+   * Enable/disable demo easy mode (forces high reaction probability)
+   */
+  setDemoEasyMode(enabled: boolean): void {
+    this.demoEasyMode = enabled;
+    log(`🎛️ Demo Easy Mode: ${enabled ? 'ON' : 'OFF'}`);
   }
 
   /**
@@ -89,6 +102,11 @@ class CollisionEventSystem {
    * @param event - Collision event data
    */
   emitCollision(event: CollisionEvent): void {
+    // Check if either molecule is in a reaction to prevent race conditions
+    if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
+      return;
+    }
+
     // Check cooldown to prevent spam
     const key = this.getCollisionKey(event.moleculeA, event.moleculeB);
     const now = performance.now() / 1000;
@@ -122,7 +140,18 @@ class CollisionEventSystem {
    * Process reaction detection for collision event
    */
   private processReactionDetection(event: CollisionEvent): void {
-    if (!this.currentReactionType) return;
+    if (!this.currentReactionType) {
+      log('❌ No reaction type set - skipping reaction detection');
+      return;
+    }
+
+    // Check if either molecule is already in a reaction to prevent race conditions
+    if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
+      log('⚠️ Reaction already in progress for one or both molecules - skipping detection');
+      return;
+    }
+    
+    log(`🔍 Processing reaction detection for ${this.currentReactionType.name}`);
 
     // Calculate collision data
     const collisionData: CollisionData = {
@@ -145,14 +174,53 @@ class CollisionEventSystem {
       event.moleculeB
     );
 
+    // If demo easy mode is enabled, boost probability to showcase reaction
+    if (this.demoEasyMode) {
+      const boostedProbability = Math.max(reactionResult.probability, 0.95);
+      const occurs = Math.random() < boostedProbability;
+      log(
+        `🎚️ Demo Easy Mode active → Boosting probability to ${(boostedProbability * 100).toFixed(
+          2
+        )}% → ${occurs ? 'FORCING SUCCESS' : 'still failed stochastically'}`
+      );
+      (reactionResult as any).probability = boostedProbability;
+      (reactionResult as any).occurs = occurs;
+    }
+
+    log(`🧪 Reaction detection result: ${reactionResult.occurs ? 'SUCCESS' : 'FAILED'} (probability: ${(reactionResult.probability * 100).toFixed(2)}%)`);
+
     // Add collision data and reaction result to event
     event.collisionData = collisionData;
     event.reactionResult = reactionResult;
 
     // Emit reaction event if reaction occurs
     if (reactionResult.occurs) {
+      log('🎉 Reaction occurred! Generating products...');
+      
+      // Set reaction flags to prevent race conditions
+      event.moleculeA.reactionInProgress = true;
+      event.moleculeB.reactionInProgress = true;
+      
       this.emitReactionEvent(event);
-      this.generateReactionProducts(event);
+
+      // Skip if we already spawned products in this demo session
+      if (this.hasShownDemoProduct) {
+        log('ℹ️ Products already generated for this demo session; skipping duplicate generation');
+        return;
+      }
+      
+      // Generate products immediately (no timeout needed since we pause physics)
+      try {
+        this.generateReactionProducts(event);
+        this.hasShownDemoProduct = true;
+      } catch (e) {
+        console.error('Error during product generation', e);
+        // Reset flags on error
+        event.moleculeA.reactionInProgress = false;
+        event.moleculeB.reactionInProgress = false;
+      }
+    } else {
+      log(`❌ No reaction: probability was ${(reactionResult.probability * 100).toFixed(2)}%`);
     }
   }
 
@@ -183,38 +251,138 @@ class CollisionEventSystem {
   }
 
   /**
-   * Generate reaction products when a reaction occurs
+   * Transform existing molecules to show reaction products
    */
   private generateReactionProducts(event: CollisionEvent): void {
     if (!event.reactionResult) return;
 
     try {
-      // Get the scene from one of the molecules (they should be in the same scene)
-      const scene = event.moleculeA.group.parent as THREE.Scene;
-      if (!scene) {
-        console.warn('Could not find scene for product generation');
-        return;
-      }
+      // Transform the existing molecules to show SN2 reaction (Walden inversion)
+      this.transformMoleculesForSN2Reaction(event.moleculeA, event.moleculeB);
 
-      // Generate products
-      const products = reactionProductGenerator.generateProducts(event.reactionResult, scene);
+      const productInfo = {
+        mainProductName: `${event.moleculeA.name}_product`,
+        leavingGroupName: `${event.moleculeB.name}_leaving_group`,
+        reactionEquation: `${event.moleculeA.name} + ${event.moleculeB.name} → Products`,
+      };
+      
+      console.log(`🎉 Reaction successful! Products: ${productInfo.reactionEquation}`);
 
-      if (products) {
-        const productInfo = reactionProductGenerator.getProductInfo(products);
-        console.log(`🎉 Reaction successful! Products: ${productInfo.reactionEquation}`);
-
-        // Update GUI display
-        if ((window as unknown as { updateProductsDisplay?: Function }).updateProductsDisplay) {
-          (window as unknown as { updateProductsDisplay: Function }).updateProductsDisplay({
-            ...productInfo,
-            reactionType: event.reactionResult.reactionType.name,
-          });
-        }
+      // Update GUI display
+      if ((window as unknown as { updateProductsDisplay?: Function }).updateProductsDisplay) {
+        (window as unknown as { updateProductsDisplay: Function }).updateProductsDisplay({
+          ...productInfo,
+          reactionType: event.reactionResult.reactionType.name,
+        });
       }
     } catch (error) {
-      console.error('Error generating reaction products:', error);
+      console.error('Error transforming molecules for reaction:', error);
+    } finally {
+      // Clear reaction flags
+      event.moleculeA.reactionInProgress = false;
+      event.moleculeB.reactionInProgress = false;
     }
   }
+
+  /**
+   * Transform molecules to show SN2 reaction (Walden inversion)
+   */
+  private transformMoleculesForSN2Reaction(substrate: MoleculeGroup, _nucleophile: MoleculeGroup): void {
+    // For SN2 reaction, we need to show Walden inversion on the substrate
+    // The nucleophile becomes the new substituent, and the leaving group departs
+    
+    if (!substrate.molObject || !substrate.molObject.atoms) return;
+
+    // Find the central carbon and its substituents
+    const atoms = substrate.molObject.atoms;
+    const centralCarbonIndex = atoms.findIndex(atom => atom.type === 'C');
+    
+    if (centralCarbonIndex === -1) return;
+
+    // Create a rotation quaternion for Walden inversion (180° flip)
+    const inversionQuaternion = new THREE.Quaternion();
+    inversionQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+
+    // Apply inversion to all atoms except the central carbon
+    atoms.forEach((atom, index) => {
+      if (index !== centralCarbonIndex) {
+        const currentPos = new THREE.Vector3(
+          parseFloat(atom.position.x),
+          parseFloat(atom.position.y),
+          parseFloat(atom.position.z)
+        );
+
+        // Apply Walden inversion transformation
+        const invertedPos = currentPos.clone().applyQuaternion(inversionQuaternion);
+        
+        // Update the atom position
+        atom.position.x = invertedPos.x.toString();
+        atom.position.y = invertedPos.y.toString();
+        atom.position.z = invertedPos.z.toString();
+      }
+    });
+
+    // Update the visual representation
+    this.updateMoleculeVisualization(substrate);
+    
+    log(`🔄 Applied Walden inversion to ${substrate.name}`);
+  }
+
+  /**
+   * Update molecule visualization after transformation
+   */
+  private updateMoleculeVisualization(molecule: MoleculeGroup): void {
+    if (!molecule.molObject || !molecule.molObject.atoms) return;
+
+    // Clear existing visual meshes
+    const meshesToRemove: THREE.Mesh[] = [];
+    molecule.group.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        meshesToRemove.push(child);
+      }
+    });
+    meshesToRemove.forEach(mesh => {
+      molecule.group.remove(mesh);
+      if (mesh.geometry) mesh.geometry.dispose();
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach(mat => mat.dispose());
+        } else {
+          mesh.material.dispose();
+        }
+      }
+    });
+
+    // Recreate visual representation with new positions
+    const atoms = molecule.molObject.atoms;
+    const colorByElement: Record<string, number> = {
+      H: 0xffffff,
+      C: 0x333333,
+      O: 0xff0000,
+      N: 0x0000ff,
+      F: 0x00ff00,
+      Cl: 0x00ff00,
+      Br: 0x8a2be2,
+      I: 0x800080,
+    };
+
+    const defaultGeom = new THREE.SphereGeometry(0.5, 16, 16);
+    atoms.forEach(atom => {
+      const element = atom.type || 'C';
+      const color = colorByElement[element] ?? 0x999999;
+      const mat = new THREE.MeshPhongMaterial({ color });
+      const sphere = new THREE.Mesh(defaultGeom, mat);
+      
+      const x = parseFloat(atom.position.x) || 0;
+      const y = parseFloat(atom.position.y) || 0;
+      const z = parseFloat(atom.position.z) || 0;
+      sphere.position.set(x, y, z);
+      molecule.group.add(sphere);
+    });
+
+    log(`🎨 Updated visualization for ${molecule.name}`);
+  }
+
 
   /**
    * Emit reaction event for successful reactions

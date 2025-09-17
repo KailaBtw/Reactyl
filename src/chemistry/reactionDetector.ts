@@ -47,7 +47,10 @@ export class ReactionDetector {
 
     // 5. Combined probability
     const probability = energyFactor * orientationFactor * tempFactor * compatibilityFactor;
-
+    
+    log(`📊 Reaction factors: Energy=${(energyFactor * 100).toFixed(1)}%, Orientation=${(orientationFactor * 100).toFixed(1)}%, Temp=${(tempFactor * 100).toFixed(1)}%, Compatibility=${(compatibilityFactor * 100).toFixed(1)}%`);
+    log(`📊 Combined probability: ${(probability * 100).toFixed(2)}%`);
+    
     // 6. Stochastic determination
     const occurs = Math.random() < probability;
 
@@ -139,8 +142,8 @@ export class ReactionDetector {
    * Check if molecular features match required features
    */
   private checkFeatureCompatibility(
-    moleculeFeatures: unknown,
-    requiredFeatures: unknown[]
+    moleculeFeatures: any,
+    requiredFeatures: any[]
   ): number {
     let maxCompatibility = 0;
 

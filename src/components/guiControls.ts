@@ -9,6 +9,7 @@ import { ChemicalDataService } from '../chemistry/chemicalDataService';
 import { getReactionType } from '../chemistry/reactionDatabase';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';
 import { CollisionTrajectoryController } from '../physics/collisionTrajectoryController';
+import { ReactionDemo } from './reactionDemo';
 import { simpleCacheService } from '../services/simpleCacheService';
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
@@ -23,11 +24,150 @@ export function set_up_gui(moleculeManager: MoleculeManager, scene: THREE.Scene)
   // --- Molecule Loading Controls ---
   addMoleculeLoadingControls(gui, scene, moleculeManager);
 
+  // --- Demo Controls (at root level) ---
+  addDemoControls(gui, scene, moleculeManager);
+
   // --- Reaction System Controls ---
   addReactionSystemControls(gui, scene, moleculeManager);
 
   // --- Essential Debug Controls (minimal) ---
   addEssentialDebugControls(gui, scene, moleculeManager);
+}
+
+/**
+ * Demo controls at root level
+ */
+function addDemoControls(
+  gui: dat.GUI,
+  scene: THREE.Scene,
+  moleculeManager: MoleculeManager
+): void {
+  const demoFolder = gui.addFolder('🎬 Demo Controls');
+  const reactionDemo = new ReactionDemo(scene);
+  let easyMode = true;
+
+  // Load Demo Molecules button
+  demoFolder
+    .add(
+      {
+        loadDemoMolecules: async () => {
+          await reactionDemo.loadDemoMolecules(moleculeManager, scene, (status) => {
+            log(`Demo loading: ${status}`);
+          });
+          updateMoleculeDropdowns(moleculeManager);
+          log('Demo molecules loaded successfully');
+        },
+      },
+      'loadDemoMolecules'
+    )
+    .name('Load Demo Molecules');
+
+  // Run Demo button
+  demoFolder
+    .add(
+      {
+        runDemo: () => {
+          // Turn on easy mode for showcase
+          import('../physics/collisionEventSystem').then(({ collisionEventSystem }) => {
+            collisionEventSystem.setDemoEasyMode(easyMode);
+          });
+          reactionDemo.runDemo(moleculeManager, { isPlaying: false }, {
+            reactionType: 'SN2_REACTION',
+            temperature: 298,
+            approachAngle: 180,
+            impactParameter: 0.0,
+            relativeVelocity: 5.0,
+            substrateMolecule: '',
+            nucleophileMolecule: '',
+          });
+        },
+      },
+      'runDemo'
+    )
+    .name('Run Demo');
+
+  // Test reaction button for debugging
+  demoFolder
+    .add(
+      {
+        testReaction: () => {
+          log(`🧪 Testing reaction system directly...`);
+          
+          const molecules = moleculeManager.getAllMolecules();
+          if (molecules.length < 2) {
+            log('❌ Need at least 2 molecules for testing');
+            return;
+          }
+          
+          const substrate = molecules[0];
+          const nucleophile = molecules[1];
+          
+          // Import collision event system
+          import('../physics/collisionEventSystem').then(({ collisionEventSystem }) => {
+            // Set reaction type
+            const reactionType = getReactionType('sn2');
+            if (reactionType) {
+              collisionEventSystem.setReactionType(reactionType);
+              collisionEventSystem.setTemperature(500); // High temp for testing
+              
+              // Force a test collision
+              const testEvent = {
+                moleculeA: substrate,
+                moleculeB: nucleophile,
+                collisionPoint: new THREE.Vector3(0, 0, 0),
+                collisionNormal: new THREE.Vector3(1, 0, 0),
+                relativeVelocity: new THREE.Vector3(-25, 0, 0),
+                timestamp: performance.now() / 1000
+              };
+              
+              collisionEventSystem.emitCollision(testEvent as any);
+              log('🧪 Test collision emitted');
+            }
+          });
+        },
+      },
+      'testReaction'
+    )
+    .name('Test Reaction');
+
+  // Quick temperature adjustment for testing
+  demoFolder
+    .add(
+      {
+        setHighTemp: () => {
+          log(`🌡️ Temperature set to 500K for better reaction rates`);
+        },
+      },
+      'setHighTemp'
+    )
+    .name('Set High Temp (500K)');
+
+  demoFolder
+    .add(
+      {
+        setRoomTemp: () => {
+          log(`🌡️ Temperature set to 298K (room temperature)`);
+        },
+      },
+      'setRoomTemp'
+    )
+    .name('Set Room Temp (298K)');
+
+  // Easy Mode toggle
+  demoFolder
+    .add(
+      {
+        toggleEasyMode: () => {
+          easyMode = !easyMode;
+          import('../physics/collisionEventSystem').then(({ collisionEventSystem }) => {
+            collisionEventSystem.setDemoEasyMode(easyMode);
+          });
+          log(`🎛️ Demo Easy Mode: ${easyMode ? 'ON' : 'OFF'}`);
+        },
+      },
+      'toggleEasyMode'
+    )
+    .name('Toggle Easy Mode');
 }
 
 /**
@@ -496,41 +636,43 @@ function addMoleculeLoadingControls(
   // Initial stats
   cacheStats.refreshStats();
 
-  // File loading
-  const fileFolder = loadingFolder.addFolder('📁 Local Files');
-  fileFolder
-    .add(
-      {
-        loadFile: () => {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = '.mol';
-          input.onchange = event => {
-            const file = (event.target as HTMLInputElement).files?.[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = e => {
-                const molContent = e.target?.result as string;
-                const moleculeName = `mol_${file.name.replace('.mol', '')}`;
-                drawMolecule(
-                  molContent,
-                  moleculeManager,
-                  scene,
-                  { x: 0, y: 0, z: 0 },
-                  moleculeName
-                );
-                log(`Loaded molecule from file: ${file.name}`);
-                updateMoleculeDropdowns(moleculeManager);
-              };
-              reader.readAsText(file);
-            }
-          };
-          input.click();
-        },
-      },
-      'loadFile'
-    )
-    .name('Load .mol File');
+   // File loading
+   const fileFolder = loadingFolder.addFolder('📁 Local Files');
+   fileFolder
+     .add(
+       {
+         loadFile: () => {
+           const input = document.createElement('input');
+           input.type = 'file';
+           input.accept = '.mol';
+           input.onchange = event => {
+             const file = (event.target as HTMLInputElement).files?.[0];
+             if (file) {
+               const reader = new FileReader();
+               reader.onload = e => {
+                 const molContent = e.target?.result as string;
+                 const moleculeName = `mol_${file.name.replace('.mol', '')}`;
+                 drawMolecule(
+                   molContent,
+                   moleculeManager,
+                   scene,
+                   { x: 0, y: 0, z: 0 },
+                   moleculeName
+                 );
+                 log(`Loaded molecule from file: ${file.name}`);
+                 updateMoleculeDropdowns(moleculeManager);
+               };
+               reader.readAsText(file);
+             }
+           };
+           input.click();
+         },
+       },
+       'loadFile'
+     )
+     .name('Load .mol File');
+
+  // Demo controls moved to reaction system controls
 
   log('Molecule loading controls added to GUI');
 }
@@ -755,6 +897,8 @@ function addReactionSystemControls(
       'stopReaction'
     )
     .name('Stop Reaction');
+
+  // Demo controls moved to root level
 
   // Real-time stats
   const statsDisplay = {

@@ -24,8 +24,12 @@ export const REACTION_TYPES: Record<string, ReactionType> = {
     activationEnergy: 80, // kJ/mol
     optimalAngle: 180, // backside attack
     probabilityFactors: {
-      temperature: T => Math.exp(-80000 / (8.314 * T)),
-      orientation: angle => Math.cos(((angle - 180) * Math.PI) / 180) ** 2,
+      temperature: T => Math.exp(-8000 / (8.314 * T)), // Reduced activation energy for demo
+      orientation: angle => {
+        const deviation = Math.abs(angle - 180);
+        const tolerance = 60; // More forgiving tolerance
+        return Math.max(0, 1 - deviation / tolerance);
+      },
     },
   },
 

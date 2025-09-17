@@ -30,18 +30,25 @@ export class CollisionTrajectoryController {
 
     log(`Setting up collision: ${params.substrate.name} + ${params.nucleophile.name}`);
 
-    // Reset positions
+    // Get current positions and maintain relative positioning
+    const substratePos = new THREE.Vector3().copy(params.substrate.group.position);
+    const nucleophilePos = new THREE.Vector3().copy(params.nucleophile.group.position);
+    
+    // Calculate separation distance
     const separation = 15; // units apart
-    substrateBody.position.set(0, 0, 0);
-
+    
+    // Keep substrate roughly in place, position nucleophile for collision
+    substrateBody.position.copy(substratePos as any);
+    
     // Calculate approach vector based on angle and impact parameter
     const angle = (params.approachAngle * Math.PI) / 180;
     const offset = params.impactParameter;
 
+    // Position nucleophile relative to substrate for proper collision
     const approachVector = new THREE.Vector3(
-      Math.cos(angle) * separation,
-      offset,
-      Math.sin(angle) * separation
+      substratePos.x + Math.cos(angle) * separation,
+      substratePos.y + offset,
+      substratePos.z + Math.sin(angle) * separation
     );
 
     nucleophileBody.position.copy(approachVector as any);

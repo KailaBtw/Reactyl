@@ -26,6 +26,8 @@ export class CannonPhysicsEngine {
   private defaultMaterial: CANNON.Material;
   private isPaused = false;
   private timeScale = 1.0;
+  // Queue for collision events so we don't emit during Cannon internal step
+  private pendingCollisionPairs: Array<{ a: MoleculeGroup; b: MoleculeGroup }> = [];
 
   constructor() {
     log('Initializing Cannon.js Physics Engine...');
@@ -170,6 +172,19 @@ export class CannonPhysicsEngine {
     for (const [molecule, bodyData] of this.moleculeBodies.entries()) {
       this.syncMoleculeWithPhysics(molecule, bodyData);
     }
+
+    // Emit queued collision events AFTER stepping to avoid removing bodies during
+    // Cannon's narrowphase, which can cause bi undefined errors
+    if (this.pendingCollisionPairs.length > 0) {
+      const pairs = this.pendingCollisionPairs.slice();
+      this.pendingCollisionPairs.length = 0;
+      for (const { a, b } of pairs) {
+        // Skip if either molecule began a reaction since queuing
+        if ((a as any).reactionInProgress || (b as any).reactionInProgress) continue;
+        const collisionEvent = createCollisionEvent(a, b);
+        collisionEventSystem.emitCollision(collisionEvent);
+      }
+    }
   }
 
   /**
@@ -238,10 +253,10 @@ export class CannonPhysicsEngine {
       }
 
       if (molA && molB) {
-        // Create collision event for reaction system
-        const collisionEvent = createCollisionEvent(molA, molB);
-        collisionEventSystem.emitCollision(collisionEvent);
-
+        // Guard against reactions already in progress
+        if ((molA as any).reactionInProgress || (molB as any).reactionInProgress) return;
+        // Queue the pair for emission after step completes
+        this.pendingCollisionPairs.push({ a: molA, b: molB });
         log(`Physics collision detected between ${molA.name} and ${molB.name}`);
       }
     });
