@@ -1,8 +1,9 @@
 // vite.config.js
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  // ... other configurations ...
+  plugins: [react()],
   base: '/MolMod-Molecular_Modeler/',
   // enable sourcemaps for useful debug messages in browser inspector
   build: {
