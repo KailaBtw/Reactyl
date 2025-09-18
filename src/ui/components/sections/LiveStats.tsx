@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useUIState } from '../../context/UIStateContext';
 
 export const LiveStats: React.FC = () => {

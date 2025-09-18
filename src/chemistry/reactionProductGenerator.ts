@@ -216,7 +216,8 @@ export class ReactionProductGenerator {
     return {
       atoms: atoms.map((atom: any) => {
         const safeElement = atom?.element || 'C';
-        const pos = atom?.position instanceof THREE.Vector3 ? atom.position : new THREE.Vector3(0, 0, 0);
+        const pos =
+          atom?.position instanceof THREE.Vector3 ? atom.position : new THREE.Vector3(0, 0, 0);
         return {
           type: safeElement,
           position: {
@@ -250,7 +251,9 @@ export class ReactionProductGenerator {
 
     // Add simple visual geometry so products are visible in the demo
     try {
-      const mol = (product as any).molObject as { atoms?: Array<{ type: string; position: { x: string; y: string; z: string } }> };
+      const mol = (product as any).molObject as {
+        atoms?: Array<{ type: string; position: { x: string; y: string; z: string } }>;
+      };
       const atoms = Array.isArray(mol?.atoms) ? mol!.atoms : [];
 
       // Basic color map by element

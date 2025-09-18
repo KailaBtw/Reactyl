@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { TopBar } from './components/TopBar';
-import { RightSidebar } from './components/RightSidebar';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BottomBar } from './components/BottomBar';
+import { RightSidebar } from './components/RightSidebar';
 import { SceneContainer } from './components/SceneContainer';
+import { TopBar } from './components/TopBar';
 import { UIStateProvider } from './context/UIStateContext';
 import './App.css';
 
@@ -10,34 +11,35 @@ export interface UIState {
   // Time controls
   isPlaying: boolean;
   timeScale: number;
-  
+
   // Environment
   temperature: number;
-  
+
   // Collision parameters
   approachAngle: number;
   impactParameter: number;
   relativeVelocity: number;
-  
+
   // Molecules
   substrateMolecule: string;
   nucleophileMolecule: string;
   availableMolecules: string[];
-  
+
   // Reaction
   reactionType: string;
   reactionInProgress: boolean;
-  
+  testingMode: boolean;
+
   // Products display
   lastReaction: string;
   mainProduct: string;
   leavingGroup: string;
   reactionEquation: string;
-  
+
   // Scene controls
   showAxes: boolean;
   showStats: boolean;
-  
+
   // Physics stats
   distance: number;
   relativeVelocity: number;
@@ -57,6 +59,7 @@ const initialState: UIState = {
   availableMolecules: [],
   reactionType: 'sn2',
   reactionInProgress: false,
+  testingMode: true,
   lastReaction: 'None',
   mainProduct: 'None',
   leavingGroup: 'None',

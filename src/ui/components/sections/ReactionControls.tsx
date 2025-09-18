@@ -1,56 +1,76 @@
-import React from 'react';
+import type React from 'react';
+import { threeJSBridge } from '../../bridge/ThreeJSBridge';
 import { useUIState } from '../../context/UIStateContext';
 
 export const ReactionControls: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
 
-  const handleSetupCollision = () => {
+  const handleSetupCollision = async () => {
     if (!uiState.substrateMolecule || !uiState.nucleophileMolecule) {
       alert('Please select both substrate and nucleophile molecules');
       return;
     }
-    
+
     console.log('Setting up collision...');
-    // This will be connected to the actual collision setup
-    updateUIState({ reactionInProgress: false });
+    try {
+      await threeJSBridge.setupCollision();
+      updateUIState({ reactionInProgress: false });
+    } catch (error) {
+      console.error('Error setting up collision:', error);
+    }
   };
 
-  const handleStartReaction = () => {
+  const handleStartReaction = async () => {
     if (!uiState.substrateMolecule || !uiState.nucleophileMolecule) {
       alert('Please select both substrate and nucleophile molecules first');
       return;
     }
-    
+
     console.log('Starting reaction animation...');
-    updateUIState({ 
-      isPlaying: true,
-      reactionInProgress: true 
-    });
+    try {
+      await threeJSBridge.startReactionAnimation();
+      updateUIState({
+        isPlaying: true,
+        reactionInProgress: true,
+      });
+    } catch (error) {
+      console.error('Error starting reaction animation:', error);
+    }
   };
 
-  const handleStopReaction = () => {
+  const handleStopReaction = async () => {
     console.log('Stopping reaction...');
-    updateUIState({ 
-      isPlaying: false,
-      reactionInProgress: false 
-    });
+    try {
+      await threeJSBridge.stopReaction();
+      updateUIState({
+        isPlaying: false,
+        reactionInProgress: false,
+      });
+    } catch (error) {
+      console.error('Error stopping reaction:', error);
+    }
   };
 
-  const handleRunDemo = () => {
+  const handleRunDemo = async () => {
     console.log('Running reaction demo...');
-    updateUIState({ 
-      isPlaying: true,
-      reactionInProgress: false,
-      substrateMolecule: 'demo_Methyl_bromide',
-      nucleophileMolecule: 'demo_Methanol',
-      reactionType: 'sn2'
-    });
+    try {
+      await threeJSBridge.startReactionAnimation();
+      updateUIState({
+        isPlaying: true,
+        reactionInProgress: false,
+        substrateMolecule: 'demo_Methyl_bromide',
+        nucleophileMolecule: 'demo_Methanol',
+        reactionType: 'sn2',
+      });
+    } catch (error) {
+      console.error('Error running demo:', error);
+    }
   };
 
   return (
     <div>
       <div className="form-group">
-        <button 
+        <button
           className="btn btn-secondary"
           onClick={handleSetupCollision}
           disabled={!uiState.substrateMolecule || !uiState.nucleophileMolecule}
@@ -60,7 +80,7 @@ export const ReactionControls: React.FC = () => {
       </div>
 
       <div className="form-group">
-        <button 
+        <button
           className="btn btn-success"
           onClick={handleStartReaction}
           disabled={!uiState.substrateMolecule || !uiState.nucleophileMolecule || uiState.isPlaying}
@@ -70,7 +90,7 @@ export const ReactionControls: React.FC = () => {
       </div>
 
       <div className="form-group">
-        <button 
+        <button
           className="btn btn-danger"
           onClick={handleStopReaction}
           disabled={!uiState.isPlaying}
@@ -80,18 +100,20 @@ export const ReactionControls: React.FC = () => {
       </div>
 
       <div className="form-group">
-        <button 
-          className="btn"
-          onClick={handleRunDemo}
-        >
+        <button className="btn" onClick={handleRunDemo}>
           🎬 Run Demo
         </button>
       </div>
 
-      <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#1a1a1a', borderRadius: '4px' }}>
-        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
-          Status:
-        </div>
+      <div
+        style={{
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: '#1a1a1a',
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Status:</div>
         <div style={{ fontSize: '14px' }}>
           {uiState.reactionInProgress ? '🔄 Reacting...' : '⏸️ Ready'}
         </div>

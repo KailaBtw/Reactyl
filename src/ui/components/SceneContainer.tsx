@@ -1,12 +1,10 @@
 import React, { forwardRef, useEffect, useRef } from 'react';
-import { useUIState } from '../context/UIStateContext';
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
+import { useUIState } from '../context/UIStateContext';
 
-interface SceneContainerProps {
-  // Props will be added as needed
-}
+type SceneContainerProps = {};
 
-export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((props, ref) => {
+export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((_props, ref) => {
   const { uiState } = useUIState();
   const animationIdRef = useRef<number | null>(null);
   const isInitialized = useRef(false);
@@ -15,16 +13,18 @@ export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((p
     if (!ref || typeof ref === 'function') return;
 
     const container = ref.current;
-    if (!container || isInitialized.current) return;
+    if (!container) return;
 
-    // Initialize Three.js scene through bridge
-    threeJSBridge.initializeScene(container);
-    isInitialized.current = true;
+    // Only initialize if not already done (preserve user's work on hot reload)
+    if (!isInitialized.current) {
+      threeJSBridge.initializeScene(container);
+      isInitialized.current = true;
+    }
 
     // Optimized animation loop
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
-      
+
       threeJSBridge.render();
     };
     animate();
@@ -33,12 +33,12 @@ export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((p
     const handleResize = () => {
       const renderer = threeJSBridge.getRenderer();
       const camera = threeJSBridge.getCamera();
-      
+
       if (!container || !camera || !renderer) return;
-      
+
       const width = container.clientWidth;
       const height = container.clientHeight;
-      
+
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
@@ -52,7 +52,7 @@ export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((p
         cancelAnimationFrame(animationIdRef.current);
       }
       window.removeEventListener('resize', handleResize);
-      
+
       const renderer = threeJSBridge.getRenderer();
       if (renderer && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -66,19 +66,25 @@ export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((p
   }, [uiState]);
 
   return (
-    <div 
+    <div
       ref={ref}
-      style={{ 
-        width: '100%', 
-        height: '100%', 
+      style={{
+        width: '100%',
+        height: '100%',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
       }}
     >
       <div className="camera-info">
-        <div><strong>Mouse:</strong> Left drag to rotate, Right drag to pan</div>
-        <div><strong>Wheel:</strong> Zoom in/out</div>
-        <div><strong>Touch:</strong> One finger rotate, Two finger pan/zoom</div>
+        <div>
+          <strong>Mouse:</strong> Left drag to rotate, Right drag to pan
+        </div>
+        <div>
+          <strong>Wheel:</strong> Zoom in/out
+        </div>
+        <div>
+          <strong>Touch:</strong> One finger rotate, Two finger pan/zoom
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useUIState } from '../../context/UIStateContext';
 
 export const MoleculeSelection: React.FC = () => {
@@ -11,7 +11,7 @@ export const MoleculeSelection: React.FC = () => {
     updateUIState({
       availableMolecules: ['demo_Methyl_bromide', 'demo_Methanol', 'demo_Water'],
       substrateMolecule: 'demo_Methyl_bromide',
-      nucleophileMolecule: 'demo_Methanol'
+      nucleophileMolecule: 'demo_Methanol',
     });
   };
 
@@ -21,12 +21,14 @@ export const MoleculeSelection: React.FC = () => {
         <label className="form-label">Substrate</label>
         <select
           value={uiState.substrateMolecule}
-          onChange={(e) => updateUIState({ substrateMolecule: e.target.value })}
+          onChange={e => updateUIState({ substrateMolecule: e.target.value })}
           className="form-select"
         >
           <option value="">Select substrate...</option>
           {uiState.availableMolecules.map(mol => (
-            <option key={mol} value={mol}>{mol}</option>
+            <option key={mol} value={mol}>
+              {mol}
+            </option>
           ))}
         </select>
       </div>
@@ -35,21 +37,20 @@ export const MoleculeSelection: React.FC = () => {
         <label className="form-label">Nucleophile</label>
         <select
           value={uiState.nucleophileMolecule}
-          onChange={(e) => updateUIState({ nucleophileMolecule: e.target.value })}
+          onChange={e => updateUIState({ nucleophileMolecule: e.target.value })}
           className="form-select"
         >
           <option value="">Select nucleophile...</option>
           {uiState.availableMolecules.map(mol => (
-            <option key={mol} value={mol}>{mol}</option>
+            <option key={mol} value={mol}>
+              {mol}
+            </option>
           ))}
         </select>
       </div>
 
       <div className="form-group">
-        <button 
-          className="btn btn-secondary btn-small"
-          onClick={handleRefreshMolecules}
-        >
+        <button className="btn btn-secondary btn-small" onClick={handleRefreshMolecules}>
           🔄 Refresh Molecules
         </button>
       </div>
@@ -58,7 +59,7 @@ export const MoleculeSelection: React.FC = () => {
         <label className="form-label">Reaction Type</label>
         <select
           value={uiState.reactionType}
-          onChange={(e) => updateUIState({ reactionType: e.target.value })}
+          onChange={e => updateUIState({ reactionType: e.target.value })}
           className="form-select"
         >
           <option value="sn2">SN2 - Bimolecular Substitution</option>

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { useUIState } from '../context/UIStateContext';
 import { CollisionParameters } from './sections/CollisionParameters';
+import { DebugControls } from './sections/DebugControls';
+import { LiveStats } from './sections/LiveStats';
 import { MoleculeSelection } from './sections/MoleculeSelection';
 import { ReactionControls } from './sections/ReactionControls';
-import { LiveStats } from './sections/LiveStats';
 import { ReactionProducts } from './sections/ReactionProducts';
-import { DebugControls } from './sections/DebugControls';
 
 interface CollapsibleSectionProps {
   title: string;
@@ -13,25 +14,20 @@ interface CollapsibleSectionProps {
   defaultOpen?: boolean;
 }
 
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
-  title, 
-  children, 
-  defaultOpen = true 
+const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
+  title,
+  children,
+  defaultOpen = true,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <div className="sidebar-section">
-      <div 
-        className="section-header"
-        onClick={() => setIsOpen(!isOpen)}
-      >
+      <div className="section-header" onClick={() => setIsOpen(!isOpen)}>
         {title}
         <span>{isOpen ? '▼' : '▶'}</span>
       </div>
-      <div className={`section-content ${!isOpen ? 'collapsed' : ''}`}>
-        {children}
-      </div>
+      <div className={`section-content ${!isOpen ? 'collapsed' : ''}`}>{children}</div>
     </div>
   );
 };

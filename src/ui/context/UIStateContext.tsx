@@ -1,5 +1,6 @@
-import React, { createContext, useContext, ReactNode } from 'react';
-import { UIState } from '../App';
+import type React from 'react';
+import { createContext, type ReactNode, useContext } from 'react';
+import type { UIState } from '../App';
 
 interface UIStateContextType {
   uiState: UIState;
@@ -22,9 +23,5 @@ interface UIStateProviderProps {
 }
 
 export const UIStateProvider: React.FC<UIStateProviderProps> = ({ value, children }) => {
-  return (
-    <UIStateContext.Provider value={value}>
-      {children}
-    </UIStateContext.Provider>
-  );
+  return <UIStateContext.Provider value={value}>{children}</UIStateContext.Provider>;
 };

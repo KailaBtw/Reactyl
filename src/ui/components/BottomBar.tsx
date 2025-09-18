@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useUIState } from '../context/UIStateContext';
 
 export const BottomBar: React.FC = () => {
@@ -35,9 +35,7 @@ export const BottomBar: React.FC = () => {
           <div style={{ marginBottom: '8px' }}>
             <strong>Products:</strong> {uiState.mainProduct} + {uiState.leavingGroup}
           </div>
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            {uiState.reactionEquation}
-          </div>
+          <div style={{ fontSize: '12px', color: '#888' }}>{uiState.reactionEquation}</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

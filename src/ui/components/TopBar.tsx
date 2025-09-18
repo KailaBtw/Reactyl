@@ -1,6 +1,6 @@
-import React from 'react';
-import { useUIState } from '../context/UIStateContext';
+import type React from 'react';
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
+import { useUIState } from '../context/UIStateContext';
 
 export const TopBar: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
@@ -10,13 +10,13 @@ export const TopBar: React.FC = () => {
   };
 
   const handleReset = () => {
-    updateUIState({ 
+    updateUIState({
       isPlaying: false,
       reactionInProgress: false,
       lastReaction: 'None',
       mainProduct: 'None',
       leavingGroup: 'None',
-      reactionEquation: 'No reaction yet'
+      reactionEquation: 'No reaction yet',
     });
   };
 
@@ -35,29 +35,26 @@ export const TopBar: React.FC = () => {
     }
   };
 
-  const handleAutoRotate = () => {
+  const handleAutoRotate = (e: React.ChangeEvent<HTMLInputElement>) => {
     const controls = threeJSBridge.getControls();
     if (controls) {
-      controls.autoRotate = !controls.autoRotate;
+      controls.autoRotate = e.target.checked;
     }
   };
 
   return (
     <div className="top-bar">
       <h1>🧪 MolMod - Molecular Modeler</h1>
-      
+
       <div className="top-bar-controls">
         <div className="control-group">
-          <button 
+          <button
             className={`btn ${uiState.isPlaying ? 'btn-danger' : 'btn-success'}`}
             onClick={handlePlayPause}
           >
             {uiState.isPlaying ? '⏸️ Pause' : '▶️ Play'}
           </button>
-          <button 
-            className="btn btn-secondary"
-            onClick={handleReset}
-          >
+          <button className="btn btn-secondary" onClick={handleReset}>
             ⏹️ Reset
           </button>
         </div>
@@ -85,7 +82,7 @@ export const TopBar: React.FC = () => {
             min="100"
             max="600"
             value={uiState.temperature}
-            onChange={(e) => updateUIState({ temperature: parseInt(e.target.value) })}
+            onChange={e => updateUIState({ temperature: parseInt(e.target.value) })}
             className="form-input"
             style={{ width: '80px' }}
           />
@@ -97,7 +94,7 @@ export const TopBar: React.FC = () => {
             <input
               type="checkbox"
               checked={uiState.showAxes}
-              onChange={(e) => updateUIState({ showAxes: e.target.checked })}
+              onChange={e => updateUIState({ showAxes: e.target.checked })}
             />
             Show Axes
           </label>
@@ -108,27 +105,21 @@ export const TopBar: React.FC = () => {
             <input
               type="checkbox"
               checked={uiState.showStats}
-              onChange={(e) => updateUIState({ showStats: e.target.checked })}
+              onChange={e => updateUIState({ showStats: e.target.checked })}
             />
             Show Stats
           </label>
         </div>
 
         <div className="control-group">
-          <button 
-            className="btn btn-secondary btn-small"
-            onClick={handleResetCamera}
-          >
-            📷 Reset Camera
-          </button>
+          <label>
+            <input type="checkbox" onChange={handleAutoRotate} />🔄 Auto Rotate
+          </label>
         </div>
 
         <div className="control-group">
-          <button 
-            className="btn btn-secondary btn-small"
-            onClick={handleAutoRotate}
-          >
-            🔄 Auto Rotate
+          <button className="btn btn-secondary btn-small" onClick={handleResetCamera}>
+            📷 Reset Camera
           </button>
         </div>
       </div>

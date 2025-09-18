@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useUIState } from '../../context/UIStateContext';
 
 export const DebugControls: React.FC = () => {
@@ -14,7 +14,7 @@ export const DebugControls: React.FC = () => {
       lastReaction: 'None',
       mainProduct: 'None',
       leavingGroup: 'None',
-      reactionEquation: 'No reaction yet'
+      reactionEquation: 'No reaction yet',
     });
   };
 
@@ -38,6 +38,7 @@ export const DebugControls: React.FC = () => {
       availableMolecules: [],
       reactionType: 'sn2',
       reactionInProgress: false,
+      testingMode: false,
       lastReaction: 'None',
       mainProduct: 'None',
       leavingGroup: 'None',
@@ -47,47 +48,55 @@ export const DebugControls: React.FC = () => {
       distance: 0,
       relativeVelocity: 0,
       timeToCollision: 0,
-      reactionProbability: 0
+      reactionProbability: 0,
     });
+  };
+
+  const handleTestingMode = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateUIState({ testingMode: e.target.checked });
   };
 
   return (
     <div>
       <div className="form-group">
-        <button 
-          className="btn btn-danger btn-small"
-          onClick={handleClearScene}
-        >
+        <button className="btn btn-danger btn-small" onClick={handleClearScene}>
           🗑️ Clear All Molecules
         </button>
       </div>
 
       <div className="form-group">
-        <button 
-          className="btn btn-secondary btn-small"
-          onClick={handleGetPhysicsStats}
-        >
+        <button className="btn btn-secondary btn-small" onClick={handleGetPhysicsStats}>
           📊 Physics Stats
         </button>
       </div>
 
       <div className="form-group">
-        <button 
-          className="btn btn-secondary btn-small"
-          onClick={handleResetAll}
-        >
+        <button className="btn btn-secondary btn-small" onClick={handleResetAll}>
           🔄 Reset All
         </button>
       </div>
 
-      <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#1a1a1a', borderRadius: '4px' }}>
-        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
-          Debug Info:
-        </div>
+      <div className="form-group">
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+          <input type="checkbox" checked={uiState.testingMode} onChange={handleTestingMode} />🧪
+          Testing Mode (100% reaction probability)
+        </label>
+      </div>
+
+      <div
+        style={{
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: '#1a1a1a',
+          borderRadius: '4px',
+        }}
+      >
+        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Debug Info:</div>
         <div style={{ fontSize: '11px', color: '#aaa', lineHeight: '1.4' }}>
           <div>Molecules: {uiState.availableMolecules.length}</div>
           <div>Reaction Type: {uiState.reactionType}</div>
           <div>UI State: {uiState.reactionInProgress ? 'Reacting' : 'Idle'}</div>
+          <div>Testing Mode: {uiState.testingMode ? 'ON' : 'OFF'}</div>
         </div>
       </div>
     </div>
