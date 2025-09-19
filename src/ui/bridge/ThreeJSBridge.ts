@@ -125,10 +125,11 @@ export class ThreeJSBridge {
     if (!this.reactionDemo) {
       this.reactionDemo = new ReactionDemo(this.scene);
 
-      // Load demo molecules
-      this.reactionDemo.loadDemoMolecules(this.moleculeManager, this.scene, status => {
-        console.log(`Demo Status: ${status}`);
-      });
+      // Demo molecules loading disabled to prevent interference with SN2 geometry setup
+      // Users can manually load demo molecules via the GUI controls
+      // this.reactionDemo.loadDemoMolecules(this.moleculeManager, this.scene, status => {
+      //   console.log(`Demo Status: ${status}`);
+      // });
     }
 
     // Start health check for black screen detection

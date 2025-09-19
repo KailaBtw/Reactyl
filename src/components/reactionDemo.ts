@@ -51,12 +51,12 @@ export class ReactionDemo {
     this.clearExistingMolecules(moleculeManager, scene);
 
     try {
-      // Load some common molecules for SN2 reactions
-      // Order: substrate first (left), nucleophile second (right)
-      const demoMolecules = [
-        { cid: '6325', name: 'Methyl chloride', formula: 'CH3Cl' }, // Substrate (left)
-        { cid: '149', name: 'Methanol', formula: 'CH3OH' }, // Nucleophile (right)
-      ];
+        // Load some common molecules for SN2 reactions
+        // Order: substrate first (left), nucleophile second (right)
+        const demoMolecules = [
+          { cid: '6323', name: 'Methyl bromide', formula: 'CH3Br' }, // Substrate (left) - using Br instead of Cl
+          { cid: '961', name: 'Hydroxide ion', formula: 'OH⁻' }, // Nucleophile (right) - OH⁻ for proper SN2
+        ];
 
       for (let i = 0; i < Math.min(2, demoMolecules.length); i++) {
         const mol = demoMolecules[i];
@@ -65,26 +65,36 @@ export class ReactionDemo {
         const molecularData = await this.chemicalService.fetchMoleculeByCID(mol.cid);
         const moleculeName = `demo_${mol.name.replace(/\s+/g, '_')}`;
 
-        // Position molecules with good separation for collision demo
-        // Make them face each other for proper collision
+        // Position molecules for proper SN2 backside attack (matching Walden inversion geometry)
+        // Substrate with leaving group pointing away, nucleophile approaching from opposite side
         const positions = [
-          { x: -8, y: 0, z: 0 }, // Substrate on the left
-          { x: 8, y: 0, z: 0 }, // Nucleophile on the right
+          { x: 0, y: 0, z: 0 }, // Substrate at origin (CH3Br with Br pointing away)
+          { x: 0, y: 0, z: -8 }, // Nucleophile approaching from opposite side (backside attack)
         ];
 
         drawMolecule(molecularData.mol3d || '', moleculeManager, scene, positions[i], moleculeName);
-
-        // Add velocity to make molecules collide
+        
+        // Get the molecule and configure it for proper SN2 backside attack geometry
         const molecule = moleculeManager.getMolecule(moleculeName);
         if (molecule) {
+          // First, orient the molecule for proper SN2 geometry
           if (i === 0) {
-            // Substrate (left) - move right towards center
-            molecule.velocity.set(1.5, 0, 0);
-            log(`✅ Substrate ${mol.name} positioned LEFT, moving RIGHT`);
+            // Orient substrate so leaving group (Br) points away from nucleophile
+            this.orientSubstrateForSN2(molecule);
           } else if (i === 1) {
-            // Nucleophile (right) - move left towards center
-            molecule.velocity.set(-1.5, 0, 0);
-            log(`✅ Nucleophile ${mol.name} positioned RIGHT, moving LEFT`);
+            // Orient nucleophile so it approaches from opposite side
+            this.orientNucleophileForSN2(molecule);
+          }
+
+          // Then set the correct velocity for SN2 backside attack (overriding drawMolecule's default)
+          if (i === 0) {
+            // Substrate - keep stationary at origin with leaving group pointing away
+            molecule.velocity.set(0, 0, 0);
+            log(`✅ Substrate ${mol.name} positioned at origin, stationary (leaving group pointing away)`);
+          } else if (i === 1) {
+            // Nucleophile - approach from opposite side (backside attack)
+            molecule.velocity.set(0, 0, 2.0);
+            log(`✅ Nucleophile ${mol.name} positioned opposite leaving group, approaching for backside attack`);
           }
           log(
             `✅ Set velocity for ${mol.name}: (${molecule.velocity.x}, ${molecule.velocity.y}, ${molecule.velocity.z})`
@@ -128,6 +138,9 @@ export class ReactionDemo {
       log('❌ Demo requires at least 2 molecules. Please load some molecules first.');
       return;
     }
+
+    // Ensure molecules maintain proper SN2 geometry before starting demo
+    this.ensureSN2Geometry(molecules[0], molecules[1]);
 
     // Set up demo parameters for high reaction probability
     reactionParams.substrateMolecule = molecules[0].name;
@@ -251,6 +264,105 @@ export class ReactionDemo {
       { cid: '6325', name: 'Methyl chloride', formula: 'CH3Cl' },
       { cid: '887', name: 'Water', formula: 'H2O' },
     ];
+  }
+
+  /**
+   * Orient substrate molecule for proper SN2 backside attack geometry
+   * Ensures leaving group (Br) points away from nucleophile
+   */
+  private orientSubstrateForSN2(molecule: any): void {
+    if (!molecule.molObject || !molecule.molObject.atoms) return;
+
+    // Find the leaving group (Br) and orient molecule so it points away from nucleophile
+    const atoms = molecule.molObject.atoms;
+    const leavingGroupIndex = atoms.findIndex((atom: any) => atom.type === 'Br');
+    
+    if (leavingGroupIndex !== -1) {
+      const leavingGroup = atoms[leavingGroupIndex];
+      const leavingGroupPos = new THREE.Vector3(
+        parseFloat(leavingGroup.position.x),
+        parseFloat(leavingGroup.position.y),
+        parseFloat(leavingGroup.position.z)
+      );
+
+      // Rotate molecule so leaving group points in positive Z direction (away from nucleophile)
+      const currentDirection = leavingGroupPos.normalize();
+      const targetDirection = new THREE.Vector3(0, 0, 1);
+      
+      // Calculate rotation needed
+      const rotationAxis = currentDirection.clone().cross(targetDirection).normalize();
+      const rotationAngle = Math.acos(currentDirection.dot(targetDirection));
+      
+      if (rotationAngle > 0.01) { // Only rotate if significant difference
+        molecule.group.rotateOnAxis(rotationAxis, rotationAngle);
+        log(`🔄 Oriented substrate: leaving group (Br) now points away from nucleophile`);
+      }
+    }
+  }
+
+  /**
+   * Orient nucleophile molecule for proper SN2 backside attack geometry
+   * Ensures nucleophilic center (O) points toward substrate
+   */
+  private orientNucleophileForSN2(molecule: any): void {
+    if (!molecule.molObject || !molecule.molObject.atoms) return;
+
+    // Find the nucleophilic center (O) and orient molecule so it points toward substrate
+    const atoms = molecule.molObject.atoms;
+    const nucleophilicCenterIndex = atoms.findIndex((atom: any) => atom.type === 'O');
+    
+    if (nucleophilicCenterIndex !== -1) {
+      const nucleophilicCenter = atoms[nucleophilicCenterIndex];
+      const nucleophilicPos = new THREE.Vector3(
+        parseFloat(nucleophilicCenter.position.x),
+        parseFloat(nucleophilicCenter.position.y),
+        parseFloat(nucleophilicCenter.position.z)
+      );
+
+      // Rotate molecule so nucleophilic center points in negative Z direction (toward substrate)
+      const currentDirection = nucleophilicPos.normalize();
+      const targetDirection = new THREE.Vector3(0, 0, -1);
+      
+      // Calculate rotation needed
+      const rotationAxis = currentDirection.clone().cross(targetDirection).normalize();
+      const rotationAngle = Math.acos(currentDirection.dot(targetDirection));
+      
+      if (rotationAngle > 0.01) { // Only rotate if significant difference
+        molecule.group.rotateOnAxis(rotationAxis, rotationAngle);
+        log(`🔄 Oriented nucleophile: nucleophilic center (O) now points toward substrate`);
+      }
+    }
+  }
+
+  /**
+   * Ensure molecules maintain proper SN2 backside attack geometry
+   * Called before starting the demo to verify and correct positioning
+   */
+  private ensureSN2Geometry(substrate: any, nucleophile: any): void {
+    log('🔧 Ensuring proper SN2 backside attack geometry...');
+
+    // Re-orient molecules if needed
+    this.orientSubstrateForSN2(substrate);
+    this.orientNucleophileForSN2(nucleophile);
+
+    // Ensure correct velocities for SN2 backside attack
+    substrate.velocity.set(0, 0, 0); // Substrate stationary
+    nucleophile.velocity.set(0, 0, 2.0); // Nucleophile approaching from behind
+
+    // Verify positions are correct for backside attack
+    const substratePos = substrate.group.position;
+    const nucleophilePos = nucleophile.group.position;
+    
+    log(`📍 Substrate position: (${substratePos.x.toFixed(2)}, ${substratePos.y.toFixed(2)}, ${substratePos.z.toFixed(2)})`);
+    log(`📍 Nucleophile position: (${nucleophilePos.x.toFixed(2)}, ${nucleophilePos.y.toFixed(2)}, ${nucleophilePos.z.toFixed(2)})`);
+    log(`📍 Distance between molecules: ${substratePos.distanceTo(nucleophilePos).toFixed(2)}`);
+    
+    // Check if nucleophile is positioned for backside attack (should be behind substrate)
+    if (nucleophilePos.z < substratePos.z) {
+      log('✅ Proper SN2 backside attack geometry confirmed');
+    } else {
+      log('⚠️ Warning: Nucleophile may not be positioned for proper backside attack');
+    }
   }
 
   /**

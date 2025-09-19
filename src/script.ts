@@ -141,11 +141,11 @@ init(defaultCSID);
 // Start the animation loop.
 animate();
 
-// Auto-reload for demo purposes (every 1.5 minutes)
-setInterval(() => {
-  console.log('[DEMO]: Auto-reloading simulation...');
-  location.reload();
-}, 90000); // 90 seconds = 1.5 minutes
+// Auto-reload disabled to prevent interference with SN2 demo
+// setInterval(() => {
+//   console.log('[DEMO]: Auto-reloading simulation...');
+//   location.reload();
+// }, 90000); // 90 seconds = 1.5 minutes
 
 // ===============================
 //  Event Listeners
@@ -223,8 +223,8 @@ function animate(): void {
       const group = moleculeObject.getGroup();
 
       // Apply rotation for all molecules with rotation controllers
-      if ((moleculeObject as unknown as { rotationController?: unknown }).rotationController) {
-        const rotationController = (moleculeObject as unknown as { rotationController: unknown })
+      if ((moleculeObject as unknown as { rotationController?: any }).rotationController) {
+        const rotationController = (moleculeObject as unknown as { rotationController: any })
           .rotationController;
         rotationController.update(deltaTime);
         rotationController.applyToObject3D(group);

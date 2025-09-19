@@ -42,7 +42,6 @@ export interface UIState {
 
   // Physics stats
   distance: number;
-  relativeVelocity: number;
   timeToCollision: number;
   reactionProbability: number;
 }
@@ -67,7 +66,6 @@ const initialState: UIState = {
   showAxes: true,
   showStats: true,
   distance: 0,
-  relativeVelocity: 0,
   timeToCollision: 0,
   reactionProbability: 0,
 };
