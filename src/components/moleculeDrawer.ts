@@ -238,7 +238,8 @@ export function drawMolecule(
   }
 
   // Create and position the atom spheres.
-  for (const item of molObject.atoms) {
+  for (let atomIndex = 0; atomIndex < molObject.atoms.length; atomIndex++) {
+    const item = molObject.atoms[atomIndex];
     const geometry = moleculeGeometries[item.type] || moleculeGeometries.C; // Default to Carbon if type not found
     const material = moleculeMaterials[item.type] || moleculeMaterials.C; // Default to Carbon if type not found
 
@@ -251,6 +252,8 @@ export function drawMolecule(
     sphere.position.x = parseFloat(item.position.x) - moleculeCenter.x;
     sphere.position.y = parseFloat(item.position.y) - moleculeCenter.y;
     sphere.position.z = parseFloat(item.position.z) - moleculeCenter.z;
+    // Tag with atom index for later updates/removal during reactions
+    (sphere as any).userData = { atomIndex };
     molecule.add(sphere); // Add the sphere to the molecule group.
   }
 
@@ -297,6 +300,8 @@ export function drawMolecule(
     cylinder.position.y = parseFloat(atom1.position.y) - moleculeCenter.y;
     cylinder.position.z = parseFloat(atom1.position.z) - moleculeCenter.z;
     cylinder.lookAt(point2); // Make the cylinder point at the second atom.
+    // Tag as bond so the reaction graphics can cleanly remove/rebuild bonds
+    (cylinder as any).userData = { type: 'bond' };
     molecule.add(cylinder); // Add the cylinder to the molecule group.
   }
   molecule.group.position.z = centerOffset; // Apply the global z offset (currently unused).

@@ -1,628 +1,309 @@
 import * as THREE from 'three';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
-import { getAtomConfig, createAtomMesh, createBondMesh } from '../config/atomConfig';
+import { createAtomMesh, getAtomConfig } from '../config/atomConfig';
 
 /**
- * Graphics/Visualization system for chemical reactions
- * This handles the visual representation of reaction transformations
- * Part of the chemistry engine architecture
+ * Minimal Reaction Graphics System
+ * Just does the absolute minimum for SN2 reactions
  */
-
 export class ReactionGraphics {
   constructor() {
-    log('ReactionGraphics initialized');
+    log('Minimal ReactionGraphics initialized');
   }
 
   /**
-   * Replace a halide leaving group (Cl/Br) on a methyl-like substrate with an OH group.
-   * - Finds the first halogen atom (Cl or Br)
-   * - Finds the carbon bonded to it
-   * - Removes the halogen
-   * - Adds O at the same position and an H slightly past the O along the C→O direction
-   * - Adds C–O and O–H single bonds
+   * Execute SN2 reaction: CH3X + OH⁻ → CH3OH + X⁻
+   * Minimal approach: just modify the substrate molecule
    */
-  substituteLeavingWithOH(molecule: MoleculeGroup): boolean {
-    if (!molecule.molObject || !Array.isArray(molecule.molObject.atoms)) return false;
+  executeSN2Reaction(substrate: MoleculeGroup, _nucleophile: MoleculeGroup): boolean {
+    log('🧪 Minimal SN2 reaction...');
+
+    try {
+      // Step 1: Find leaving group and its bonded carbon BEFORE edits
+      const leavingGroupIndex = this.findLeavingGroupIndex(substrate);
+      if (leavingGroupIndex === -1) {
+        log('❌ No leaving group found');
+        return false;
+      }
+
+      const carbonIndex = this.findBondedCarbonIndex(substrate, leavingGroupIndex);
+      if (carbonIndex === -1) {
+        log('❌ No bonded carbon found for leaving group');
+        return false;
+      }
+
+      // Use current mesh positions (group space) to determine correct SN2 product geometry
+      const carbonMesh = this.findAtomMesh(substrate, carbonIndex);
+      const leavingMesh = this.findAtomMesh(substrate, leavingGroupIndex);
+      if (!carbonMesh || !leavingMesh) {
+        log('❌ Atom meshes not found to compute geometry');
+        return false;
+      }
+
+      // Direction from carbon to leaving group (backside attack direction)
+      const dir = new THREE.Vector3()
+        .subVectors(leavingMesh.position, carbonMesh.position)
+        .normalize();
+
+      // Typical bond lengths (same units as group space — loader uses Å-like units)
+      const coLength = 1.43; // C–O single bond
+      const ohLength = 0.96; // O–H bond
+
+      // Compute O position on the former C→X axis (backside attack)
+      const oPos = new THREE.Vector3().copy(carbonMesh.position).addScaledVector(dir, coLength);
+
+      // Place H at ~109.5° from the O→C vector (tetrahedral around O)
+      // Build an orthonormal basis around dir
+      const up = Math.abs(dir.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      const perp1 = new THREE.Vector3().crossVectors(dir, up).normalize();
+      const perp2 = new THREE.Vector3().crossVectors(dir, perp1).normalize();
+      const theta = THREE.MathUtils.degToRad(109.5); // angle(H–O–C)
+      // O->C direction is -dir
+      const hDir = new THREE.Vector3()
+        .copy(dir)
+        .multiplyScalar(-Math.cos(theta))
+        .addScaledVector(perp2, Math.sin(theta))
+        .normalize();
+      const hPos = new THREE.Vector3().copy(oPos).addScaledVector(hDir, ohLength);
+
+      // Step 2: Remove leaving group (affects indices, so done AFTER computing positions)
+      this.removeLeavingGroup(substrate, leavingGroupIndex);
+
+      // Step 3: Add OH group at the computed positions, bonded to the original carbon index
+      this.addOHGroup(substrate, carbonIndex, oPos, hPos);
+
+      log('✅ Minimal SN2 reaction completed');
+      return true;
+    } catch (error) {
+      log(`❌ SN2 reaction failed: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Find leaving group index in substrate
+   */
+  private findLeavingGroupIndex(molecule: MoleculeGroup): number {
+    if (!molecule.molObject?.atoms) return -1;
 
     const atoms = molecule.molObject.atoms;
-    const bonds = molecule.molObject.bonds || [];
+    return atoms.findIndex(atom => ['Br', 'Cl', 'I', 'F'].includes(atom.type));
+  }
 
-    // 1. Find leaving group index (Cl or Br)
-    const leavingIdx = atoms.findIndex(a => a.type === 'Cl' || a.type === 'Br');
-    if (leavingIdx === -1) return false;
-
-    // 2. Find the carbon bonded to the leaving group
-    // Bonds are stored 1-indexed in molObject
-    let carbonIdx = -1; // 0-indexed
+  // Find the carbon bonded to the leaving group (from molObject bonds)
+  private findBondedCarbonIndex(molecule: MoleculeGroup, leavingGroupIndex: number): number {
+    const bonds = molecule.molObject?.bonds || [];
+    const atoms = molecule.molObject?.atoms || [];
     for (const bond of bonds) {
       const a = Number(bond[0]) - 1;
       const b = Number(bond[1]) - 1;
-      if (a === leavingIdx && atoms[b]?.type === 'C') {
-        carbonIdx = b;
-        break;
-      }
-      if (b === leavingIdx && atoms[a]?.type === 'C') {
-        carbonIdx = a;
-        break;
-      }
+      if (a === leavingGroupIndex && atoms[b]?.type === 'C') return b;
+      if (b === leavingGroupIndex && atoms[a]?.type === 'C') return a;
     }
-    if (carbonIdx === -1) return false;
-
-    // Capture positions before mutation
-    const leavingPos = new THREE.Vector3(
-      parseFloat(atoms[leavingIdx].position.x),
-      parseFloat(atoms[leavingIdx].position.y),
-      parseFloat(atoms[leavingIdx].position.z)
-    );
-    const carbonPos = new THREE.Vector3(
-      parseFloat(atoms[carbonIdx].position.x),
-      parseFloat(atoms[carbonIdx].position.y),
-      parseFloat(atoms[carbonIdx].position.z)
-    );
-
-    // 3. Remove the halogen atom (this also removes any bonds to it)
-    this.removeAtom(molecule, leavingIdx);
-
-    // After removal, indices > leavingIdx shift down by 1
-    if (carbonIdx > leavingIdx) carbonIdx -= 1;
-
-    // 4. Add Oxygen at the former halogen position
-    const oxygenIdx = this.addAtom(molecule, 'O', leavingPos);
-
-    // 5. Add Hydrogen slightly past the oxygen along the C->O direction
-    const dir = leavingPos.clone().sub(carbonPos).normalize();
-    const ohDistance = 0.96; // ~ O–H bond length (arbitrary scale units)
-    const hydrogenPos = leavingPos.clone().add(dir.clone().multiplyScalar(ohDistance));
-    const hydrogenIdx = this.addAtom(molecule, 'H', hydrogenPos);
-
-    // 6. Add bonds: C–O and O–H
-    this.addBond(molecule, carbonIdx, oxygenIdx, '1');
-    this.addBond(molecule, oxygenIdx, hydrogenIdx, '1');
-
-    // 7. Final visual update (local updates already happened in helpers)
-    this.updateMoleculeVisualization(molecule);
-    this.addTransformationEffect(molecule);
-
-    log(`🔄 Substituted leaving group with OH on molecule ${molecule.name}`);
-    return true;
-  }
-
-  /**
-   * Simple method to just invert a molecule (for testing)
-   */
-  invertMolecule(molecule: MoleculeGroup): void {
-    if (!molecule.molObject || !molecule.molObject.atoms) {
-      console.log(`❌ No molObject or atoms found in ${molecule.name}`);
-      return;
-    }
-
-    console.log(`🔄 Inverting molecule: ${molecule.name}`);
-
-    const atoms = molecule.molObject.atoms;
-    const centralCarbonIndex = atoms.findIndex(atom => atom.type === 'C');
-
-    if (centralCarbonIndex === -1) {
-      console.log(`❌ No central carbon found in ${molecule.name}`);
-      return;
-    }
-
-    const centralCarbon = atoms[centralCarbonIndex];
-    const centralPos = new THREE.Vector3(
-      parseFloat(centralCarbon.position.x),
-      parseFloat(centralCarbon.position.y),
-      parseFloat(centralCarbon.position.z)
-    );
-
-    console.log(`🔄 Inverting around central carbon at (${centralPos.x.toFixed(2)}, ${centralPos.y.toFixed(2)}, ${centralPos.z.toFixed(2)})`);
-
-    // Apply inversion to all atoms except central carbon
-    atoms.forEach((atom, index) => {
-      if (index !== centralCarbonIndex) {
-        const currentPos = new THREE.Vector3(
-          parseFloat(atom.position.x),
-          parseFloat(atom.position.y),
-          parseFloat(atom.position.z)
-        );
-
-        // Calculate vector from central carbon to this atom
-        const relativePos = currentPos.clone().sub(centralPos);
-        
-        // Apply inversion: flip the relative position
-        const invertedRelativePos = relativePos.clone().multiplyScalar(-1);
-        
-        // Calculate new absolute position
-        const newPos = centralPos.clone().add(invertedRelativePos);
-
-        console.log(`🔄 Inversion - Atom ${index} (${atom.type}): (${currentPos.x.toFixed(2)}, ${currentPos.y.toFixed(2)}, ${currentPos.z.toFixed(2)}) → (${newPos.x.toFixed(2)}, ${newPos.y.toFixed(2)}, ${newPos.z.toFixed(2)})`);
-
-        // Update the atom position
-        atom.position.x = newPos.x.toString();
-        atom.position.y = newPos.y.toString();
-        atom.position.z = newPos.z.toString();
-      }
-    });
-
-    // Update the visual representation
-    this.updateMoleculeVisualization(molecule);
-    
-    // Add visual effect
-    this.addTransformationEffect(molecule);
-    
-    console.log(`🔄 Molecule inversion completed for ${molecule.name}`);
-  }
-
-  /**
-   * Replace an atom with a different element type
-   */
-  replaceAtom(molecule: MoleculeGroup, atomIndex: number, newElementType: string): void {
-    if (!molecule.molObject || !molecule.molObject.atoms) {
-      console.log(`❌ No molObject or atoms found in ${molecule.name}`);
-      return;
-    }
-
-    const atoms = molecule.molObject.atoms;
-    if (atomIndex < 0 || atomIndex >= atoms.length) {
-      console.log(`❌ Invalid atom index ${atomIndex} for molecule with ${atoms.length} atoms`);
-      return;
-    }
-
-    const atom = atoms[atomIndex];
-    const oldType = atom.type;
-    const position = new THREE.Vector3(
-      parseFloat(atom.position.x),
-      parseFloat(atom.position.y),
-      parseFloat(atom.position.z)
-    );
-
-    console.log(`🔄 Replacing atom ${atomIndex} (${oldType}) with ${newElementType} at position (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
-
-    // Update the atom type
-    atom.type = newElementType;
-
-    // Update the visual representation
-    this.updateMoleculeVisualization(molecule);
-    
-    // Add visual effect
-    this.addTransformationEffect(molecule);
-    
-    console.log(`🔄 Atom replacement completed: ${oldType} → ${newElementType}`);
-  }
-
-  /**
-   * Add a new atom to the molecule
-   */
-  addAtom(molecule: MoleculeGroup, elementType: string, position: THREE.Vector3): number {
-    if (!molecule.molObject || !molecule.molObject.atoms) {
-      console.log(`❌ No molObject or atoms found in ${molecule.name}`);
       return -1;
     }
 
-    const atoms = molecule.molObject.atoms;
-    const newAtom = {
-      type: elementType,
-      position: {
-        x: position.x.toString(),
-        y: position.y.toString(),
-        z: position.z.toString()
+  // Find atom mesh tagged with userData.atomIndex (set by moleculeDrawer)
+  private findAtomMesh(molecule: MoleculeGroup, atomIndex: number): THREE.Mesh | undefined {
+    let mesh: THREE.Mesh | undefined;
+    for (const child of molecule.group.children) {
+      const ud = (child as any).userData;
+      if (ud && ud.atomIndex === atomIndex && ud.type !== 'bond') {
+        mesh = child as THREE.Mesh;
+        break;
       }
-    };
-
-    atoms.push(newAtom);
-    const newAtomIndex = atoms.length - 1;
-
-    console.log(`🔄 Added new atom ${elementType} at index ${newAtomIndex} at position (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
-
-    // Create and add the visual atom mesh using centralized config
-    const atomMesh = createAtomMesh(elementType, position);
-    molecule.group.add(atomMesh);
-    console.log(`🎨 Created atom mesh for ${elementType} using centralized config`);
-
-    // Update the visual representation
-    this.updateMoleculeVisualization(molecule);
-    
-    // Add visual effect
-    this.addTransformationEffect(molecule);
-    
-    console.log(`🔄 Atom addition completed: ${elementType} added at index ${newAtomIndex}`);
-    return newAtomIndex;
+    }
+    return mesh;
   }
 
   /**
-   * Remove an atom from the molecule
+   * Remove leaving group from substrate
    */
-  removeAtom(molecule: MoleculeGroup, atomIndex: number): void {
-    if (!molecule.molObject || !molecule.molObject.atoms) {
-      console.log(`❌ No molObject or atoms found in ${molecule.name}`);
-      return;
+  private removeLeavingGroup(molecule: MoleculeGroup, leavingGroupIndex: number): void {
+    log(`🗑️ Removing leaving group at index ${leavingGroupIndex}`);
+
+    // Remove from molecular data
+    if (molecule.molObject?.atoms) {
+      molecule.molObject.atoms.splice(leavingGroupIndex, 1);
     }
 
-    const atoms = molecule.molObject.atoms;
-    if (atomIndex < 0 || atomIndex >= atoms.length) {
-      console.log(`❌ Invalid atom index ${atomIndex} for molecule with ${atoms.length} atoms`);
-      return;
-    }
-
-    const removedAtom = atoms[atomIndex];
-    console.log(`🔄 Removing atom ${atomIndex} (${removedAtom.type})`);
-
-    // Remove the atom
-    atoms.splice(atomIndex, 1);
-
-    // Update bond indices (decrement indices > atomIndex)
-    if (molecule.molObject.bonds) {
-      molecule.molObject.bonds.forEach(bond => {
-        const index1 = Number(bond[0]) - 1;
-        const index2 = Number(bond[1]) - 1;
-        
-        if (index1 > atomIndex) {
-          bond[0] = String(index1);
-        }
-        if (index2 > atomIndex) {
-          bond[1] = String(index2);
-        }
-      });
-
-      // Remove bonds involving the removed atom
+    // Remove bonds involving the leaving group
+    if (molecule.molObject?.bonds) {
       molecule.molObject.bonds = molecule.molObject.bonds.filter(bond => {
-        const index1 = Number(bond[0]) - 1;
-        const index2 = Number(bond[1]) - 1;
-        return index1 !== atomIndex && index2 !== atomIndex;
+        const atom1 = Number(bond[0]) - 1;
+        const atom2 = Number(bond[1]) - 1;
+        return atom1 !== leavingGroupIndex && atom2 !== leavingGroupIndex;
       });
     }
 
-    // Update the visual representation
-    this.updateMoleculeVisualization(molecule);
-    
-    // Add visual effect
-    this.addTransformationEffect(molecule);
-    
-    console.log(`🔄 Atom removal completed: ${removedAtom.type} removed from index ${atomIndex}`);
+    // Remove from visual representation using stable atomIndex tagging
+    this.removeAtomVisual(molecule, leavingGroupIndex);
   }
 
   /**
-   * Add a bond between two atoms
+   * Add OH group to substrate
    */
-  addBond(molecule: MoleculeGroup, atomIndex1: number, atomIndex2: number, bondOrder: string = '1'): void {
-    if (!molecule.molObject || !molecule.molObject.bonds) {
-      console.log(`❌ No molObject or bonds found in ${molecule.name}`);
-      return;
+  private addOHGroup(molecule: MoleculeGroup, carbonIndex: number, oPos: THREE.Vector3, hPos: THREE.Vector3): void {
+    log('➕ Adding OH group');
+
+    // Add O atom
+    molecule.molObject?.atoms?.push({
+      type: 'O',
+      position: { x: oPos.x.toFixed(3), y: oPos.y.toFixed(3), z: oPos.z.toFixed(3) }
+    } as any);
+    const oIndex = (molecule.molObject?.atoms?.length || 1) - 1;
+
+    // Add H atom
+    molecule.molObject?.atoms?.push({
+      type: 'H',
+      position: { x: hPos.x.toFixed(3), y: hPos.y.toFixed(3), z: hPos.z.toFixed(3) }
+    } as any);
+    const hIndex = (molecule.molObject?.atoms?.length || 1) - 1;
+
+    // Add to visual representation
+    this.addAtomVisual(molecule, oPos, 'O');
+    this.addAtomVisual(molecule, hPos, 'H');
+
+    // Add bonds in data (use the original carbon index)
+    if (molecule.molObject?.bonds) {
+      molecule.molObject.bonds.push([(carbonIndex + 1).toString(), (oIndex + 1).toString(), '1']);
+      molecule.molObject.bonds.push([(oIndex + 1).toString(), (hIndex + 1).toString(), '1']);
     }
 
-    const atoms = molecule.molObject.atoms;
-    if (atomIndex1 < 0 || atomIndex1 >= atoms.length || atomIndex2 < 0 || atomIndex2 >= atoms.length) {
-      console.log(`❌ Invalid atom indices ${atomIndex1}, ${atomIndex2} for molecule with ${atoms.length} atoms`);
-      return;
-    }
+    // Create visual bonds for the new C-O and O-H bonds
+    this.createVisualBond(molecule, carbonIndex, oIndex);
+    this.createVisualBond(molecule, oIndex, hIndex);
+  }
 
-    const newBond: [string, string, string] = [String(atomIndex1 + 1), String(atomIndex2 + 1), bondOrder];
-    molecule.molObject.bonds.push(newBond);
+  /**
+   * Remove atom from visual representation
+   */
+  private removeAtomVisual(molecule: MoleculeGroup, atomIndex: number): void {
+    if (!molecule.group) return;
 
-    console.log(`🔄 Added bond between atoms ${atomIndex1} (${atoms[atomIndex1].type}) and ${atomIndex2} (${atoms[atomIndex2].type}) with order ${bondOrder}`);
-
-    // Create and add the visual bond mesh using centralized config
-    const atom1 = atoms[atomIndex1];
-    const atom2 = atoms[atomIndex2];
-    const pos1 = new THREE.Vector3(
-      parseFloat(atom1.position.x),
-      parseFloat(atom1.position.y),
-      parseFloat(atom1.position.z)
+    // Find and remove the atom mesh
+    const atomMeshes = molecule.group.children.filter(child => 
+      child.userData?.atomIndex === atomIndex
     );
-    const pos2 = new THREE.Vector3(
-      parseFloat(atom2.position.x),
-      parseFloat(atom2.position.y),
-      parseFloat(atom2.position.z)
+
+    atomMeshes.forEach(mesh => {
+      molecule.group.remove(mesh);
+      const meshObj = mesh as THREE.Mesh;
+      if (meshObj.geometry) meshObj.geometry.dispose();
+      if (meshObj.material) {
+        if (Array.isArray(meshObj.material)) {
+          meshObj.material.forEach((mat: any) => mat.dispose());
+        } else {
+          meshObj.material.dispose();
+        }
+      }
+    });
+
+    // Reassign contiguous atomIndex tags to remaining atom meshes
+    let nextIndex = 0;
+    molecule.group.children.forEach(child => {
+      if ((child as any).userData && (child as any).userData.atomIndex !== undefined && (child as any).userData.type !== 'bond') {
+        (child as any).userData.atomIndex = nextIndex++;
+      }
+    });
+  }
+
+  /**
+   * Add atom to visual representation
+   */
+  private addAtomVisual(molecule: MoleculeGroup, position: THREE.Vector3, elementType: string): void {
+    if (!molecule.group) return;
+
+    const atomMesh = createAtomMesh(elementType, position);
+    atomMesh.userData = { atomIndex: molecule.group.children.length };
+    
+    molecule.group.add(atomMesh);
+  }
+
+  /**
+   * Create visual bond between two atoms
+   */
+  private createVisualBond(molecule: MoleculeGroup, atomIndex1: number, atomIndex2: number): void {
+    if (!molecule.group) return;
+
+    const atom1Mesh = this.findAtomMesh(molecule, atomIndex1);
+    const atom2Mesh = this.findAtomMesh(molecule, atomIndex2);
+    
+    if (!atom1Mesh || !atom2Mesh) return;
+
+    // Get atom types from molecular data to determine radii
+    const atom1Type = molecule.molObject?.atoms?.[atomIndex1]?.type || 'C';
+    const atom2Type = molecule.molObject?.atoms?.[atomIndex2]?.type || 'C';
+    const atom1Radius = getAtomConfig(atom1Type).radius;
+    const atom2Radius = getAtomConfig(atom2Type).radius;
+
+    const centerDistance = atom1Mesh.position.distanceTo(atom2Mesh.position);
+    
+    // Calculate bond length (distance between atom surfaces, not centers)
+    const bondLength = Math.max(0.1, centerDistance - atom1Radius - atom2Radius);
+    
+    // Create cylinder geometry for the bond
+          const cylinderGeometry = new THREE.CylinderGeometry(
+      0.05, // radius
+      0.05, // radius
+      bondLength, // height (surface to surface)
+      8 // segments
     );
     
-    const bondMesh = createBondMesh(pos1, pos2, parseInt(bondOrder));
+    // Center the cylinder and orient it
+          cylinderGeometry.computeBoundingBox();
+          cylinderGeometry.computeBoundingSphere();
+          cylinderGeometry.translate(0, bondLength / 2, 0);
+          cylinderGeometry.rotateX(Math.PI / 2);
+          
+    // Create material and mesh
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const bondMesh = new THREE.Mesh(cylinderGeometry, material);
+    
+    // Position the bond between the atom surfaces (not centers)
+    const direction = atom2Mesh.position.clone().sub(atom1Mesh.position).normalize();
+    const bondStart = atom1Mesh.position.clone().add(direction.clone().multiplyScalar(atom1Radius));
+    const bondEnd = atom2Mesh.position.clone().sub(direction.clone().multiplyScalar(atom2Radius));
+    
+    bondMesh.position.copy(bondStart);
+    bondMesh.lookAt(bondEnd);
+    
+    // Tag as bond
+    bondMesh.userData = { type: 'bond' };
+    
     molecule.group.add(bondMesh);
-    console.log(`🎨 Created bond mesh using centralized config`);
-
-    // Update the visual representation
-    this.updateMoleculeVisualization(molecule);
-    
-    // Add visual effect
-    this.addTransformationEffect(molecule);
-    
-    console.log(`🔄 Bond addition completed: [${newBond[0]}, ${newBond[1]}, ${newBond[2]}]`);
   }
 
   /**
-   * Remove a bond between two atoms
+   * Simple transformation effect - just a basic flash
    */
-  removeBond(molecule: MoleculeGroup, atomIndex1: number, atomIndex2: number): void {
-    if (!molecule.molObject || !molecule.molObject.bonds) {
-      console.log(`❌ No molObject or bonds found in ${molecule.name}`);
-      return;
-    }
+  addTransformationEffect(molecule: MoleculeGroup): void {
+    log('✨ Adding simple flash effect...');
 
-    const bonds = molecule.molObject.bonds;
-    const bondIndex = bonds.findIndex(bond => {
-      const index1 = Number(bond[0]) - 1;
-      const index2 = Number(bond[1]) - 1;
-      return (index1 === atomIndex1 && index2 === atomIndex2) || (index1 === atomIndex2 && index2 === atomIndex1);
-    });
-
-    if (bondIndex === -1) {
-      console.log(`❌ No bond found between atoms ${atomIndex1} and ${atomIndex2}`);
-      return;
-    }
-
-    const removedBond = bonds[bondIndex];
-    bonds.splice(bondIndex, 1);
-
-    console.log(`🔄 Removed bond between atoms ${atomIndex1} and ${atomIndex2}: [${removedBond[0]}, ${removedBond[1]}, ${removedBond[2]}]`);
-
-    // Update the visual representation
-    this.updateMoleculeVisualization(molecule);
-    
-    // Add visual effect
-    this.addTransformationEffect(molecule);
-    
-    console.log(`🔄 Bond removal completed`);
-  }
-
-  /**
-   * Update molecule visualization after transformation - preserve existing structure
-   */
-  private updateMoleculeVisualization(molecule: MoleculeGroup): void {
-    if (!molecule.molObject || !molecule.molObject.atoms) return;
-
-    console.log(`🎨 Updating visualization for ${molecule.name} with ${molecule.molObject.atoms.length} atoms`);
-
-    // Instead of recreating everything, just update the positions of existing atoms
-    // This preserves the bond structure and only moves atoms to new positions
-    const atoms = molecule.molObject.atoms;
-    
-    // Find all atom meshes and update their positions
-    const atomMeshes: THREE.Mesh[] = [];
-    molecule.group.traverse(child => {
-      if (child instanceof THREE.Mesh && child.geometry instanceof THREE.SphereGeometry) {
-        atomMeshes.push(child);
-      }
-    });
-
-    console.log(`🎨 Found ${atomMeshes.length} atom meshes to update`);
-
-    // Update existing atom positions to match the transformed molecular data
-    atoms.forEach((atom, index) => {
-      if (index < atomMeshes.length) {
-        const mesh = atomMeshes[index];
-        const x = parseFloat(atom.position.x) || 0;
-        const y = parseFloat(atom.position.y) || 0;
-        const z = parseFloat(atom.position.z) || 0;
-        
-        console.log(`🎨 Updating atom ${index} (${atom.type}): (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`);
-        mesh.position.set(x, y, z);
-
-        // Update atom color and size based on new type using centralized config
-        const element = atom.type || 'C';
-        const config = getAtomConfig(element);
-        
-        if (mesh.material instanceof THREE.MeshStandardMaterial) {
-          mesh.material.color.setHex(config.color);
-          console.log(`🎨 Updated atom ${index} color to ${element} (${config.color.toString(16)})`);
-        }
-        
-        // Update geometry if needed (for size changes)
-        if (mesh.geometry instanceof THREE.SphereGeometry) {
-          const currentRadius = mesh.geometry.parameters.radius;
-          if (Math.abs(currentRadius - config.radius) > 0.01) {
-            console.log(`🎨 Updating atom ${index} size from ${currentRadius} to ${config.radius}`);
-            mesh.geometry.dispose();
-            mesh.geometry = config.geometry.clone();
-          }
-        }
-      } else {
-        console.log(`🎨 Warning: No mesh found for atom ${index} (${atom.type})`);
-      }
-    });
-
-    // Add new atoms if the molecule has grown
-    if (atoms.length > atomMeshes.length) {
-      const colorByElement: Record<string, number> = {
-        H: 0xffffff,
-        C: 0x333333,
-        O: 0xff0000,
-        N: 0x0000ff,
-        F: 0x00ff00,
-        Cl: 0x00ff00,
-        Br: 0x8a2be2,
-        I: 0x800080,
-      };
-
-      const defaultGeom = new THREE.SphereGeometry(0.5, 16, 16);
-      
-      for (let i = atomMeshes.length; i < atoms.length; i++) {
-        const atom = atoms[i];
-        const element = atom.type || 'C';
-        const color = colorByElement[element] ?? 0x999999;
-        const mat = new THREE.MeshPhongMaterial({ color });
-        const sphere = new THREE.Mesh(defaultGeom, mat);
-        
-        const x = parseFloat(atom.position.x) || 0;
-        const y = parseFloat(atom.position.y) || 0;
-        const z = parseFloat(atom.position.z) || 0;
-        sphere.position.set(x, y, z);
-        molecule.group.add(sphere);
-        
-        log(`🔄 Added new atom mesh for ${element} at (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`);
-      }
-    }
-
-    // Update bond positions to connect the moved atoms
-    const bondMeshes: THREE.Mesh[] = [];
-    molecule.group.traverse(child => {
-      if (child instanceof THREE.Mesh && child.geometry instanceof THREE.CylinderGeometry) {
-        bondMeshes.push(child);
-      }
-    });
-
-    console.log(`🔄 Found ${bondMeshes.length} bond meshes to update`);
-
-    // Update bond positions to connect the transformed atoms
-    const bonds = molecule.molObject.bonds;
-    console.log(`🔄 Updating ${bonds.length} bonds`);
-    
-    bonds.forEach((bond, bondIndex) => {
-      if (bondIndex < bondMeshes.length) {
-        const index1 = Number(bond[0]) - 1;
-        const index2 = Number(bond[1]) - 1;
-
-        if (index1 >= 0 && index1 < atoms.length && index2 >= 0 && index2 < atoms.length) {
-          const atom1 = atoms[index1];
-          const atom2 = atoms[index2];
-
-          const point1 = new THREE.Vector3(
-            parseFloat(atom1.position.x),
-            parseFloat(atom1.position.y),
-            parseFloat(atom1.position.z)
-          );
-          const point2 = new THREE.Vector3(
-            parseFloat(atom2.position.x),
-            parseFloat(atom2.position.y),
-            parseFloat(atom2.position.z)
-          );
-
-          console.log(`🔄 Updating bond ${bondIndex}: ${atom1.type}(${index1}) - ${atom2.type}(${index2})`);
-          console.log(`  Point1: (${point1.x.toFixed(2)}, ${point1.y.toFixed(2)}, ${point1.z.toFixed(2)})`);
-          console.log(`  Point2: (${point2.x.toFixed(2)}, ${point2.y.toFixed(2)}, ${point2.z.toFixed(2)})`);
-
-          // Calculate bond length - use actual distance between atom centers
-          const bondLength = point1.distanceTo(point2);
-          const bondMesh = bondMeshes[bondIndex];
-
-          // Update bond geometry for new distance using centralized config
-          const bondOrder = parseInt(bond[2] || '1');
-          const radius = bondOrder === 1 ? 0.05 : 0.15;
-          const newGeometry = new THREE.CylinderGeometry(
-            radius,
-            radius,
-            Math.max(bondLength, 0.1), // Ensure minimum bond length
-            8
-          );
-
-          newGeometry.computeBoundingBox();
-          newGeometry.computeBoundingSphere();
-          newGeometry.translate(0, bondLength / 2, 0);
-          newGeometry.rotateX(Math.PI / 2);
-
-          // Dispose old geometry and assign new one
-          if (bondMesh.geometry) {
-            bondMesh.geometry.dispose();
-          }
-          bondMesh.geometry = newGeometry;
-
-          // Calculate bond center position (midpoint between atom centers)
-          const bondCenter = point1.clone().add(point2).multiplyScalar(0.5);
-
-          // Update bond position and orientation
-          bondMesh.position.copy(bondCenter);
-          bondMesh.lookAt(point2);
-          bondMesh.rotateX(Math.PI / 2);
-          
-          console.log(`  Bond center: (${bondCenter.x.toFixed(2)}, ${bondCenter.y.toFixed(2)}, ${bondCenter.z.toFixed(2)})`);
-          console.log(`  Bond length: ${bondLength.toFixed(2)}`);
-        }
-      }
-    });
-
-    // Add new bonds if needed
-    if (bonds.length > bondMeshes.length) {
-      for (let i = bondMeshes.length; i < bonds.length; i++) {
-        const bond = bonds[i];
-        const index1 = Number(bond[0]) - 1;
-        const index2 = Number(bond[1]) - 1;
-        
-        if (index1 >= 0 && index1 < atoms.length && index2 >= 0 && index2 < atoms.length) {
-          const atom1 = atoms[index1];
-          const atom2 = atoms[index2];
-          
-          const point1 = new THREE.Vector3(
-            parseFloat(atom1.position.x),
-            parseFloat(atom1.position.y),
-            parseFloat(atom1.position.z)
-          );
-          const point2 = new THREE.Vector3(
-            parseFloat(atom2.position.x),
-            parseFloat(atom2.position.y),
-            parseFloat(atom2.position.z)
-          );
-          
-          // Use centralized bond creation
-          const bondMesh = createBondMesh(point1, point2, parseInt(bond[2] || '1'));
-          molecule.group.add(bondMesh);
-          log(`🔄 Added new bond mesh between atoms ${index1} and ${index2} using centralized config`);
-        }
-      }
-    }
-
-    log(`🎨 Updated visualization for ${molecule.name} - preserved existing structure`);
-  }
-
-  /**
-   * Add visual effect to highlight the transformation
-   */
-  private addTransformationEffect(molecule: MoleculeGroup): void {
-    // Add a brief flash effect to highlight the transformation
+    // Simple flash effect
     const originalMaterials: THREE.Material[] = [];
-    
-    // Store original materials
-    molecule.group.traverse(child => {
-      if (child instanceof THREE.Mesh && child.material) {
+    molecule.group.traverse((child: any) => {
+      if (child.material) {
         originalMaterials.push(child.material);
+        child.material = new THREE.MeshStandardMaterial({ 
+          color: 0xffff00, // Yellow flash
+          emissive: 0x444400 
+        });
       }
     });
-    
-    // Flash effect - change to bright yellow briefly
-    const flashMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0x444400 });
-    
-    molecule.group.traverse(child => {
-      if (child instanceof THREE.Mesh) {
-        child.material = flashMaterial;
-      }
-    });
-    
-    // Restore original materials after 300ms (shorter duration)
+
+    // Restore original materials after 300ms
     setTimeout(() => {
-      // Force a complete refresh of all atom colors and materials
-      this.refreshMoleculeColors(molecule);
-      
-      // Dispose flash material
-      flashMaterial.dispose();
-      
-      console.log(`✨ Transformation effect completed for ${molecule.name}`);
-    }, 300);
-  }
-
-  /**
-   * Force refresh all atom colors and materials using centralized config
-   */
-  private refreshMoleculeColors(molecule: MoleculeGroup): void {
-    if (!molecule.molObject || !molecule.molObject.atoms) return;
-
-    console.log(`🎨 Refreshing colors for ${molecule.name}`);
-
-    const atoms = molecule.molObject.atoms;
-    let atomIndex = 0;
-
-    molecule.group.traverse(child => {
-      if (child instanceof THREE.Mesh && child.geometry instanceof THREE.SphereGeometry) {
-        if (atomIndex < atoms.length) {
-          const atom = atoms[atomIndex];
-          const element = atom.type || 'C';
-          const config = getAtomConfig(element);
-
-          // Update material
-          if (child.material instanceof THREE.MeshStandardMaterial) {
-            child.material.color.setHex(config.color);
-            console.log(`🎨 Refreshed atom ${atomIndex} (${element}) color to ${config.color.toString(16)}`);
-          }
-
-          atomIndex++;
+      let materialIndex = 0;
+      molecule.group.traverse((child: any) => {
+        if (child.material && originalMaterials[materialIndex]) {
+          child.material = originalMaterials[materialIndex];
+          materialIndex++;
         }
-      }
-    });
+      });
+      log('✨ Flash effect completed');
+    }, 300);
   }
 }
 

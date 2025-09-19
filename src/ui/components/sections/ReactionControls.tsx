@@ -51,6 +51,21 @@ export const ReactionControls: React.FC = () => {
     }
   };
 
+  const handleLoadDemoMolecules = async () => {
+    console.log('Loading demo molecules...');
+    try {
+      await threeJSBridge.loadDemoMolecules();
+      updateUIState({
+        availableMolecules: ['demo_Methyl_bromide', 'demo_Hydroxide_ion'],
+        substrateMolecule: 'demo_Methyl_bromide',
+        nucleophileMolecule: 'demo_Hydroxide_ion',
+        reactionType: 'sn2',
+      });
+    } catch (error) {
+      console.error('Error loading demo molecules:', error);
+    }
+  };
+
   const handleRunDemo = async () => {
     console.log('Running reaction demo...');
     try {
@@ -59,7 +74,7 @@ export const ReactionControls: React.FC = () => {
         isPlaying: true,
         reactionInProgress: false,
         substrateMolecule: 'demo_Methyl_bromide',
-        nucleophileMolecule: 'demo_Methanol',
+        nucleophileMolecule: 'demo_Hydroxide_ion',
         reactionType: 'sn2',
       });
     } catch (error) {
@@ -96,6 +111,12 @@ export const ReactionControls: React.FC = () => {
           disabled={!uiState.isPlaying}
         >
           Stop Reaction
+        </button>
+      </div>
+
+      <div className="form-group">
+        <button className="btn btn-secondary" onClick={handleLoadDemoMolecules}>
+          🧪 Load Demo Molecules
         </button>
       </div>
 

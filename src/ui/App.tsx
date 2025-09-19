@@ -1,6 +1,8 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { BottomBar } from './components/BottomBar';
+import { CollisionParametersOverlay } from './components/overlays/CollisionParametersOverlay';
 import { RightSidebar } from './components/RightSidebar';
 import { SceneContainer } from './components/SceneContainer';
 import { TopBar } from './components/TopBar';
@@ -39,6 +41,7 @@ export interface UIState {
   // Scene controls
   showAxes: boolean;
   showStats: boolean;
+  userTestMode: boolean;
 
   // Physics stats
   distance: number;
@@ -65,6 +68,7 @@ const initialState: UIState = {
   reactionEquation: 'No reaction yet',
   showAxes: true,
   showStats: true,
+  userTestMode: true,
   distance: 0,
   timeToCollision: 0,
   reactionProbability: 0,
@@ -92,8 +96,9 @@ export const App: React.FC = () => {
       <div className="app">
         <TopBar />
         <div className="main-content">
-          <div className="scene-area">
+          <div className="scene-area" style={{ position: 'relative' }}>
             <SceneContainer ref={sceneRef} />
+            <CollisionParametersOverlay />
           </div>
           <RightSidebar />
         </div>

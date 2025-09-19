@@ -12,8 +12,6 @@ import '../node_modules/awesomplete/awesomplete.css'; // Import CSS for autocomp
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; // Import OrbitControls for interactive camera movement.
 
 // import { generateUUID } from "three/src/math/MathUtils.js"; // Import for generating unique IDs (not currently used).
-
-import { set_up_gui } from './components/guiControls'; // Import functions for setting up the graphical user interface.
 import {
   applyLighting,
   updateSkyLightPosition,
@@ -22,7 +20,8 @@ import {
 import { drawMolecule } from './components/moleculeDrawer'; // Import functions for fetching and drawing molecules.
 // Legacy spatial grid imports removed - now using physics engine
 import { physicsEngine } from './physics/cannonPhysicsEngine'; // Import Cannon.js physics engine
-import { visualizeHulls } from './physics/convexHullCollision'; // Import hull visualization
+// import { visualizeHulls } from './physics/convexHullCollision'; // Hull visualization disabled
+import { sceneBridge } from './services/SceneBridge'; // Bridge for React-Three.js communication
 // My Imports - Application-Specific Modules
 import { createMoleculeManager } from './services/moleculeManager'; // Import the MoleculeManager factory.
 import { addObjectDebug, DEBUG_MODE, initFpsDebug, log, updateFpsDebug } from './utils/debug'; // Import debugging utilities.
@@ -112,13 +111,8 @@ log('Scene and renderer initialized.');
 //  Initialization and Animation
 // ===============================
 
-/**
- * The default Chemical Structure ID (CSID) to load on initial startup.
- */
-const defaultCSID: number = 2424;
-
 // Initialize the application.
-init(defaultCSID);
+// init(defaultCSID); // Disabled - now using React-based ThreeJSBridge initialization
 
 // Global functions for demo control
 (window as any).pauseDemo = () => {
@@ -232,11 +226,10 @@ function animate(): void {
     }
   }
 
-  // Hull visualization is now properly cached and only updates positions
-  // Only update hulls if simulation is not paused
-  if (!isPhysicsPaused) {
-    visualizeHulls(scene, allMolecules);
-  }
+  // Hull visualization disabled to prevent visual artifacts
+  // if (!isPhysicsPaused) {
+  //   visualizeHulls(scene, allMolecules);
+  // }
 
   // Update the positions of the spotlight and skylight based on the camera.
   updateSpotlightPosition(camera);
@@ -253,6 +246,7 @@ function animate(): void {
  *
  * @param CSID - The Chemical Structure ID (CSID) of the molecule to load initially.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function init(CSID: number): void {
   log(`Initializing scene with molecule CSID: ${CSID}`);
 
@@ -284,8 +278,8 @@ function init(CSID: number): void {
 
   //log(moleculeManager.getAllMolecules());
 
-  // Set up the GUI controls.
-  set_up_gui(moleculeManager, scene);
+  // Initialize scene bridge for React components
+  sceneBridge.initialize(scene, moleculeManager);
 
   // Apply lighting to the scene.
   applyLighting(scene);

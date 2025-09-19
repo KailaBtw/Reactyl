@@ -1,6 +1,7 @@
 import React, { forwardRef, useEffect, useRef } from 'react';
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
+import type { UIState } from '../App';
 
 type SceneContainerProps = {};
 
@@ -8,6 +9,7 @@ export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((_
   const { uiState } = useUIState();
   const animationIdRef = useRef<number | null>(null);
   const isInitialized = useRef(false);
+  const previousUIStateRef = useRef<UIState | null>(null);
 
   useEffect(() => {
     if (!ref || typeof ref === 'function') return;
@@ -62,7 +64,8 @@ export const SceneContainer = forwardRef<HTMLDivElement, SceneContainerProps>((_
 
   // Update scene when UI state changes
   useEffect(() => {
-    threeJSBridge.updateFromUIState(uiState);
+    threeJSBridge.updateFromUIState(uiState, previousUIStateRef.current);
+    previousUIStateRef.current = uiState;
   }, [uiState]);
 
   return (

@@ -1,18 +1,39 @@
 import type React from 'react';
+import { useEffect } from 'react';
 import { useUIState } from '../../context/UIStateContext';
+import { threeJSBridge } from '../../bridge/ThreeJSBridge';
 
 export const MoleculeSelection: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
 
-  const handleRefreshMolecules = () => {
-    // This will be connected to the actual molecule manager
-    console.log('Refreshing molecule list...');
-    // For now, just add some demo molecules
-    updateUIState({
-      availableMolecules: ['demo_Methyl_bromide', 'demo_Methanol', 'demo_Water'],
-      substrateMolecule: 'demo_Methyl_bromide',
-      nucleophileMolecule: 'demo_Methanol',
-    });
+  // Auto-populate dropdowns on component mount
+  useEffect(() => {
+    if (uiState.availableMolecules.length === 0) {
+      console.log('Auto-populating molecule dropdowns...');
+      updateUIState({
+        availableMolecules: ['demo_Methyl_bromide', 'demo_Hydroxide_ion', 'demo_Methanol', 'demo_Water'],
+        substrateMolecule: 'demo_Methyl_bromide',
+        nucleophileMolecule: 'demo_Hydroxide_ion',
+      });
+    }
+  }, [uiState.availableMolecules.length, updateUIState]);
+
+  const handleStartReaction = async () => {
+    if (!uiState.substrateMolecule || !uiState.nucleophileMolecule) {
+      alert('Please select both substrate and nucleophile molecules first');
+      return;
+    }
+
+    console.log('Starting reaction animation...');
+    try {
+      await threeJSBridge.startReactionAnimation();
+      updateUIState({
+        isPlaying: true,
+        reactionInProgress: true,
+      });
+    } catch (error) {
+      console.error('Error starting reaction animation:', error);
+    }
   };
 
   return (
@@ -50,12 +71,6 @@ export const MoleculeSelection: React.FC = () => {
       </div>
 
       <div className="form-group">
-        <button className="btn btn-secondary btn-small" onClick={handleRefreshMolecules}>
-          🔄 Refresh Molecules
-        </button>
-      </div>
-
-      <div className="form-group">
         <label className="form-label">Reaction Type</label>
         <select
           value={uiState.reactionType}
@@ -67,6 +82,16 @@ export const MoleculeSelection: React.FC = () => {
           <option value="e2">E2 - Bimolecular Elimination</option>
           <option value="e1">E1 - Unimolecular Elimination</option>
         </select>
+      </div>
+
+      <div className="form-group">
+        <button
+          className="btn btn-success"
+          onClick={handleStartReaction}
+          disabled={!uiState.substrateMolecule || !uiState.nucleophileMolecule || uiState.isPlaying}
+        >
+          Start Reaction Animation
+        </button>
       </div>
     </div>
   );

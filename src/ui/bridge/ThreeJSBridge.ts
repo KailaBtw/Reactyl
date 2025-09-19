@@ -4,6 +4,9 @@ import { ReactionDemo } from '../../components/reactionDemo';
 import { physicsEngine } from '../../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../../physics/collisionEventSystem';
 import { createMoleculeManager } from '../../services/moleculeManager';
+import { sceneBridge } from '../../services/SceneBridge';
+import { applyLighting } from '../../components/lightingControls';
+import { addObjectDebug, DEBUG_MODE, initFpsDebug } from '../../utils/debug';
 import type { UIState } from '../App';
 
 export class ThreeJSBridge {
@@ -135,37 +138,64 @@ export class ThreeJSBridge {
     // Start health check for black screen detection
     // this.startHealthCheck(); // Commented out for now
 
+    // Apply lighting to the scene
+    applyLighting(this.scene);
+
+    // Add debug objects if DEBUG_MODE is enabled
+    if (DEBUG_MODE) {
+      addObjectDebug(this.scene);
+      initFpsDebug();
+    }
+
+    // Position and orient the camera
+    this.camera.position.set(10, 10, 10);
+    this.camera.lookAt(0, 0, 0);
+
+    // Initialize the scene bridge for React components
+    sceneBridge.initialize(this.scene, this.moleculeManager);
+
     console.log('Three.js scene initialized with orbit controls');
     return this.scene;
   }
 
-  updateFromUIState(uiState: UIState) {
+  updateFromUIState(uiState: UIState, previousState?: UIState) {
     if (!this.scene) return;
 
-    // Update physics engine time scale
-    physicsEngine.setTimeScale(uiState.timeScale);
-
-    // Handle play/pause
-    if (uiState.isPlaying) {
-      physicsEngine.resume();
-    } else {
-      physicsEngine.pause();
+    // Only update physics time scale if it actually changed
+    if (!previousState || previousState.timeScale !== uiState.timeScale) {
+      console.log('🔄 Updating physics time scale:', uiState.timeScale);
+      physicsEngine.setTimeScale(uiState.timeScale);
     }
 
-    // Update testing mode in collision event system
-    collisionEventSystem.setTestingMode(uiState.testingMode);
-
-    // Update axes helper visibility
-    const axesHelper = this.scene.getObjectByName('axesHelper');
-    if (uiState.showAxes) {
-      if (!axesHelper) {
-        const newAxesHelper = new THREE.AxesHelper(10); // Match the initial size
-        newAxesHelper.name = 'axesHelper';
-        this.scene.add(newAxesHelper);
+    // Only handle play/pause if the playing state actually changed
+    if (!previousState || previousState.isPlaying !== uiState.isPlaying) {
+      console.log('🔄 Updating play/pause state:', uiState.isPlaying);
+      if (uiState.isPlaying) {
+        physicsEngine.resume();
+      } else {
+        physicsEngine.pause();
       }
-    } else {
-      if (axesHelper) {
-        this.scene.remove(axesHelper);
+    }
+
+    // Only update testing mode if it actually changed
+    if (!previousState || previousState.testingMode !== uiState.testingMode) {
+      console.log('🔄 Updating testing mode:', uiState.testingMode);
+      collisionEventSystem.setTestingMode(uiState.testingMode);
+    }
+
+    // Only update axes helper visibility if it actually changed
+    if (!previousState || previousState.showAxes !== uiState.showAxes) {
+      const axesHelper = this.scene.getObjectByName('axesHelper');
+      if (uiState.showAxes) {
+        if (!axesHelper) {
+          const newAxesHelper = new THREE.AxesHelper(10); // Match the initial size
+          newAxesHelper.name = 'axesHelper';
+          this.scene.add(newAxesHelper);
+        }
+      } else {
+        if (axesHelper) {
+          this.scene.remove(axesHelper);
+        }
       }
     }
   }
@@ -201,6 +231,18 @@ export class ThreeJSBridge {
   }
 
   // Reaction demo methods
+  async loadDemoMolecules(): Promise<void> {
+    if (!this.reactionDemo || !this.moleculeManager || !this.scene) {
+      console.error('Reaction demo, molecule manager, or scene not initialized');
+      return;
+    }
+
+    console.log('Loading demo molecules...');
+    await this.reactionDemo.loadDemoMolecules(this.moleculeManager, this.scene, (status) => {
+      console.log(`Demo loading: ${status}`);
+    });
+  }
+
   async setupCollision(): Promise<void> {
     if (!this.reactionDemo || !this.moleculeManager) {
       console.error('Reaction demo or molecule manager not initialized');
@@ -244,7 +286,11 @@ export class ThreeJSBridge {
       relativeVelocity: 20.0,
     };
 
-    await this.reactionDemo.runDemo(this.moleculeManager, timeControls, reactionParams);
+    if (!this.scene) {
+      console.error('Scene not initialized');
+      return;
+    }
+    await this.reactionDemo.runDemo(this.moleculeManager, this.scene, timeControls, reactionParams);
   }
 
   async stopReaction(): Promise<void> {
@@ -320,6 +366,7 @@ export class ThreeJSBridge {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private startHealthCheck() {
     // Check every 5 seconds if the renderer is still working
     setInterval(() => {

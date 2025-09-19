@@ -44,7 +44,7 @@ export const TopBar: React.FC = () => {
 
   return (
     <div className="top-bar">
-      <h1>🧪 MolMod - Molecular Modeler</h1>
+      <h1>MolMod - Molecular Modeler</h1>
 
       <div className="top-bar-controls">
         <div className="control-group">
@@ -114,6 +114,17 @@ export const TopBar: React.FC = () => {
         <div className="control-group">
           <label>
             <input type="checkbox" onChange={handleAutoRotate} />🔄 Auto Rotate
+          </label>
+        </div>
+
+        <div className="control-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={uiState.userTestMode}
+              onChange={e => updateUIState({ userTestMode: e.target.checked })}
+            />
+            User Test Mode
           </label>
         </div>
 

@@ -87,29 +87,14 @@ export class CollisionTrajectoryController {
   }
 
   /**
-   * Visualize collision trajectory
+   * Visualize collision trajectory - DISABLED to prevent visual artifacts
    */
   visualizeTrajectory(start: THREE.Vector3, end: THREE.Vector3): void {
-    // Remove existing trajectory line
-    if (this.trajectoryLine) {
-      this.scene.remove(this.trajectoryLine);
-    }
+    // Trajectory visualization disabled to prevent weird green lines
+    log('🚫 Trajectory visualization disabled to prevent visual artifacts');
+    return;
 
-    // Create trajectory points
-    const points = [start, end];
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({
-      color: 0x00ff00,
-      opacity: 0.7,
-      transparent: true,
-      linewidth: 3,
-    });
-
-    this.trajectoryLine = new THREE.Line(geometry, material);
-    this.scene.add(this.trajectoryLine);
-
-    // Add arrow at the end to show direction
-    this.addTrajectoryArrow(end, start);
+    // Arrow disabled to prevent visual artifacts
   }
 
   /**

@@ -46,7 +46,6 @@ export const DebugControls: React.FC = () => {
       showAxes: true,
       showStats: true,
       distance: 0,
-      relativeVelocity: 0,
       timeToCollision: 0,
       reactionProbability: 0,
     });
@@ -56,11 +55,26 @@ export const DebugControls: React.FC = () => {
     updateUIState({ testingMode: e.target.checked });
   };
 
+  const handleRefreshMolecules = () => {
+    console.log('Refreshing molecule list...');
+    updateUIState({
+      availableMolecules: ['demo_Methyl_bromide', 'demo_Hydroxide_ion', 'demo_Methanol', 'demo_Water'],
+      substrateMolecule: 'demo_Methyl_bromide',
+      nucleophileMolecule: 'demo_Hydroxide_ion',
+    });
+  };
+
   return (
     <div>
       <div className="form-group">
         <button className="btn btn-danger btn-small" onClick={handleClearScene}>
           🗑️ Clear All Molecules
+        </button>
+      </div>
+
+      <div className="form-group">
+        <button className="btn btn-secondary btn-small" onClick={handleRefreshMolecules}>
+          🔄 Refresh Molecules
         </button>
       </div>
 

@@ -1,9 +1,9 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useUIState } from '../context/UIStateContext';
-import { CollisionParameters } from './sections/CollisionParameters';
 import { DebugControls } from './sections/DebugControls';
 import { LiveStats } from './sections/LiveStats';
+import { MoleculeSearch } from './sections/MoleculeSearch';
 import { MoleculeSelection } from './sections/MoleculeSelection';
 import { ReactionControls } from './sections/ReactionControls';
 import { ReactionProducts } from './sections/ReactionProducts';
@@ -37,29 +37,35 @@ export const RightSidebar: React.FC = () => {
 
   return (
     <div className="right-sidebar">
-      <CollapsibleSection title="💥 Collision Parameters" defaultOpen={true}>
-        <CollisionParameters />
-      </CollapsibleSection>
+      <MoleculeSearch />
 
-      <CollapsibleSection title="🧬 Molecules" defaultOpen={true}>
+      <CollapsibleSection title="Molecules" defaultOpen={true}>
         <MoleculeSelection />
       </CollapsibleSection>
 
-      <CollapsibleSection title="🎮 Reaction Controls" defaultOpen={true}>
-        <ReactionControls />
-      </CollapsibleSection>
+      {!uiState.userTestMode && (
+        <CollapsibleSection title="Reaction Controls" defaultOpen={true}>
+          <ReactionControls />
+        </CollapsibleSection>
+      )}
 
-      <CollapsibleSection title="📊 Live Stats" defaultOpen={false}>
-        <LiveStats />
-      </CollapsibleSection>
+      {!uiState.userTestMode && (
+        <CollapsibleSection title="📊 Live Stats" defaultOpen={false}>
+          <LiveStats />
+        </CollapsibleSection>
+      )}
 
-      <CollapsibleSection title="📦 Reaction Products" defaultOpen={false}>
-        <ReactionProducts />
-      </CollapsibleSection>
+      {!uiState.userTestMode && (
+        <CollapsibleSection title="📦 Reaction Products" defaultOpen={false}>
+          <ReactionProducts />
+        </CollapsibleSection>
+      )}
 
-      <CollapsibleSection title="🔧 Debug" defaultOpen={false}>
-        <DebugControls />
-      </CollapsibleSection>
+      {!uiState.userTestMode && (
+        <CollapsibleSection title="🔧 Debug" defaultOpen={false}>
+          <DebugControls />
+        </CollapsibleSection>
+      )}
     </div>
   );
 };
