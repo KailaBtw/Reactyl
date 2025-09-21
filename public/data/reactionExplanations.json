@@ -1,0 +1,50 @@
+{
+  "sn2": {
+    "title": "SN2 - Bimolecular Nucleophilic Substitution",
+    "mechanism": "Concerted (one-step)",
+    "description": "A nucleophile attacks the substrate from the backside while the leaving group departs simultaneously. This results in inversion of stereochemistry (Walden inversion).",
+    "keyFeatures": [
+      "Backside attack by nucleophile",
+      "Concerted mechanism (no intermediates)", 
+      "Inversion of stereochemistry",
+      "Rate depends on both substrate and nucleophile"
+    ],
+    "preference": "Primary > Secondary >> Tertiary substrates"
+  },
+  "sn1": {
+    "title": "SN1 - Unimolecular Nucleophilic Substitution", 
+    "mechanism": "Two-step (via carbocation)",
+    "description": "The leaving group departs first to form a carbocation intermediate, then the nucleophile attacks. This leads to racemization at the reaction center.",
+    "keyFeatures": [
+      "Leaving group departs first",
+      "Carbocation intermediate formed",
+      "Racemization of stereochemistry",
+      "Rate depends only on substrate"
+    ],
+    "preference": "Tertiary > Secondary >> Primary substrates"
+  },
+  "e2": {
+    "title": "E2 - Bimolecular Elimination",
+    "mechanism": "Concerted (one-step)", 
+    "description": "A base abstracts a β-hydrogen while the leaving group departs simultaneously, forming a double bond. Requires antiperiplanar geometry.",
+    "keyFeatures": [
+      "Base abstracts β-hydrogen",
+      "Concerted mechanism",
+      "Antiperiplanar geometry required",
+      "Forms alkene product"
+    ],
+    "preference": "Tertiary > Secondary > Primary substrates"
+  },
+  "e1": {
+    "title": "E1 - Unimolecular Elimination",
+    "mechanism": "Two-step (via carbocation)",
+    "description": "Similar to SN1, the leaving group departs first to form a carbocation, then a base abstracts a β-hydrogen to form the alkene.",
+    "keyFeatures": [
+      "Leaving group departs first", 
+      "Carbocation intermediate formed",
+      "Base abstracts hydrogen in second step",
+      "Can lead to rearrangements"
+    ],
+    "preference": "Tertiary > Secondary >> Primary substrates"
+  }
+}

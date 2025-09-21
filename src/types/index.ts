@@ -92,6 +92,7 @@ export interface MoleculeManager {
     targetPosition: THREE.Vector3,
     speed?: number
   ) => void;
+  clearAllMolecules: () => void;
 }
 
 // ===============================

@@ -1,6 +1,8 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useUIState } from '../../context/UIStateContext';
+import { SmartInfoBubble } from '../common/SmartInfoBubble';
+import type { ReactionType } from '../common/InfoBubbleContent';
 
 export const CollisionParametersOverlay: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
@@ -107,16 +109,42 @@ export const CollisionParametersOverlay: React.FC = () => {
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            color: '#fff',
-            fontSize: '12px',
-            marginBottom: '4px',
-          }}
-        >
-          Temperature: {uiState.temperature}K
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label
+            style={{
+              color: '#fff',
+              fontSize: '12px',
+              minWidth: '80px',
+            }}
+          >
+            Temperature:
+          </label>
+          <SmartInfoBubble 
+            term="temperature"
+            reactionType={uiState.reactionType as ReactionType}
+            size="small"
+          />
+          <input
+            type="number"
+            min="100"
+            max="2000"
+            step="10"
+            value={uiState.temperature}
+            onChange={handleTemperatureChange}
+            style={{
+              width: '60px',
+              height: '24px',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              color: '#fff',
+              fontSize: '11px',
+              padding: '2px 6px',
+              outline: 'none',
+            }}
+          />
+          <span style={{ color: '#fff', fontSize: '11px' }}>K</span>
+        </div>
         <input
           type="range"
           min="100"
@@ -132,21 +160,27 @@ export const CollisionParametersOverlay: React.FC = () => {
             borderRadius: '3px',
             cursor: 'pointer',
             WebkitAppearance: 'none',
+            marginTop: '4px',
           }}
         />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            color: '#fff',
-            fontSize: '12px',
-            marginBottom: '4px',
-          }}
-        >
-          Approach Angle: {uiState.approachAngle.toFixed(1)}°
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <label
+            style={{
+              color: '#fff',
+              fontSize: '12px',
+            }}
+          >
+            Approach Angle: {uiState.approachAngle.toFixed(1)}°
+          </label>
+          <SmartInfoBubble 
+            term="approach_angle"
+            reactionType={uiState.reactionType as ReactionType}
+            size="small"
+          />
+        </div>
         <input
           type="range"
           min="0"
@@ -167,16 +201,21 @@ export const CollisionParametersOverlay: React.FC = () => {
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label
-          style={{
-            display: 'block',
-            color: '#fff',
-            fontSize: '12px',
-            marginBottom: '4px',
-          }}
-        >
-          Impact Parameter: {uiState.impactParameter.toFixed(2)}
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <label
+            style={{
+              color: '#fff',
+              fontSize: '12px',
+            }}
+          >
+            Impact Parameter: {uiState.impactParameter.toFixed(2)}
+          </label>
+          <SmartInfoBubble 
+            term="impact_parameter"
+            reactionType={uiState.reactionType as ReactionType}
+            size="small"
+          />
+        </div>
         <input
           type="range"
           min="0"
@@ -197,16 +236,21 @@ export const CollisionParametersOverlay: React.FC = () => {
       </div>
 
       <div style={{ marginBottom: '8px' }}>
-        <label
-          style={{
-            display: 'block',
-            color: '#fff',
-            fontSize: '12px',
-            marginBottom: '4px',
-          }}
-        >
-          Relative Velocity: {uiState.relativeVelocity.toFixed(1)} m/s
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <label
+            style={{
+              color: '#fff',
+              fontSize: '12px',
+            }}
+          >
+            Relative Velocity: {uiState.relativeVelocity.toFixed(1)} m/s
+          </label>
+          <SmartInfoBubble 
+            term="relative_velocity"
+            reactionType={uiState.reactionType as ReactionType}
+            size="small"
+          />
+        </div>
         <input
           type="range"
           min="0"

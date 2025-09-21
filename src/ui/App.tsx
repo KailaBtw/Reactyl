@@ -42,6 +42,8 @@ export interface UIState {
   showAxes: boolean;
   showStats: boolean;
   userTestMode: boolean;
+  activeTab: 'molecules' | 'reactions' | 'debug';
+  bottomBarExpanded: boolean;
 
   // Physics stats
   distance: number;
@@ -69,6 +71,8 @@ const initialState: UIState = {
   showAxes: true,
   showStats: true,
   userTestMode: true,
+  activeTab: 'molecules',
+  bottomBarExpanded: false,
   distance: 0,
   timeToCollision: 0,
   reactionProbability: 0,
@@ -90,6 +94,14 @@ export const App: React.FC = () => {
   const updateUIState = (updates: Partial<UIState>) => {
     setUIState(prev => ({ ...prev, ...updates }));
   };
+
+  // Expose updateUIState globally for non-React components
+  useEffect(() => {
+    (window as any).updateUIState = updateUIState;
+    return () => {
+      delete (window as any).updateUIState;
+    };
+  }, []);
 
   return (
     <UIStateProvider value={{ uiState, updateUIState }}>

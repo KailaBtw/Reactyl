@@ -110,20 +110,61 @@
 
 /* Bottom Bar */
 .bottom-bar {
-  height: 120px;
+  height: 160px;
   background-color: #2a2a2a;
   border-top: 1px solid #444;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
+  transition: height 0.3s ease;
+  position: relative;
+}
+
+.bottom-bar.expanded {
+  height: 300px;
+}
+
+.bottom-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  background-color: #333;
+  border-bottom: 1px solid #444;
+  min-height: 36px;
+}
+
+.bottom-bar-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #4a90e2;
+}
+
+.expand-button {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.expand-button:hover {
+  color: #4a90e2;
+  background-color: rgba(74, 144, 226, 0.1);
 }
 
 .bottom-bar-content {
   flex: 1;
   display: flex;
-  align-items: center;
-  padding: 0 20px;
-  gap: 30px;
+  align-items: flex-start;
+  padding: 12px 20px;
+  gap: 20px;
+  overflow: hidden;
+  min-height: 0; /* Allow flex items to shrink */
 }
 
 /* Form Controls */
@@ -350,10 +391,52 @@ input:checked + .toggle-slider:before {
   }
 
   .bottom-bar {
-    height: 80px;
+    height: 140px;
+  }
+  
+  .bottom-bar.expanded {
+    height: 250px;
+  }
+
+  .bottom-bar-content {
+    flex-direction: column;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+
+  .stats-grid {
+    order: 1;
+  }
+
+  .bottom-bar-content > div:nth-child(2) {
+    order: 2;
+  }
+
+  .bottom-bar-content > div:nth-child(3) {
+    order: 3;
   }
 
   .camera-info {
     display: none;
+  }
+}
+
+/* Medium screens - adjust bottom bar layout */
+@media (max-width: 1200px) {
+  .bottom-bar-content {
+    gap: 16px;
+  }
+  
+  .bottom-bar-content > div:nth-child(1) {
+    flex: 0 0 180px;
+  }
+  
+  .bottom-bar-content > div:nth-child(2) {
+    max-width: 250px;
+  }
+  
+  .bottom-bar-content > div:nth-child(3) {
+    flex: 0 0 280px;
+    min-width: 260px;
   }
 }

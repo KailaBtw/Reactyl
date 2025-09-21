@@ -147,5 +147,13 @@ export const createMoleculeManager = (): MoleculeManager => {
       // Set the velocity of the molecule from the normalized direction vector and a scalar (speed)
       molecule.velocity.set(vectorAB.x * speed, vectorAB.y * speed, vectorAB.z * speed);
     },
+    /**
+     * Clears all molecules from the manager.
+     * This is useful for resetting the scene completely.
+     */
+    clearAllMolecules: (): void => {
+      molecules = {};
+      console.log('[MoleculeManager] All molecules cleared');
+    },
   };
 };
