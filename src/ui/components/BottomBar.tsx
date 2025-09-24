@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIState } from '../context/UIStateContext';
 import { ChemicalDataService } from '../../chemistry/chemicalDataService';
@@ -34,7 +34,9 @@ export const BottomBar: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [moleculeInfo, setMoleculeInfo] = useState<MoleculeInfo | null>(null);
   const [isLoadingMolecule, setIsLoadingMolecule] = useState(false);
-  const chemicalService = new ChemicalDataService();
+  
+  // Memoize chemical service to prevent infinite re-renders
+  const chemicalService = useMemo(() => new ChemicalDataService(), []);
 
   // Load reaction explanations from JSON
   useEffect(() => {

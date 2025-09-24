@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { BottomBar } from './components/BottomBar';
 import { CollisionParametersOverlay } from './components/overlays/CollisionParametersOverlay';
@@ -98,9 +98,9 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const updateUIState = (updates: Partial<UIState>) => {
+  const updateUIState = useCallback((updates: Partial<UIState>) => {
     setUIState(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   // Expose updateUIState globally for non-React components
   useEffect(() => {
@@ -108,7 +108,7 @@ export const App: React.FC = () => {
     return () => {
       delete (window as any).updateUIState;
     };
-  }, []);
+  }, [updateUIState]);
 
   // Handle window resize to adjust bottom bar state
   useEffect(() => {

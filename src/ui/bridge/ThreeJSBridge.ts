@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ReactionDemo } from '../../components/reactionDemo';
+import { EnhancedReactionDemo } from '../../components/enhancedReactionDemo';
 import { physicsEngine } from '../../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../../physics/collisionEventSystem';
 import { createMoleculeManager } from '../../services/moleculeManager';
@@ -9,6 +10,9 @@ import { applyLighting } from '../../components/lightingControls';
 import { addObjectDebug, DEBUG_MODE, initFpsDebug } from '../../utils/debug';
 import type { UIState } from '../App';
 
+// Import demo functions to make them globally available
+import '../../demo/structureEngineDemo';
+
 export class ThreeJSBridge {
   private scene: THREE.Scene | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
@@ -16,6 +20,8 @@ export class ThreeJSBridge {
   private controls: OrbitControls | null = null;
   private moleculeManager: ReturnType<typeof createMoleculeManager> | null = null;
   private reactionDemo: ReactionDemo | null = null;
+  private enhancedReactionDemo: EnhancedReactionDemo | null = null;
+  private useEnhancedDemo: boolean = true; // Toggle for enhanced features
 
   constructor() {
     console.log('ThreeJSBridge initialized');
@@ -127,12 +133,17 @@ export class ThreeJSBridge {
 
     if (!this.reactionDemo) {
       this.reactionDemo = new ReactionDemo(this.scene);
+    }
 
-      // Demo molecules loading disabled to prevent interference with SN2 geometry setup
-      // Users can manually load demo molecules via the GUI controls
-      // this.reactionDemo.loadDemoMolecules(this.moleculeManager, this.scene, status => {
-      //   console.log(`Demo Status: ${status}`);
-      // });
+    // Initialize enhanced reaction demo with StructureEngine
+    if (!this.enhancedReactionDemo && this.useEnhancedDemo) {
+      try {
+        this.enhancedReactionDemo = new EnhancedReactionDemo(this.scene);
+        console.log('🚀 Enhanced reaction demo initialized with StructureEngine');
+      } catch (error) {
+        console.warn('⚠️ Enhanced demo failed to initialize, falling back to basic demo:', error);
+        this.useEnhancedDemo = false;
+      }
     }
 
     // Start health check for black screen detection
@@ -154,7 +165,55 @@ export class ThreeJSBridge {
     // Initialize the scene bridge for React components
     sceneBridge.initialize(this.scene, this.moleculeManager);
 
+    // Expose objects globally for testing and StructureEngine access
+    (window as any).scene = this.scene;
+    (window as any).camera = this.camera;
+    (window as any).renderer = this.renderer;
+    (window as any).moleculeManager = this.moleculeManager;
+    (window as any).threeJSBridge = this;
+    
+    // Add quick test function for StructureEngine
+    (window as any).quickStructureTest = async () => {
+      console.log('🧪 Quick StructureEngine Test from ThreeJSBridge...');
+      try {
+        // Import StructureEngine dynamically
+        const { StructureEngine } = await import('../../engines/structureEngine');
+        const engine = new StructureEngine(this.scene!);
+        
+        console.log('✅ StructureEngine created successfully');
+        console.log('Available reaction types:', engine.getAvailableReactionTypes());
+        
+        // Store for further testing
+        (window as any).structureEngine = engine;
+        console.log('💡 StructureEngine stored as window.structureEngine');
+        
+        return engine;
+      } catch (error) {
+        console.error('❌ Test failed:', error);
+        return null;
+      }
+    };
+
+    // Add toggle function for enhanced demo
+    (window as any).toggleEnhancedDemo = () => {
+      this.toggleEnhancedDemo();
+      return this.isUsingEnhancedDemo();
+    };
+
+    // Add function to check current demo mode
+    (window as any).isEnhancedMode = () => {
+      return this.isUsingEnhancedDemo();
+    };
+
     console.log('Three.js scene initialized with orbit controls');
+    console.log('🔧 Scene objects exposed globally for testing');
+    
+    // Log available test functions
+    const testFunctions = Object.keys(window).filter(key => 
+      key.includes('test') || key.includes('Test') || key.includes('demo') || key.includes('Demo')
+    );
+    console.log('🧪 Available test functions:', testFunctions);
+    
     return this.scene;
   }
 
@@ -232,15 +291,25 @@ export class ThreeJSBridge {
 
   // Reaction demo methods
   async loadDemoMolecules(): Promise<void> {
-    if (!this.reactionDemo || !this.moleculeManager || !this.scene) {
+    const activeDemo = this.getActiveDemo();
+    if (!activeDemo || !this.moleculeManager || !this.scene) {
       console.error('Reaction demo, molecule manager, or scene not initialized');
       return;
     }
 
-    console.log('Loading demo molecules...');
-    await this.reactionDemo.loadDemoMolecules(this.moleculeManager, this.scene, (status) => {
-      console.log(`Demo loading: ${status}`);
-    });
+    console.log(`Loading demo molecules with ${this.useEnhancedDemo ? 'enhanced' : 'basic'} demo...`);
+    
+    if (this.useEnhancedDemo && this.enhancedReactionDemo) {
+      // Use enhanced demo with StructureEngine intelligence
+      await this.enhancedReactionDemo.loadMoleculesDirectly(this.moleculeManager, this.scene, (status) => {
+        console.log(`Enhanced demo loading: ${status}`);
+      });
+    } else {
+      // Fallback to basic demo
+      await this.reactionDemo!.loadDemoMolecules(this.moleculeManager, this.scene, (status) => {
+        console.log(`Basic demo loading: ${status}`);
+      });
+    }
   }
 
   async setupCollision(): Promise<void> {
@@ -254,15 +323,16 @@ export class ThreeJSBridge {
   }
 
   async startReactionAnimation(): Promise<void> {
-    if (!this.reactionDemo || !this.moleculeManager) {
+    const activeDemo = this.getActiveDemo();
+    if (!activeDemo || !this.moleculeManager) {
       console.error('Reaction demo or molecule manager not initialized');
       return;
     }
 
-    console.log('Starting reaction animation...');
+    console.log(`Starting reaction animation with ${this.useEnhancedDemo ? 'enhanced StructureEngine' : 'basic'} demo...`);
 
     // Clear any existing trajectory visualizations
-    const reactionDemo = this.reactionDemo as any;
+    const reactionDemo = activeDemo as any;
     if (reactionDemo.trajectoryController) {
       reactionDemo.trajectoryController.clearTrajectoryVisualization();
     }
@@ -290,7 +360,16 @@ export class ThreeJSBridge {
       console.error('Scene not initialized');
       return;
     }
-    await this.reactionDemo.runDemo(this.moleculeManager, this.scene, timeControls, reactionParams);
+
+    if (this.useEnhancedDemo && this.enhancedReactionDemo) {
+      // Use enhanced demo with intelligent molecular positioning and transition states
+      console.log('🚀 Running enhanced reaction with StructureEngine intelligence');
+      await this.enhancedReactionDemo.runEnhancedSN2Demo(this.moleculeManager, this.scene, timeControls, reactionParams);
+    } else {
+      // Fallback to basic demo
+      console.log('⚡ Running basic reaction demo');
+      await this.reactionDemo!.runDemo(this.moleculeManager, this.scene, timeControls, reactionParams);
+    }
   }
 
   async stopReaction(): Promise<void> {
@@ -316,6 +395,23 @@ export class ThreeJSBridge {
 
   getReactionDemo() {
     return this.reactionDemo;
+  }
+
+  getEnhancedReactionDemo() {
+    return this.enhancedReactionDemo;
+  }
+
+  getActiveDemo() {
+    return this.useEnhancedDemo && this.enhancedReactionDemo ? this.enhancedReactionDemo : this.reactionDemo;
+  }
+
+  isUsingEnhancedDemo(): boolean {
+    return this.useEnhancedDemo && this.enhancedReactionDemo !== null;
+  }
+
+  toggleEnhancedDemo(): void {
+    this.useEnhancedDemo = !this.useEnhancedDemo;
+    console.log(`🔄 Switched to ${this.useEnhancedDemo ? 'enhanced' : 'basic'} reaction demo`);
   }
 
   private showContextLostMessage() {

@@ -658,3 +658,4 @@ class EnhancedMolecularPropertiesCalculator {
 
 // Export the calculator class
 export { EnhancedMolecularPropertiesCalculator as MolecularPropertiesCalculator };
+export { EnhancedMolecularPropertiesCalculator };

@@ -117,6 +117,9 @@ log('Scene and renderer initialized.');
 // Initialize the application.
 // init(defaultCSID); // Disabled - now using React-based ThreeJSBridge initialization
 
+// Note: Core objects are now exposed through ThreeJSBridge in the React app
+// This script.ts is the legacy Three.js-only version and is not used in the current React app
+
 // Global functions for demo control
 (window as any).pauseDemo = () => {
   if (animationId) {
