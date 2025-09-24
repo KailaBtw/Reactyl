@@ -12,7 +12,7 @@ import { drawMolecule } from './moleculeDrawer';
  * Handles SN2 reaction demonstrations with proper geometry
  */
 export class ReactionDemo {
-  private chemicalService: ChemicalDataService;
+  protected chemicalService: ChemicalDataService;
   private trajectoryController: CollisionTrajectoryController;
   private reactionCompleted: boolean = false;
 

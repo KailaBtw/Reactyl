@@ -59,11 +59,11 @@ export class SN2ReactionSystem {
         this.pauseSimulationAfterReaction(substrate, nucleophile);
         
         log('✅ Simple SN2 reaction completed');
-        return { 
-          success: true, 
+      return {
+        success: true,
           product: substrate, // Substrate becomes the product
-          leavingGroup 
-        };
+        leavingGroup
+      };
       } else {
         log('❌ Simple SN2 reaction failed');
         return { success: false, product: null, leavingGroup: null };

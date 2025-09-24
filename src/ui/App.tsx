@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { BottomBar } from './components/BottomBar';
 import { CollisionParametersOverlay } from './components/overlays/CollisionParametersOverlay';
+import { MobileReactionBar } from './components/MobileReactionBar';
 import { RightSidebar } from './components/RightSidebar';
 import { SceneContainer } from './components/SceneContainer';
 import { TopBar } from './components/TopBar';
@@ -51,6 +52,12 @@ export interface UIState {
   reactionProbability: number;
 }
 
+// Helper function to determine if screen is large enough for expanded bottom bar
+const getInitialBottomBarState = (): boolean => {
+  if (typeof window === 'undefined') return false; // SSR safety
+  return window.innerWidth >= 768; // Expanded on tablet and desktop
+};
+
 const initialState: UIState = {
   isPlaying: false,
   timeScale: 1.0,
@@ -72,7 +79,7 @@ const initialState: UIState = {
   showStats: true,
   userTestMode: true,
   activeTab: 'molecules',
-  bottomBarExpanded: false,
+  bottomBarExpanded: getInitialBottomBarState(),
   distance: 0,
   timeToCollision: 0,
   reactionProbability: 0,
@@ -103,6 +110,19 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Handle window resize to adjust bottom bar state
+  useEffect(() => {
+    const handleResize = () => {
+      const shouldBeExpanded = window.innerWidth >= 768;
+      if (shouldBeExpanded !== uiState.bottomBarExpanded) {
+        updateUIState({ bottomBarExpanded: shouldBeExpanded });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [uiState.bottomBarExpanded]);
+
   return (
     <UIStateProvider value={{ uiState, updateUIState }}>
       <div className="app">
@@ -114,6 +134,7 @@ export const App: React.FC = () => {
           </div>
           <RightSidebar />
         </div>
+        <MobileReactionBar />
         <BottomBar />
       </div>
     </UIStateProvider>

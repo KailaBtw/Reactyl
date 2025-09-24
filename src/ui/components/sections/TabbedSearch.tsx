@@ -582,6 +582,7 @@ export const TabbedSearch: React.FC = () => {
             </select>
           </div>
 
+          {/* Reaction controls always available in tabbed interface */}
           <div className="form-group" style={{ display: 'flex', gap: '8px' }}>
             <button
               className={`btn ${

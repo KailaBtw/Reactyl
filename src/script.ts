@@ -29,6 +29,9 @@ import { addObjectDebug, DEBUG_MODE, initFpsDebug, log, updateFpsDebug } from '.
 
 import type { MoleculeManager } from './types';
 
+// Import StructureEngine demo for testing
+import './demo/structureEngineDemo';
+
 // ===============================
 //  Module-Level Variables
 // ===============================

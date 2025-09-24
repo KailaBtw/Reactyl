@@ -1,7 +1,9 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useUIState } from '../context/UIStateContext';
 import { ChemicalDataService } from '../../chemistry/chemicalDataService';
+import { useResponsive } from '../hooks/useResponsive';
 
 // Type definition for reaction explanations
 interface ReactionExplanation {
@@ -27,6 +29,7 @@ interface MoleculeInfo {
 
 export const BottomBar: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
+  const responsive = useResponsive();
   const [reactionExplanations, setReactionExplanations] = useState<ReactionExplanations>({});
   const [isLoading, setIsLoading] = useState(true);
   const [moleculeInfo, setMoleculeInfo] = useState<MoleculeInfo | null>(null);
@@ -145,14 +148,14 @@ export const BottomBar: React.FC = () => {
 
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="bottom-bar">
-        <div className="bottom-bar-content">
+  return (
+    <div className="bottom-bar">
+      <div className="bottom-bar-content">
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             Loading reaction explanations...
           </div>
-        </div>
-      </div>
+            </div>
+          </div>
     );
   }
 
@@ -171,179 +174,389 @@ export const BottomBar: React.FC = () => {
 
   // Render molecule information panel
   const renderMoleculeInfo = () => (
-    <div style={{
-      flex: '0 0 300px',
-      minWidth: '280px',
-      maxWidth: '400px',
-      height: '100%',
-      padding: '12px',
-      backgroundColor: 'rgba(30, 30, 30, 0.9)',
-      borderRadius: '8px',
-      border: '1px solid rgba(74, 144, 226, 0.3)',
-      backdropFilter: 'blur(10px)',
-      overflow: 'auto',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <div 
+      style={{
+        height: '100%',
+        padding: '2px',
+        backgroundColor: 'rgba(30, 30, 30, 0.7)',
+        borderRadius: '3px',
+        border: '1px solid rgba(74, 144, 226, 0.2)',
+        overflow: 'auto',
+        fontSize: '10px'
+      }}
+    >
       {isLoadingMolecule ? (
-        <div style={{ textAlign: 'center', color: '#888' }}>Loading molecule information...</div>
+        <div style={{ color: '#888', fontSize: '9px' }}>Loading...</div>
       ) : moleculeInfo ? (
         <>
-          <div style={{ 
-            fontSize: '14px', 
-            fontWeight: 'bold', 
-            color: '#4a90e2', 
-            marginBottom: '6px',
-            borderBottom: '1px solid rgba(74, 144, 226, 0.2)',
-            paddingBottom: '4px'
-          }}>
+          <div 
+            style={{ 
+              fontSize: '11px', 
+              fontWeight: 'bold', 
+              color: '#4a90e2', 
+              marginBottom: '2px',
+              borderBottom: '1px solid rgba(74, 144, 226, 0.1)',
+              paddingBottom: '1px'
+            }}
+          >
             {moleculeInfo.name}
           </div>
           
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>
+          <div style={{ fontSize: '9px', color: '#888', marginBottom: '2px' }}>
             <strong>Formula:</strong> {moleculeInfo.formula}
+        </div>
+
+          <div style={{ fontSize: '9px', color: '#888', marginBottom: '2px' }}>
+            <strong>Weight:</strong> {moleculeInfo.weight} g/mol
           </div>
-          
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>
-            <strong>Molecular Weight:</strong> {moleculeInfo.weight}
-          </div>
-          
+
           <div style={{ 
-            fontSize: '11px', 
-            color: '#888', 
-            marginBottom: '10px', 
-            wordBreak: 'break-all', 
-            lineHeight: '1.3',
-            overflowWrap: 'break-word',
-            wordWrap: 'break-word'
+            fontSize: '8px', 
+            color: '#777', 
+            marginBottom: '3px', 
+            wordBreak: 'break-all',
+            lineHeight: '1.1'
           }}>
             <strong>SMILES:</strong> {moleculeInfo.smiles}
           </div>
           
-          <div style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.5', flex: 1 }}>
-            <strong>Description:</strong><br />
-            {moleculeInfo.description}
+          <div style={{ 
+            fontSize: '9px', 
+            color: '#ccc', 
+            lineHeight: '1.2',
+            overflow: 'auto',
+            maxHeight: '30px'
+          }}>
+            <strong>Description:</strong> {moleculeInfo.description}
           </div>
         </>
       ) : (
-        <div style={{ textAlign: 'center', color: '#888' }}>No molecule information available</div>
+        <div style={{ color: '#888', fontSize: '9px' }}>
+          No molecule selected
+        </div>
       )}
     </div>
   );
 
   // Render reaction information panel
   const renderReactionInfo = () => (
-    <div style={{
-      flex: '0 0 300px',
-      minWidth: '280px',
-      maxWidth: '400px',
-      height: '100%',
-      padding: '12px',
-      backgroundColor: 'rgba(30, 30, 30, 0.9)',
-      borderRadius: '8px',
-      border: '1px solid rgba(74, 144, 226, 0.3)',
-      backdropFilter: 'blur(10px)',
-      overflow: 'auto',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      <div style={{ 
-        fontSize: '14px', 
-        fontWeight: 'bold', 
-        color: '#4a90e2', 
-        marginBottom: '6px',
-        borderBottom: '1px solid rgba(74, 144, 226, 0.2)',
-        paddingBottom: '4px'
-      }}>
+    <div 
+      style={{
+        height: '100%',
+        padding: '2px',
+        backgroundColor: 'rgba(30, 30, 30, 0.7)',
+        borderRadius: '3px',
+        border: '1px solid rgba(74, 144, 226, 0.2)',
+        overflow: 'auto',
+        fontSize: '10px'
+      }}
+    >
+      <div 
+        style={{ 
+          fontSize: '11px', 
+          fontWeight: 'bold', 
+          color: '#4a90e2', 
+          marginBottom: '2px',
+          borderBottom: '1px solid rgba(74, 144, 226, 0.1)',
+          paddingBottom: '1px'
+        }}
+      >
         {currentReaction.title}
       </div>
       
-      <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
+      <div style={{ fontSize: '9px', color: '#888', marginBottom: '2px' }}>
         <strong>Mechanism:</strong> {currentReaction.mechanism}
       </div>
       
-      <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '12px', lineHeight: '1.5' }}>
-        <strong>Description:</strong><br />
-        {currentReaction.description}
+      <div style={{ 
+        fontSize: '9px', 
+        color: '#ccc', 
+        marginBottom: '3px', 
+        lineHeight: '1.2',
+        overflow: 'auto',
+        maxHeight: '35px'
+      }}>
+        <strong>Description:</strong> {currentReaction.description}
       </div>
       
-      <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '12px', flex: 1 }}>
+      <div style={{ 
+        fontSize: '8px', 
+        color: '#aaa', 
+        overflow: 'auto',
+        maxHeight: '25px'
+      }}>
         <strong>Key Features:</strong>
-        <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', lineHeight: '1.4' }}>
-          {currentReaction.keyFeatures.map((feature, index) => (
-            <li key={index} style={{ marginBottom: '4px' }}>{feature}</li>
+        <ul style={{ margin: '2px 0 0 0', paddingLeft: '12px', lineHeight: '1.1' }}>
+          {currentReaction.keyFeatures.slice(0, 3).map((feature, index) => (
+            <li key={index} style={{ marginBottom: '1px' }}>
+              {feature}
+            </li>
           ))}
         </ul>
-      </div>
-      
-      <div style={{ fontSize: '11px', color: '#888', fontStyle: 'italic', marginTop: 'auto' }}>
-        <strong>Substrate preference:</strong> {currentReaction.preference}
       </div>
     </div>
   );
 
   // Get the current panel title
   const getPanelTitle = () => {
-    if (uiState.activeTab === 'molecules') {
-      return moleculeInfo ? `Molecule: ${moleculeInfo.name}` : 'Molecule Information';
-    } else {
-      return currentReaction ? currentReaction.title : 'Reaction Information';
+    const baseTitle = uiState.activeTab === 'molecules' 
+      ? (moleculeInfo ? `Molecule: ${moleculeInfo.name}` : 'Molecule Information')
+      : (currentReaction ? currentReaction.title : 'Reaction Information');
+    
+    // When collapsed, add a hint about expanding for details
+    if (!uiState.bottomBarExpanded) {
+      return `${baseTitle} - Click to expand for details`;
     }
+    
+    return baseTitle;
   };
 
   return (
-    <div className={`bottom-bar ${uiState.bottomBarExpanded ? 'expanded' : ''}`}>
-      <div className="bottom-bar-header">
-        <div className="bottom-bar-title">{getPanelTitle()}</div>
+    <motion.div 
+      className={`bottom-bar ${!uiState.bottomBarExpanded ? 'bottom-bar-collapsed' : ''}`}
+      variants={responsive.animationVariants.container}
+      animate={uiState.bottomBarExpanded ? 'expanded' : 'collapsed'}
+      initial={false}
+      onClick={!uiState.bottomBarExpanded ? () => updateUIState({ bottomBarExpanded: true }) : undefined}
+      style={{ 
+        cursor: !uiState.bottomBarExpanded ? 'pointer' : 'default'
+      }}
+    >
+      {/* Header with title and expand button - Hide when collapsed */}
+      <AnimatePresence>
+        {uiState.bottomBarExpanded && (
+          <motion.div 
+            className="bottom-bar-header"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => updateUIState({ bottomBarExpanded: !uiState.bottomBarExpanded })}
+            style={{ cursor: 'pointer' }}
+          >
+        <motion.div 
+          className="bottom-bar-title"
+          key={getPanelTitle()} // Re-animate when title changes
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {getPanelTitle()}
+        </motion.div>
+        
         <button 
           className="expand-button"
-          onClick={() => updateUIState({ bottomBarExpanded: !uiState.bottomBarExpanded })}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateUIState({ bottomBarExpanded: !uiState.bottomBarExpanded });
+          }}
           title={uiState.bottomBarExpanded ? 'Collapse (Ctrl/Cmd+B)' : 'Expand for more details (Ctrl/Cmd+B)'}
         >
-          {uiState.bottomBarExpanded ? '▼' : '▲'}
+          <motion.span
+            animate={{ rotate: uiState.bottomBarExpanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            ▲
+          </motion.span>
         </button>
-      </div>
-      <div className="bottom-bar-content">
-        {/* Left: Stats */}
-        <div className="stats-grid" style={{ flex: '0 0 200px' }}>
-          <div className="stat-item">
-            <div className="stat-label">Distance</div>
-            <div className="stat-value">{uiState.distance.toFixed(2)}</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-label">Relative Velocity</div>
-            <div className="stat-value">{uiState.relativeVelocity.toFixed(2)} m/s</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-label">Time to Collision</div>
-            <div className="stat-value">
-              {uiState.timeToCollision ? uiState.timeToCollision.toFixed(2) + 's' : 'N/A'}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main content area */}
+      <motion.div 
+        className="bottom-bar-content"
+        style={{ 
+          gap: uiState.bottomBarExpanded ? responsive.contentGap : '0',
+          padding: uiState.bottomBarExpanded ? responsive.contentPadding : '0 16px',
+          flexDirection: uiState.bottomBarExpanded ? (responsive.bottomBarLayout === 'vertical' ? 'column' : 'row') : 'row',
+          alignItems: uiState.bottomBarExpanded ? 'flex-start' : 'center',
+          height: '100%',
+          justifyContent: uiState.bottomBarExpanded ? 'flex-start' : 'space-between',
+          overflow: uiState.bottomBarExpanded ? 'auto' : 'visible',
+          maxHeight: '100%'
+        }}
+        variants={responsive.animationVariants.content}
+        animate="visible"
+        initial="hidden"
+      >
+        {uiState.bottomBarExpanded ? (
+          <>
+            {/* Expanded View - Detailed Stats Grid */}
+            <motion.div 
+              className="stats-grid" 
+              style={{ 
+                flex: '0 0 auto',
+                display: 'grid',
+                gridTemplateColumns: responsive.isSmall ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                gap: responsive.isSmall ? '4px' : '6px',
+                order: responsive.bottomBarLayout === 'vertical' ? 1 : 0,
+                fontSize: '11px'
+              }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+            >
+              {[
+                { label: 'Distance', value: uiState.distance.toFixed(2) },
+                { label: 'Relative Velocity', value: `${uiState.relativeVelocity.toFixed(2)} m/s` },
+                { label: 'Time to Collision', value: uiState.timeToCollision ? `${uiState.timeToCollision.toFixed(2)}s` : 'N/A' },
+                { label: 'Reaction Probability', value: `${uiState.reactionProbability.toFixed(1)}%` }
+              ].map((stat, index) => (
+                <motion.div 
+                  key={stat.label}
+                  className="stat-item"
+                  style={{
+                    padding: '2px 4px',
+                    fontSize: '10px',
+                    textAlign: 'center'
+                  }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 + index * 0.05, duration: 0.2 }}
+                >
+                  <div className="stat-label" style={{ fontSize: '9px', marginBottom: '1px' }}>{stat.label}</div>
+                  <div className="stat-value" style={{ fontSize: '11px', fontWeight: 'bold' }}>{stat.value}</div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Expanded View - Detailed Reaction Status */}
+            <motion.div 
+              style={{ 
+                flex: '0 0 auto',
+                padding: '0 8px',
+                fontSize: '10px',
+                order: responsive.bottomBarLayout === 'vertical' ? 2 : 1,
+                minWidth: '120px'
+              }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25, duration: 0.3 }}
+            >
+              <div style={{ marginBottom: '2px', fontSize: '10px' }}>
+                <strong>Last Reaction:</strong> {uiState.lastReaction}
+              </div>
+              <div style={{ marginBottom: '2px', fontSize: '10px' }}>
+                <strong>Products:</strong> {uiState.mainProduct} + {uiState.leavingGroup}
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                fontSize: '9px', 
+                color: '#888',
+                marginTop: '2px'
+              }}>
+                <span>{uiState.reactionInProgress ? '⚡ Reacting' : '✅ Ready'}</span>
+                <span>{uiState.isPlaying ? '▶️ Running' : '⏸️ Paused'}</span>
+              </div>
+            </motion.div>
+          </>
+        ) : (
+          /* Collapsed View - Ultra-narrow bar with key statistics */
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              height: '100%',
+              padding: '0 12px',
+              fontSize: responsive.isSmall ? '9px' : '10px',
+              color: '#ccc',
+              cursor: 'pointer'
+            }}
+            onClick={() => updateUIState({ bottomBarExpanded: true })}
+          >
+            {/* Left side - Compact stats */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: responsive.isSmall ? '8px' : '12px',
+              fontSize: responsive.isSmall ? '8px' : '9px'
+            }}>
+              <span style={{ color: '#4a90e2' }}>D:{uiState.distance.toFixed(1)}</span>
+              <span style={{ color: '#66bb6a' }}>V:{uiState.relativeVelocity.toFixed(1)}</span>
+              <span style={{ color: '#ffa726' }}>P:{uiState.reactionProbability.toFixed(0)}%</span>
+              <span style={{ color: uiState.timeToCollision ? '#f06292' : '#777' }}>
+                T:{uiState.timeToCollision ? uiState.timeToCollision.toFixed(1) : 'N/A'}
+              </span>
+              <span style={{ color: uiState.reactionInProgress ? '#4CAF50' : '#888' }}>
+                {uiState.reactionInProgress ? '⚡' : '✅'}
+              </span>
+              <span style={{ color: uiState.isPlaying ? '#4CAF50' : '#ff5722' }}>
+                {uiState.isPlaying ? '▶️' : '⏸️'}
+              </span>
+            </div>
+
+            {/* Right side - Current reaction info and expand */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: responsive.isSmall ? '6px' : '8px',
+              fontSize: responsive.isSmall ? '8px' : '9px'
+            }}>
+              <span style={{ color: '#888' }}>
+                {uiState.activeTab === 'molecules' 
+                  ? (uiState.substrateMolecule ? uiState.substrateMolecule.split('_')[1] : 'No mol')
+                  : uiState.reactionType}
+              </span>
+              <span style={{ color: '#aaa' }}>
+                {uiState.lastReaction !== 'None' ? uiState.lastReaction : 'Ready'}
+              </span>
+              <div 
+                style={{ 
+                  fontSize: responsive.isSmall ? '10px' : '12px', 
+                  cursor: 'pointer',
+                  color: '#4a90e2',
+                  userSelect: 'none'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateUIState({ bottomBarExpanded: true });
+                }}
+              >
+                ▲
+              </div>
             </div>
           </div>
-          <div className="stat-item">
-            <div className="stat-label">Reaction Probability</div>
-            <div className="stat-value">{uiState.reactionProbability.toFixed(1)}%</div>
-          </div>
-        </div>
+        )}
 
-        {/* Center: Reaction Status */}
-        <div style={{ flex: 1, padding: '0 16px', minWidth: '180px', maxWidth: '300px' }}>
-          <div style={{ marginBottom: '8px' }}>
-            <strong>Last Reaction:</strong> {uiState.lastReaction}
-          </div>
-          <div style={{ marginBottom: '8px' }}>
-            <strong>Products:</strong> {uiState.mainProduct} + {uiState.leavingGroup}
-          </div>
-          <div style={{ fontSize: '12px', color: '#888' }}>{uiState.reactionEquation}</div>
-          <div style={{ marginTop: '8px', display: 'flex', gap: '16px', fontSize: '12px', color: '#888' }}>
-            <div>Status: {uiState.reactionInProgress ? '🔄 Reacting...' : '⏸️ Ready'}</div>
-            <div>Simulation: {uiState.isPlaying ? '▶️ Running' : '⏸️ Paused'}</div>
-          </div>
-        </div>
-
-        {/* Right: Dynamic Information Panel */}
-        {uiState.activeTab === 'molecules' ? renderMoleculeInfo() : renderReactionInfo()}
-      </div>
-    </div>
+        {/* Information Panel - Only show when expanded */}
+        <AnimatePresence>
+          {uiState.bottomBarExpanded && (
+            <motion.div 
+              style={{ 
+                order: responsive.bottomBarLayout === 'vertical' ? 3 : 2,
+                flex: '1 1 auto',
+                minWidth: responsive.isSmall ? '100%' : '200px',
+                maxWidth: responsive.isSmall ? '100%' : '350px',
+                overflow: 'auto',
+                maxHeight: responsive.isSmall ? '80px' : '100px',
+                fontSize: '11px',
+                padding: '4px 8px'
+              }}
+              variants={responsive.animationVariants.infoPanel}
+              animate="visible"
+              initial="hidden"
+              exit="hidden"
+              key={uiState.activeTab} // Re-animate when tab changes
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${uiState.activeTab}-${uiState.reactionType}-${uiState.substrateMolecule}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {uiState.activeTab === 'molecules' ? renderMoleculeInfo() : renderReactionInfo()}
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   );
 };
