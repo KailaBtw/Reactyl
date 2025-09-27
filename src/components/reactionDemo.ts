@@ -68,7 +68,7 @@ export class ReactionDemo {
     this.clearExistingMolecules(moleculeManager, scene);
 
     try {
-      // Load substrate (CH3Br or CH3Cl) and nucleophile (OH⁻)
+      // Load substrate (use CH3Br by default) and nucleophile (OH⁻)
       const substrate = this.DEMO_MOLECULES[0]; // Methyl bromide
       const nucleophile = this.DEMO_MOLECULES[2]; // Hydroxide ion
 
@@ -249,7 +249,7 @@ export class ReactionDemo {
     log('🔧 Ensuring proper SN2 backside attack geometry...');
 
     // Re-orient molecules
-    this.orientSubstrateForSN2(substrate, 'Br'); // Default to Br, will work for Cl too
+    this.orientSubstrateForSN2(substrate, 'Cl'); // Default to Cl (CH3Cl substrate)
     this.orientNucleophileForSN2(nucleophile);
 
     // Ensure correct velocities
@@ -341,7 +341,7 @@ export class ReactionDemo {
   /**
    * Force a test collision for demo purposes
    */
-  private forceTestCollision(substrate: any, nucleophile: any): void {
+  protected forceTestCollision(substrate: any, nucleophile: any): void {
     log('🧪 Forcing test collision...');
 
     const testEvent = {
@@ -360,7 +360,7 @@ export class ReactionDemo {
   /**
    * Clear existing molecules from scene and manager
    */
-  private clearExistingMolecules(moleculeManager: MoleculeManager, scene: THREE.Scene): void {
+  protected clearExistingMolecules(moleculeManager: MoleculeManager, scene: THREE.Scene): void {
     const existingMolecules = moleculeManager.getAllMolecules();
     
     for (const mol of existingMolecules) {

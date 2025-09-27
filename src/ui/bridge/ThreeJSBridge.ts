@@ -21,7 +21,7 @@ export class ThreeJSBridge {
   private moleculeManager: ReturnType<typeof createMoleculeManager> | null = null;
   private reactionDemo: ReactionDemo | null = null;
   private enhancedReactionDemo: EnhancedReactionDemo | null = null;
-  private useEnhancedDemo: boolean = true; // Toggle for enhanced features
+  private useEnhancedDemo: boolean = true; // Use enhanced demo with StructureEngine
 
   constructor() {
     console.log('ThreeJSBridge initialized');
@@ -291,25 +291,16 @@ export class ThreeJSBridge {
 
   // Reaction demo methods
   async loadDemoMolecules(): Promise<void> {
-    const activeDemo = this.getActiveDemo();
+    const activeDemo = this.enhancedReactionDemo;
     if (!activeDemo || !this.moleculeManager || !this.scene) {
-      console.error('Reaction demo, molecule manager, or scene not initialized');
+      console.error('Enhanced reaction demo, molecule manager, or scene not initialized');
       return;
     }
 
-    console.log(`Loading demo molecules with ${this.useEnhancedDemo ? 'enhanced' : 'basic'} demo...`);
-    
-    if (this.useEnhancedDemo && this.enhancedReactionDemo) {
-      // Use enhanced demo with StructureEngine intelligence
-      await this.enhancedReactionDemo.loadMoleculesDirectly(this.moleculeManager, this.scene, (status) => {
-        console.log(`Enhanced demo loading: ${status}`);
-      });
-    } else {
-      // Fallback to basic demo
-      await this.reactionDemo!.loadDemoMolecules(this.moleculeManager, this.scene, (status) => {
-        console.log(`Basic demo loading: ${status}`);
-      });
-    }
+    console.log('Loading demo molecules with enhanced demo...');
+    await this.enhancedReactionDemo.loadMoleculesDirectly(this.moleculeManager, this.scene, (status) => {
+      console.log(`Enhanced demo loading: ${status}`);
+    });
   }
 
   async setupCollision(): Promise<void> {
@@ -323,16 +314,16 @@ export class ThreeJSBridge {
   }
 
   async startReactionAnimation(): Promise<void> {
-    const activeDemo = this.getActiveDemo();
+    const activeDemo = this.enhancedReactionDemo;
     if (!activeDemo || !this.moleculeManager) {
-      console.error('Reaction demo or molecule manager not initialized');
+      console.error('Enhanced reaction demo or molecule manager not initialized');
       return;
     }
 
-    console.log(`Starting reaction animation with ${this.useEnhancedDemo ? 'enhanced StructureEngine' : 'basic'} demo...`);
+    console.log('Starting reaction animation with enhanced StructureEngine demo...');
 
     // Clear any existing trajectory visualizations
-    const reactionDemo = activeDemo as any;
+    const reactionDemo = this.reactionDemo as any;
     if (reactionDemo.trajectoryController) {
       reactionDemo.trajectoryController.clearTrajectoryVisualization();
     }
@@ -361,15 +352,9 @@ export class ThreeJSBridge {
       return;
     }
 
-    if (this.useEnhancedDemo && this.enhancedReactionDemo) {
-      // Use enhanced demo with intelligent molecular positioning and transition states
-      console.log('🚀 Running enhanced reaction with StructureEngine intelligence');
-      await this.enhancedReactionDemo.runEnhancedSN2Demo(this.moleculeManager, this.scene, timeControls, reactionParams);
-    } else {
-      // Fallback to basic demo
-      console.log('⚡ Running basic reaction demo');
-      await this.reactionDemo!.runDemo(this.moleculeManager, this.scene, timeControls, reactionParams);
-    }
+    // Use enhanced demo with intelligent molecular positioning and transition states
+    console.log('🚀 Running enhanced reaction with StructureEngine intelligence');
+    await this.enhancedReactionDemo.runEnhancedSN2Demo(this.moleculeManager, this.scene, timeControls, reactionParams);
   }
 
   async stopReaction(): Promise<void> {
@@ -402,16 +387,15 @@ export class ThreeJSBridge {
   }
 
   getActiveDemo() {
-    return this.useEnhancedDemo && this.enhancedReactionDemo ? this.enhancedReactionDemo : this.reactionDemo;
+    return this.enhancedReactionDemo;
   }
 
   isUsingEnhancedDemo(): boolean {
-    return this.useEnhancedDemo && this.enhancedReactionDemo !== null;
+    return this.enhancedReactionDemo !== null;
   }
 
   toggleEnhancedDemo(): void {
-    this.useEnhancedDemo = !this.useEnhancedDemo;
-    console.log(`🔄 Switched to ${this.useEnhancedDemo ? 'enhanced' : 'basic'} reaction demo`);
+    console.log('Enhanced demo enforced');
   }
 
   private showContextLostMessage() {

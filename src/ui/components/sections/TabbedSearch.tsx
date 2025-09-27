@@ -46,7 +46,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 
 export const TabbedSearch: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
-  const [activeTab, setActiveTab] = useState<'molecules' | 'reactions' | 'debug'>(uiState.activeTab);
+  const [activeTab, setActiveTab] = useState<'molecules' | 'reactions' | 'debug'>(uiState.activeTab || 'reactions');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -275,25 +275,6 @@ export const TabbedSearch: React.FC = () => {
       <div style={{ display: 'flex', marginBottom: '12px', borderBottom: '1px solid #444' }}>
         <button
           onClick={() => {
-            setActiveTab('molecules');
-            updateUIState({ activeTab: 'molecules' });
-          }}
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            backgroundColor: activeTab === 'molecules' ? '#4a90e2' : 'transparent',
-            border: 'none',
-            color: activeTab === 'molecules' ? '#fff' : '#aaa',
-            fontSize: '12px',
-            cursor: 'pointer',
-            borderRadius: '4px 4px 0 0',
-            borderBottom: activeTab === 'molecules' ? '2px solid #4a90e2' : '2px solid transparent',
-          }}
-        >
-          Explore Molecules
-        </button>
-        <button
-          onClick={() => {
             setActiveTab('reactions');
             updateUIState({ activeTab: 'reactions' });
           }}
@@ -310,6 +291,25 @@ export const TabbedSearch: React.FC = () => {
           }}
         >
           Explore Reactions
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('molecules');
+            updateUIState({ activeTab: 'molecules' });
+          }}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            backgroundColor: activeTab === 'molecules' ? '#4a90e2' : 'transparent',
+            border: 'none',
+            color: activeTab === 'molecules' ? '#fff' : '#aaa',
+            fontSize: '12px',
+            cursor: 'pointer',
+            borderRadius: '4px 4px 0 0',
+            borderBottom: activeTab === 'molecules' ? '2px solid #4a90e2' : '2px solid transparent',
+          }}
+        >
+          Explore Molecules
         </button>
         {!uiState.userTestMode && (
           <button

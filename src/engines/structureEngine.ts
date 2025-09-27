@@ -16,6 +16,7 @@ import type {
 } from '../types/enhanced-molecular';
 import type { MolecularStructure, TransitionState } from './reactionHandler';
 import { log } from '../utils/debug';
+import { ATOM_CONFIGS } from '../config/atomConfig';
 
 export class StructureEngine {
   private structures: Map<string, MolecularStructure> = new Map();
@@ -467,7 +468,10 @@ export class StructureEngine {
     const posB = new THREE.Vector3(atomB.position.x, atomB.position.y, atomB.position.z);
     
     const distance = posA.distanceTo(posB);
-    const radius = bond.order * 0.05; // Thicker bonds for higher order
+    // Use proper proportions relative to atomic radii
+    // Bonds should be ~1/2 the size of the smallest atom (H = 0.3)
+    // This gives better visibility while maintaining proper proportions
+    const radius = bond.order === 1 ? 0.15 : bond.order === 2 ? 0.2 : 0.25;
     
     const geometry = new THREE.CylinderGeometry(radius, radius, distance, 8);
     const material = new THREE.MeshLambertMaterial({ color: 0x666666 });
@@ -504,22 +508,18 @@ export class StructureEngine {
    * Get atom radius for visualization
    */
   private getAtomRadius(element: string): number {
-    const radii: { [key: string]: number } = {
-      'H': 0.25, 'C': 0.35, 'N': 0.30, 'O': 0.30,
-      'F': 0.25, 'Cl': 0.45, 'Br': 0.55, 'I': 0.65
-    };
-    return radii[element] || 0.35;
+    // Use centralized atom configuration
+    const config = ATOM_CONFIGS[element];
+    return config ? config.radius : 0.5; // Default to oxygen size
   }
   
   /**
    * Get atom color for visualization
    */
   private getAtomColor(element: string): number {
-    const colors: { [key: string]: number } = {
-      'H': 0xffffff, 'C': 0x404040, 'N': 0x0000ff, 'O': 0xff0000,
-      'F': 0x00ff00, 'Cl': 0x00ff00, 'Br': 0xa52a2a, 'I': 0x9400d3
-    };
-    return colors[element] || 0x888888;
+    // Use centralized atom configuration
+    const config = ATOM_CONFIGS[element];
+    return config ? config.color : 0x888888; // Default gray
   }
   
   /**
