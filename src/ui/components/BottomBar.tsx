@@ -42,7 +42,7 @@ export const BottomBar: React.FC = () => {
   useEffect(() => {
     const loadReactionExplanations = async () => {
       try {
-        const response = await fetch('/data/reactionExplanations.json');
+        const response = await fetch('./data/reactionExplanations.json');
         if (!response.ok) {
           throw new Error('Failed to load reaction explanations');
         }

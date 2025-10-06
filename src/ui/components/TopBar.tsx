@@ -5,6 +5,31 @@ import { useUIState } from '../context/UIStateContext';
 export const TopBar: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
 
+  const handlePlayPause = async () => {
+    try {
+      if (!uiState.reactionInProgress) {
+        await threeJSBridge.startReactionAnimation();
+        updateUIState({ isPlaying: true, reactionInProgress: true });
+      } else {
+        updateUIState({ isPlaying: !uiState.isPlaying });
+      }
+    } catch (e) {
+      // no-op UI level
+    }
+  };
+
+  const handleReset = () => {
+    // Soft reset flags; detailed scene reset remains on the sidebar button
+    updateUIState({
+      isPlaying: false,
+      reactionInProgress: false,
+      lastReaction: 'None',
+      mainProduct: 'None',
+      leavingGroup: 'None',
+      reactionEquation: 'No reaction yet',
+    });
+  };
+
 
   const handleTimeScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateUIState({ timeScale: parseFloat(e.target.value) });
@@ -25,6 +50,15 @@ export const TopBar: React.FC = () => {
   return (
     <div className="top-bar">
       <h1>MolMod - Molecular Modeler</h1>
+
+      <div className="control-group" style={{ marginLeft: 'auto', gap: '6px' }}>
+        <button className="pill-btn" onClick={handlePlayPause} title={uiState.isPlaying ? 'Pause' : 'Play'}>
+          {uiState.isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <button className="pill-btn" onClick={handleReset} title="Reset">
+          Reset
+        </button>
+      </div>
 
       <div className="top-bar-controls">
 

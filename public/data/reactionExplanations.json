@@ -1,50 +1,49 @@
 {
   "sn2": {
-    "title": "SN2 - Bimolecular Nucleophilic Substitution",
-    "mechanism": "Concerted (one-step)",
-    "description": "A nucleophile attacks the substrate from the backside while the leaving group departs simultaneously. This results in inversion of stereochemistry (Walden inversion).",
-    "keyFeatures": [
-      "Backside attack by nucleophile",
-      "Concerted mechanism (no intermediates)", 
-      "Inversion of stereochemistry",
-      "Rate depends on both substrate and nucleophile"
+    "name": "SN2 Reaction",
+    "description": "Bimolecular nucleophilic substitution reaction",
+    "mechanism": "The nucleophile attacks the carbon from the backside, causing the leaving group to depart simultaneously. This results in inversion of stereochemistry (Walden inversion).",
+    "steps": [
+      "Nucleophile approaches from the backside",
+      "Bond formation and bond breaking occur simultaneously",
+      "Leaving group departs",
+      "Product forms with inverted stereochemistry"
     ],
-    "preference": "Primary > Secondary >> Tertiary substrates"
+    "factors": [
+      "Steric hindrance around the carbon center",
+      "Strength of the nucleophile",
+      "Quality of the leaving group",
+      "Solvent effects"
+    ]
   },
   "sn1": {
-    "title": "SN1 - Unimolecular Nucleophilic Substitution", 
-    "mechanism": "Two-step (via carbocation)",
-    "description": "The leaving group departs first to form a carbocation intermediate, then the nucleophile attacks. This leads to racemization at the reaction center.",
-    "keyFeatures": [
-      "Leaving group departs first",
-      "Carbocation intermediate formed",
-      "Racemization of stereochemistry",
-      "Rate depends only on substrate"
+    "name": "SN1 Reaction", 
+    "description": "Unimolecular nucleophilic substitution reaction",
+    "mechanism": "The leaving group departs first to form a carbocation intermediate, which is then attacked by the nucleophile.",
+    "steps": [
+      "Leaving group departs to form carbocation",
+      "Nucleophile attacks the carbocation",
+      "Product forms"
     ],
-    "preference": "Tertiary > Secondary >> Primary substrates"
+    "factors": [
+      "Stability of the carbocation intermediate",
+      "Quality of the leaving group",
+      "Solvent polarity"
+    ]
   },
   "e2": {
-    "title": "E2 - Bimolecular Elimination",
-    "mechanism": "Concerted (one-step)", 
-    "description": "A base abstracts a β-hydrogen while the leaving group departs simultaneously, forming a double bond. Requires antiperiplanar geometry.",
-    "keyFeatures": [
-      "Base abstracts β-hydrogen",
-      "Concerted mechanism",
-      "Antiperiplanar geometry required",
-      "Forms alkene product"
+    "name": "E2 Reaction",
+    "description": "Bimolecular elimination reaction", 
+    "mechanism": "A base removes a proton while the leaving group departs simultaneously, forming a double bond.",
+    "steps": [
+      "Base removes proton",
+      "Leaving group departs",
+      "Double bond forms"
     ],
-    "preference": "Tertiary > Secondary > Primary substrates"
-  },
-  "e1": {
-    "title": "E1 - Unimolecular Elimination",
-    "mechanism": "Two-step (via carbocation)",
-    "description": "Similar to SN1, the leaving group departs first to form a carbocation, then a base abstracts a β-hydrogen to form the alkene.",
-    "keyFeatures": [
-      "Leaving group departs first", 
-      "Carbocation intermediate formed",
-      "Base abstracts hydrogen in second step",
-      "Can lead to rearrangements"
-    ],
-    "preference": "Tertiary > Secondary >> Primary substrates"
+    "factors": [
+      "Strength of the base",
+      "Quality of the leaving group",
+      "Anti-periplanar geometry"
+    ]
   }
 }

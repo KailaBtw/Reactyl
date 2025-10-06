@@ -51,21 +51,8 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
       sn2ReactionSystem.clearAllIntervals();
     }
     
-    const scene = sceneBridge.getScene();
-    const moleculeManager = sceneBridge.getMoleculeManager();
-    
-    if (scene && moleculeManager) {
-      const existingMolecules = moleculeManager.getAllMolecules();
-      for (const mol of existingMolecules) {
-        if (mol.group) {
-          scene.remove(mol.group);
-        }
-      }
-      moleculeManager.clearAllMolecules();
-      console.log('🧹 Scene and molecules cleared successfully');
-    } else {
-      console.warn('⚠️ Scene or molecule manager not available for clearing');
-    }
+    // Use the new clear method from ThreeJSBridge
+    threeJSBridge.clear();
     
     updateUIState({
       isPlaying: false,
@@ -74,8 +61,9 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
       mainProduct: 'None',
       leavingGroup: 'None',
       reactionEquation: 'No reaction yet',
-      substrateMolecule: '',
-      nucleophileMolecule: ''
+      // Keep molecule selections so user can restart immediately
+      // substrateMolecule: '',
+      // nucleophileMolecule: ''
     });
     
     console.log('✅ Mobile reset completed - ready for new reaction');
@@ -230,8 +218,8 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
               disabled={!uiState.substrateMolecule || !uiState.nucleophileMolecule}
               style={{ flex: 1 }}
             >
-              {!uiState.reactionInProgress ? '🚀 Start Reaction' : 
-               uiState.isPlaying ? '⏸️ Pause' : '▶️ Play'}
+              {!uiState.reactionInProgress ? 'Start Reaction' : 
+               uiState.isPlaying ? 'Pause' : 'Play'}
             </button>
             <button 
               className="btn btn-secondary" 

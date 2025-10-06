@@ -116,18 +116,6 @@ export const InfoBubble: React.FC<InfoBubbleProps> = ({
           marginLeft: '6px',
           transform: isClickedOpen ? 'scale(1.1)' : 'scale(1)',
         }}
-        onMouseEnter={(e) => {
-          if (!isClickedOpen) {
-            e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.9)';
-            e.currentTarget.style.transform = 'scale(1.1)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isClickedOpen) {
-            e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.7)';
-            e.currentTarget.style.transform = 'scale(1)';
-          }
-        }}
       >
         i
       </div>

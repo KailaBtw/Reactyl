@@ -64,6 +64,7 @@ export interface MoleculesEnum {
 
 export interface MoleculeGroup {
   name: string;
+  id: string; // Unique identifier for physics tracking
   position: Position;
   group: THREE.Group;
   add: (mesh: THREE.Mesh) => void;

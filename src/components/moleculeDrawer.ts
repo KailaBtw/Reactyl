@@ -134,7 +134,8 @@ export function drawMolecule(
   moleculeManager: MoleculeManager,
   scene: THREE.Scene,
   position: Position = { x: 0, y: 0, z: 0 },
-  name: string = 'unknown'
+  name: string = 'unknown',
+  applyRandomRotation: boolean = true
 ): void {
   const molObject: MolObject = molFileToJSON(molFile); // Parse the .mol file content into a JavaScript object.
 
@@ -195,8 +196,11 @@ export function drawMolecule(
   molecule.group.position.set(position.x, position.y, position.z);
 
   // Add random initial rotation around X and Z axes for more realistic starting orientations
-  molecule.group.rotation.x = (Math.random() - 0.5) * Math.PI; // Random rotation around X-axis (-π/2 to π/2)
-  molecule.group.rotation.z = (Math.random() - 0.5) * Math.PI; // Random rotation around Z-axis (-π/2 to π/2)
+  // Only apply random rotations if requested (default behavior for general molecule loading)
+  if (applyRandomRotation) {
+    molecule.group.rotation.x = (Math.random() - 0.5) * Math.PI; // Random rotation around X-axis (-π/2 to π/2)
+    molecule.group.rotation.z = (Math.random() - 0.5) * Math.PI; // Random rotation around Z-axis (-π/2 to π/2)
+  }
 
   // Set up physics-based rotation system
   try {
@@ -320,18 +324,20 @@ export function drawMolecule(
   // Ensure physics body exists and gets the initial velocity
   try {
     const props = (molecule as any).molecularProperties;
+    
     if (!molecule.hasPhysics && props) {
-      const ok = physicsEngine.addMolecule(molecule, props);
-      if (ok) {
+      const success = physicsEngine.addMolecule(molecule, props);
+      if (success) {
         molecule.hasPhysics = true;
         molecule.physicsBody = physicsEngine.getPhysicsBody(molecule);
       }
     }
+    
     if (molecule.hasPhysics) {
       physicsEngine.setVelocity(molecule, molecule.velocity.clone());
     }
   } catch (e) {
-    log(`Physics hookup failed for ${name}: ${e}`);
+    log(`Physics setup failed for ${name}: ${e}`);
   }
 
   // add the molecule to the scene

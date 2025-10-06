@@ -18,9 +18,11 @@ export const createMoleculeGroup = (
   radius: number
 ): MoleculeGroup => {
   const group = new THREE.Group();
+  const id = `${name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   return {
     name, // The name of the molecule.
+    id, // Unique identifier for physics tracking
     position, // store position here
     group, // The Three.js Group representing the molecule.
     add: (mesh: THREE.Mesh) => {

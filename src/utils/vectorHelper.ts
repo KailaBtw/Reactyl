@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { collisionEventSystem, createCollisionEvent } from '../physics/collisionEventSystem';
-import { checkHullIntersection, createWorldSpaceHull } from '../physics/convexHullCollision';
-import { SpatialHashGrid } from '../physics/spatialPartitioning';
-import { getFastAABB } from '../services/transformCache';
+// convexHullCollision and spatialPartitioning removed - using chemistry reaction system
+// transformCache removed - using chemistry reaction system
 import type { GridStats, MoleculeGroup } from '../types';
 import { log } from './debug'; // Assuming this is your debug logging utility
 
@@ -106,9 +105,9 @@ function _createMoleculeBoundingSphere(molecule: MoleculeGroup): THREE.Sphere | 
  * @returns True if the molecules are colliding, false otherwise.
  */
 export function checkCollision(molA: MoleculeGroup, molB: MoleculeGroup): boolean {
-  // PHASE 1: Broad-phase - Fast AABB using transform cache
-  const aabbA = getFastAABB(molA);
-  const aabbB = getFastAABB(molB);
+  // PHASE 1: Broad-phase - Simple AABB calculation
+  const aabbA = molA.group.getBoundingBox();
+  const aabbB = molB.group.getBoundingBox();
 
   if (!aabbA || !aabbB || !aabbA.intersectsBox(aabbB)) {
     return false; // Early out

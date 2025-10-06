@@ -2,7 +2,6 @@ import type React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { BottomBar } from './components/BottomBar';
-import { CollisionParametersOverlay } from './components/overlays/CollisionParametersOverlay';
 import { MobileReactionBar } from './components/MobileReactionBar';
 import { RightSidebar } from './components/RightSidebar';
 import { SceneContainer } from './components/SceneContainer';
@@ -102,13 +101,15 @@ export const App: React.FC = () => {
     setUIState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // Expose updateUIState globally for non-React components
+  // Expose updateUIState and uiState globally for non-React components
   useEffect(() => {
     (window as any).updateUIState = updateUIState;
+    (window as any).uiState = uiState;
     return () => {
       delete (window as any).updateUIState;
+      delete (window as any).uiState;
     };
-  }, [updateUIState]);
+  }, [updateUIState, uiState]);
 
   // Handle window resize to adjust bottom bar state
   useEffect(() => {
@@ -130,7 +131,6 @@ export const App: React.FC = () => {
         <div className="main-content">
           <div className="scene-area" style={{ position: 'relative' }}>
             <SceneContainer ref={sceneRef} />
-            <CollisionParametersOverlay />
           </div>
           <RightSidebar />
         </div>

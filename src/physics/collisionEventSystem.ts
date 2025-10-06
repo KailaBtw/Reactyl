@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { ReactionDetector, type ReactionResult } from '../chemistry/reactionDetector';
 import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
 import { log } from '../utils/debug';
-import { reactionDemo } from './reactionDemo';
+import { reactionEventBus } from '../events/ReactionEventBus';
+// reactionDemo removed - using chemistry reaction system
 
 /**
  * Collision event data passed to reaction handlers
@@ -36,6 +37,7 @@ class CollisionEventSystem {
   private temperature: number = 298; // Default room temperature
   private demoEasyMode: boolean = false; // Forces high reaction probability for demos
   private hasShownDemoProduct: boolean = false; // Prevent duplicate product spawns in demos
+  private reactionOccurred: boolean = false; // Prevent duplicate reaction processing
 
   constructor() {
     this.reactionDetector = new ReactionDetector();
@@ -61,6 +63,16 @@ class CollisionEventSystem {
     log(
       `🧪 Testing mode ${testingMode ? 'enabled' : 'disabled'} - reaction probability ${testingMode ? 'forced to 100%' : 'calculated normally'}`
     );
+  }
+
+  /**
+   * Reset reaction state for new reaction
+   */
+  resetReactionState(): void {
+    this.reactionOccurred = false;
+    this.hasShownDemoProduct = false;
+    this.collisionHistory.clear();
+    log(`🔄 Reaction state reset - ready for new reaction`);
   }
 
   // No default scene; we always resolve via object ancestry
@@ -116,6 +128,11 @@ class CollisionEventSystem {
       return;
     }
 
+    // Check if a reaction has already occurred to prevent duplicate processing
+    if (this.reactionOccurred) {
+      return;
+    }
+
     // Check cooldown to prevent spam
     const key = this.getCollisionKey(event.moleculeA, event.moleculeB);
     const now = performance.now() / 1000;
@@ -133,6 +150,11 @@ class CollisionEventSystem {
     // Process reaction detection if reaction type is set
     if (this.currentReactionType) {
       this.processReactionDetection(event);
+    }
+
+    // If a reaction was confirmed during detection, do not emit further handlers this tick
+    if (this.reactionOccurred) {
+      return;
     }
 
     // Emit to all handlers
@@ -189,6 +211,14 @@ class CollisionEventSystem {
       (reactionResult as any).probability = 1.0;
       (reactionResult as any).occurs = true;
     }
+
+    // If reaction occurs, set flag to prevent duplicate processing and mark molecules busy
+    if (reactionResult.occurs) {
+      this.reactionOccurred = true;
+      event.moleculeA.reactionInProgress = true;
+      event.moleculeB.reactionInProgress = true;
+      log(`🎉 Reaction occurred! Setting flag to prevent duplicate processing`);
+    }
     // If demo easy mode is enabled, boost probability to showcase reaction
     else if (this.demoEasyMode) {
       const boostedProbability = Math.max(reactionResult.probability, 0.95);
@@ -204,6 +234,13 @@ class CollisionEventSystem {
 
     log(
       `🧪 Reaction detection result: ${reactionResult.occurs ? 'SUCCESS' : 'FAILED'} (probability: ${(reactionResult.probability * 100).toFixed(2)}%)`
+    );
+
+    // Emit collision detected event to unified system
+    reactionEventBus.emitCollisionDetected(
+      collisionData.collisionEnergy,
+      collisionData.approachAngle,
+      reactionResult.probability
     );
 
     // Add collision data and reaction result to event
@@ -274,8 +311,8 @@ class CollisionEventSystem {
     if (!event.reactionResult) return;
 
     try {
-      // Use the reaction demo system to handle the transformation
-      reactionDemo.generateReactionProducts(event);
+      // Reaction transformation handled by chemistry reaction system
+      log('✅ Reaction transformation handled by chemistry system');
     } catch (error) {
       console.error('Error transforming molecules for reaction:', error);
     } finally {

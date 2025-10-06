@@ -95,32 +95,66 @@ export function molFileToJSON(molFile: string): MolObject {
 
   const split: string[] = molContent.split('\n'); // Split the molFile content into lines.
 
+  // Debug: Log the MOL file structure
+  console.log('🔍 MOL file structure:');
+  console.log('Lines count:', split.length);
+  console.log('First 5 lines:', split.slice(0, 5));
+
   // --- Parse Header Section ---
   molObj.header = {} as MolHeader;
-  molObj.header.title = split[0]; // First line is the title.
-  molObj.header.program = split[1].split('  ')[1]; // Second line: program name. Splitting by two spaces.
-  molObj.header.timeStamp = split[1].split('  ')[2]; // Second line: timestamp. Splitting by two spaces.
-  molObj.header.comment = split[2]; // Third line is the comment.
+  molObj.header.title = split[0] || ''; // First line is the title.
+  
+  // Safely parse second line with defensive programming
+  if (split[1]) {
+    const secondLineParts = split[1].split('  ');
+    molObj.header.program = secondLineParts[1] || '';
+    molObj.header.timeStamp = secondLineParts[2] || '';
+  } else {
+    molObj.header.program = '';
+    molObj.header.timeStamp = '';
+  }
+  
+  molObj.header.comment = split[2] || ''; // Third line is the comment.
 
   // --- Parse Counts Line ---
   molObj.counts = {} as MolCounts;
 
-  const countChunks: string[] = [];
-  // Iterate through the 4th line (counts line) in chunks of 3 characters.
-  for (let i = 0; i < split[3].length; i += 3) {
-    countChunks.push(split[3].slice(i, i + 3)); // Extract 3-character chunks.
+  // Check if we have enough lines for a valid MOL file
+  if (split.length < 4) {
+    console.error('❌ Invalid MOL file: Not enough lines. Expected at least 4 lines, got:', split.length);
+    console.error('MOL file content:', molContent);
+    throw new Error('Invalid MOL file format: Not enough lines');
   }
 
-  molObj.counts.molecules = countChunks[0].trim(); // Number of atoms.
-  molObj.counts.bonds = countChunks[1].trim(); // Number of bonds.
-  molObj.counts.lists = countChunks[2].trim();
-  molObj.counts.chiral = countChunks[4].trim() === '1'; // Chiral flag.
-  molObj.counts.stext = countChunks[5]; // Stext
+  const countChunks: string[] = [];
+  // Safely iterate through the 4th line (counts line) in chunks of 3 characters.
+  if (split[3] && split[3].length > 0) {
+    for (let i = 0; i < split[3].length; i += 3) {
+      countChunks.push(split[3].slice(i, i + 3)); // Extract 3-character chunks.
+    }
+  } else {
+    console.error('❌ Invalid MOL file: Counts line is empty or undefined');
+    throw new Error('Invalid MOL file format: Counts line is empty');
+  }
+
+  molObj.counts.molecules = countChunks[0]?.trim() || '0'; // Number of atoms.
+  molObj.counts.bonds = countChunks[1]?.trim() || '0'; // Number of bonds.
+  molObj.counts.lists = countChunks[2]?.trim() || '0';
+  molObj.counts.chiral = countChunks[4]?.trim() === '1'; // Chiral flag.
+  molObj.counts.stext = countChunks[5] || ''; // Stext
 
   // --- Parse Atom Data ---
   const atomsArray: Atom[] = [];
+  
+  // Check if we have enough lines for atom data
+  const numAtoms = parseInt(molObj.counts.molecules, 10) || 0;
+  if (numAtoms > 0 && split.length < 4 + numAtoms) {
+    console.error('❌ Invalid MOL file: Not enough lines for atom data. Expected at least', 4 + numAtoms, 'lines, got:', split.length);
+    throw new Error('Invalid MOL file format: Not enough lines for atom data');
+  }
+  
   // Iterate through the lines containing atom data. Starts at line 5 (index 4).
-  for (let i = 4; i < 4 + parseInt(molObj.counts.molecules, 10); i++) {
+  for (let i = 4; i < 4 + numAtoms; i++) {
     const atom: Atom = {} as Atom;
     atom.position = {} as Atom['position'];
     // Extract x, y, z coordinates from the line (character positions are fixed in .mol format).
@@ -134,13 +168,24 @@ export function molFileToJSON(molFile: string): MolObject {
 
   // --- Parse Bond Data ---
   const bondsArray: [string, string][] = [];
+  
+  // Check if we have enough lines for bond data
+  const numBonds = parseInt(molObj.counts.bonds, 10) || 0;
+  const bondsStartIndex: number = 4 + numAtoms;
+  const bondsEndIndex: number = bondsStartIndex + numBonds;
+  
+  if (numBonds > 0 && split.length < bondsEndIndex) {
+    console.error('❌ Invalid MOL file: Not enough lines for bond data. Expected at least', bondsEndIndex, 'lines, got:', split.length);
+    throw new Error('Invalid MOL file format: Not enough lines for bond data');
+  }
+  
   // Iterate through the lines containing bond data.
-  const bondsStartIndex: number = 4 + parseInt(molObj.counts.molecules, 10);
-  const bondsEndIndex: number = bondsStartIndex + parseInt(molObj.counts.bonds, 10);
   for (let i = bondsStartIndex; i < bondsEndIndex; i++) {
-    // Extract the atom indices that are connected by the bond.
-    const bond: [string, string] = [split[i].slice(0, 3).trim(), split[i].slice(3, 6).trim()];
-    bondsArray.push(bond); // Add the bond (pair of atom indices) to the array.
+    if (split[i]) {
+      // Extract the atom indices that are connected by the bond.
+      const bond: [string, string] = [split[i].slice(0, 3).trim(), split[i].slice(3, 6).trim()];
+      bondsArray.push(bond); // Add the bond (pair of atom indices) to the array.
+    }
   }
   molObj.bonds = bondsArray; // Assign the array of bond connections.
 

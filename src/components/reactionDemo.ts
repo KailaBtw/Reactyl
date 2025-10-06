@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ChemicalDataService } from '../chemistry/chemicalDataService';
 import { getReactionType } from '../chemistry/reactionDatabase';
 import { collisionEventSystem } from '../physics/collisionEventSystem';
-import { CollisionTrajectoryController } from '../physics/collisionTrajectoryController';
+// CollisionTrajectoryController removed - using chemistry reaction system
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
 import { drawMolecule } from './moleculeDrawer';
@@ -13,7 +13,7 @@ import { drawMolecule } from './moleculeDrawer';
  */
 export class ReactionDemo {
   protected chemicalService: ChemicalDataService;
-  private trajectoryController: CollisionTrajectoryController;
+  // trajectoryController removed - using chemistry reaction system
   private reactionCompleted: boolean = false;
 
   // SN2 Demo Configuration
@@ -35,7 +35,7 @@ export class ReactionDemo {
 
   constructor(scene: THREE.Scene) {
     this.chemicalService = new ChemicalDataService();
-    this.trajectoryController = new CollisionTrajectoryController(scene);
+    // trajectoryController removed - using chemistry reaction system
     this.setupReactionHandlers();
     log('ReactionDemo initialized');
   }
@@ -48,9 +48,7 @@ export class ReactionDemo {
       if (event.reactionResult?.occurs) {
         this.reactionCompleted = true;
         log('✅ Demo reaction completed - stopping further test collisions');
-        setTimeout(() => {
-          this.trajectoryController.clearTrajectoryVisualization();
-        }, 2000);
+        // Trajectory visualization removed - using chemistry reaction system
       }
     });
   }
@@ -303,15 +301,16 @@ export class ReactionDemo {
     collisionEventSystem.setReactionType(reactionType);
     collisionEventSystem.setTemperature(reactionParams.temperature);
 
-    // Setup trajectory controller
-    this.trajectoryController.setupCollision({
+    // Trajectory controller removed - using chemistry reaction system
+    // Setup collision parameters
+    const collisionParams = {
       substrate,
       nucleophile,
       approachAngle: reactionParams.approachAngle,
       impactParameter: reactionParams.impactParameter,
       relativeVelocity: reactionParams.relativeVelocity,
       temperature: reactionParams.temperature,
-    });
+    };
 
     log('✅ Collision system setup complete');
   }

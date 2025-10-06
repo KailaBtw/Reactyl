@@ -8,11 +8,13 @@ import { useUIState } from '../../context/UIStateContext';
 import { threeJSBridge } from '../../bridge/ThreeJSBridge';
 import { SmartInfoBubble } from '../common/SmartInfoBubble';
 import type { ReactionType } from '../common/InfoBubbleContent';
+import { SidebarCard } from './SidebarCard';
 import { DebugControls } from './DebugControls';
 import { LiveStats } from './LiveStats';
 import { ReactionControls } from './ReactionControls';
 import { ReactionProducts } from './ReactionProducts';
 import { sn2ReactionSystem } from '../../../chemistry/sn2Reaction';
+import { ATTACK_MODES } from '../../constants/attackModes';
 
 interface SearchResult {
   cid: string;
@@ -44,9 +46,24 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   );
 };
 
-export const TabbedSearch: React.FC = () => {
+type TabId = 'molecules' | 'reactions' | 'debug';
+
+interface TabbedSearchProps {
+  externalActiveTab?: TabId;
+  onExternalTabChange?: (tab: TabId) => void;
+}
+
+export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, onExternalTabChange }) => {
   const { uiState, updateUIState } = useUIState();
-  const [activeTab, setActiveTab] = useState<'molecules' | 'reactions' | 'debug'>(uiState.activeTab || 'reactions');
+  const [internalTab, setInternalTab] = useState<TabId>(uiState.activeTab || 'reactions');
+  const activeTab: TabId = externalActiveTab ?? internalTab;
+  const setActiveTab = (tab: TabId) => {
+    if (onExternalTabChange) {
+      onExternalTabChange(tab);
+    } else {
+      setInternalTab(tab);
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -271,8 +288,15 @@ export const TabbedSearch: React.FC = () => {
 
   return (
     <div className="tabbed-search">
-      {/* Tab Headers */}
-      <div style={{ display: 'flex', marginBottom: '12px', borderBottom: '1px solid #444' }}>
+      {/* Modern Tab Headers (only when not externally controlled) */}
+      {!externalActiveTab && (
+      <div style={{ 
+        display: 'flex', 
+        marginBottom: '0',
+        borderBottom: '1px solid #1a1a1a',
+        backgroundColor: '#222',
+        gap: '0'
+      }}>
         <button
           onClick={() => {
             setActiveTab('reactions');
@@ -280,17 +304,38 @@ export const TabbedSearch: React.FC = () => {
           }}
           style={{
             flex: 1,
-            padding: '8px 12px',
-            backgroundColor: activeTab === 'reactions' ? '#4a90e2' : 'transparent',
+            padding: '10px 12px',
+            backgroundColor: 'transparent',
             border: 'none',
-            color: activeTab === 'reactions' ? '#fff' : '#aaa',
-            fontSize: '12px',
-            cursor: 'pointer',
-            borderRadius: '4px 4px 0 0',
             borderBottom: activeTab === 'reactions' ? '2px solid #4a90e2' : '2px solid transparent',
+            color: activeTab === 'reactions' ? '#4a90e2' : '#999',
+            fontSize: '11px',
+            fontWeight: activeTab === 'reactions' ? '600' : '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.3px',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px'
+          }}
+          onMouseEnter={(e) => {
+            if (activeTab !== 'reactions') {
+              e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
+              e.currentTarget.style.color = '#ccc';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeTab !== 'reactions') {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#999';
+            }
           }}
         >
-          Explore Reactions
+          <span style={{ fontSize: '14px', filter: activeTab === 'reactions' ? 'grayscale(0%)' : 'grayscale(100%)' }}>⚗️</span>
+          Reactions
         </button>
         <button
           onClick={() => {
@@ -299,17 +344,38 @@ export const TabbedSearch: React.FC = () => {
           }}
           style={{
             flex: 1,
-            padding: '8px 12px',
-            backgroundColor: activeTab === 'molecules' ? '#4a90e2' : 'transparent',
+            padding: '10px 12px',
+            backgroundColor: 'transparent',
             border: 'none',
-            color: activeTab === 'molecules' ? '#fff' : '#aaa',
-            fontSize: '12px',
-            cursor: 'pointer',
-            borderRadius: '4px 4px 0 0',
             borderBottom: activeTab === 'molecules' ? '2px solid #4a90e2' : '2px solid transparent',
+            color: activeTab === 'molecules' ? '#4a90e2' : '#999',
+            fontSize: '11px',
+            fontWeight: activeTab === 'molecules' ? '600' : '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.3px',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px'
+          }}
+          onMouseEnter={(e) => {
+            if (activeTab !== 'molecules') {
+              e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
+              e.currentTarget.style.color = '#ccc';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeTab !== 'molecules') {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#999';
+            }
           }}
         >
-          Explore Molecules
+          <span style={{ fontSize: '14px', filter: activeTab === 'molecules' ? 'grayscale(0%)' : 'grayscale(100%)' }}>🧪</span>
+          Molecules
         </button>
         {!uiState.userTestMode && (
           <button
@@ -319,20 +385,42 @@ export const TabbedSearch: React.FC = () => {
             }}
             style={{
               flex: 1,
-              padding: '8px 12px',
-              backgroundColor: activeTab === 'debug' ? '#4a90e2' : 'transparent',
+              padding: '10px 12px',
+              backgroundColor: 'transparent',
               border: 'none',
-              color: activeTab === 'debug' ? '#fff' : '#aaa',
-              fontSize: '12px',
-              cursor: 'pointer',
-              borderRadius: '4px 4px 0 0',
               borderBottom: activeTab === 'debug' ? '2px solid #4a90e2' : '2px solid transparent',
+              color: activeTab === 'debug' ? '#4a90e2' : '#999',
+              fontSize: '11px',
+              fontWeight: activeTab === 'debug' ? '600' : '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'debug') {
+                e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
+                e.currentTarget.style.color = '#ccc';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'debug') {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#999';
+              }
             }}
           >
+            <span style={{ fontSize: '14px', filter: activeTab === 'debug' ? 'grayscale(0%)' : 'grayscale(100%)' }}>🔧</span>
             Debug
           </button>
         )}
       </div>
+      )}
 
       {/* Search Interface - Only show on molecules tab */}
       {activeTab === 'molecules' && (
@@ -511,75 +599,340 @@ export const TabbedSearch: React.FC = () => {
 
       {/* Tab Content - Reactions tab shows molecule selection */}
       {activeTab === 'reactions' && (
-        <div style={{ marginTop: '12px', position: 'relative', overflow: 'visible' }}>
-          <div className="form-group" style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #444' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-              <label className="form-label" style={{ margin: 0, fontWeight: 'bold', fontSize: '16px' }}>Reaction Type</label>
+        <div style={{ position: 'relative', overflow: 'visible', padding: '8px 0' }}>
+          {/* Reaction Type Section */}
+          <SidebarCard 
+            title="Reaction Type"
+            right={
               <SmartInfoBubble 
                 term="leaving_group"
                 reactionType={uiState.reactionType as ReactionType}
+                size="small"
               />
-            </div>
+            }
+          >
             <select
               value={uiState.reactionType}
               onChange={e => updateUIState({ reactionType: e.target.value })}
               className="form-select"
-              style={{ fontSize: '14px', fontWeight: '500' }}
             >
               <option value="sn2">SN2 - Bimolecular Substitution</option>
               <option value="sn1">SN1 - Unimolecular Substitution</option>
               <option value="e2">E2 - Bimolecular Elimination</option>
               <option value="e1">E1 - Unimolecular Elimination</option>
             </select>
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', fontStyle: 'italic' }}>
-              ↓ This determines the available molecules below
-            </div>
-          </div>
+          </SidebarCard>
 
-          <div className="form-group">
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-              <label className="form-label" style={{ margin: 0 }}>Substrate</label>
+          {/* Molecule Selection Section */}
+          <SidebarCard title="Molecule Selection">
+
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <label className="form-label" style={{ margin: 0, fontSize: '12px' }}>Substrate</label>
+                <SmartInfoBubble 
+                  term="substrate"
+                  reactionType={uiState.reactionType as ReactionType}
+                  size="small"
+                />
+              </div>
+              <select
+                value={uiState.substrateMolecule}
+                onChange={e => updateUIState({ substrateMolecule: e.target.value })}
+                className="form-select"
+              >
+                <option value="">Select substrate...</option>
+                {uiState.availableMolecules.map(mol => (
+                  <option key={mol} value={mol}>
+                    {mol}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <label className="form-label" style={{ margin: 0, fontSize: '12px' }}>
+                  {uiState.reactionType.startsWith('e') ? 'Base' : 'Nucleophile'}
+                </label>
+                <SmartInfoBubble 
+                  term={uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}
+                  reactionType={uiState.reactionType as ReactionType}
+                  size="small"
+                />
+              </div>
+              <select
+                value={uiState.nucleophileMolecule}
+                onChange={e => updateUIState({ nucleophileMolecule: e.target.value })}
+                className="form-select"
+              >
+                <option value="">Select {uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}...</option>
+                {uiState.availableMolecules.map(mol => (
+                  <option key={mol} value={mol}>
+                    {mol}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </SidebarCard>
+
+          {/* Reaction Parameters Section */}
+          <div className="form-group" style={{ 
+            marginBottom: '20px',
+            padding: '14px', 
+            backgroundColor: 'rgba(40, 40, 40, 0.4)', 
+            borderRadius: '8px', 
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+              <h4 style={{ 
+                margin: '0', 
+                fontSize: '13px', 
+                fontWeight: '700', 
+                color: '#e0e0e0',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Reaction Parameters
+              </h4>
               <SmartInfoBubble 
-                term="substrate"
+                term="attack_mode"
                 reactionType={uiState.reactionType as ReactionType}
+                size="small"
               />
             </div>
-            <select
-              value={uiState.substrateMolecule}
-              onChange={e => updateUIState({ substrateMolecule: e.target.value })}
-              className="form-select"
-            >
-              <option value="">Select substrate...</option>
-              {uiState.availableMolecules.map(mol => (
-                <option key={mol} value={mol}>
-                  {mol}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          <div className="form-group">
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-              <label className="form-label" style={{ margin: 0 }}>
-                {uiState.reactionType.startsWith('e') ? 'Base' : 'Nucleophile'}
+            {/* Attack Mode Selector */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ 
+                fontSize: '12px', 
+                fontWeight: '600', 
+                color: '#e0e0e0',
+                marginBottom: '8px',
+                display: 'block',
+                letterSpacing: '0.3px'
+              }}>
+                Attack Mode
               </label>
-              <SmartInfoBubble 
-                term={uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}
-                reactionType={uiState.reactionType as ReactionType}
-              />
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '6px'
+              }}>
+                {ATTACK_MODES.map(mode => {
+                  const isActive = uiState.approachAngle === mode.approachAngle && 
+                                 uiState.impactParameter === mode.impactParameter && 
+                                 uiState.relativeVelocity === mode.relativeVelocity;
+                  
+                  return (
+                    <button
+                      key={mode.id}
+                      onClick={() => updateUIState({
+                        approachAngle: mode.approachAngle,
+                        impactParameter: mode.impactParameter,
+                        relativeVelocity: mode.relativeVelocity
+                      })}
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                        fontWeight: isActive ? '600' : '400',
+                        backgroundColor: isActive ? '#4a90e2' : 'rgba(255, 255, 255, 0.1)',
+                        color: isActive ? '#fff' : '#ccc',
+                        border: `1px solid ${isActive ? '#4a90e2' : 'rgba(255, 255, 255, 0.2)'}`,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        outline: 'none'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.2)';
+                          e.currentTarget.style.borderColor = '#4a90e2';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                        }
+                      }}
+                    >
+                      {mode.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ 
+                fontSize: '11px', 
+                color: '#888', 
+                marginTop: '6px',
+                fontStyle: 'italic'
+              }}>
+                {ATTACK_MODES.find(mode => 
+                  uiState.approachAngle === mode.approachAngle && 
+                  uiState.impactParameter === mode.impactParameter && 
+                  uiState.relativeVelocity === mode.relativeVelocity
+                )?.description || 'Custom parameters selected'}
+              </div>
             </div>
-            <select
-              value={uiState.nucleophileMolecule}
-              onChange={e => updateUIState({ nucleophileMolecule: e.target.value })}
-              className="form-select"
-            >
-              <option value="">Select {uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}...</option>
-              {uiState.availableMolecules.map(mol => (
-                <option key={mol} value={mol}>
-                  {mol}
-                </option>
-              ))}
-            </select>
+
+            {/* Fine-tune Parameters */}
+            <div style={{ 
+              backgroundColor: 'rgba(0, 0, 0, 0.2)', 
+              borderRadius: '6px', 
+              padding: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.05)'
+            }}>
+              <h5 style={{ 
+                margin: '0 0 10px 0', 
+                fontSize: '12px', 
+                fontWeight: '700', 
+                color: '#e0e0e0',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Fine-Tune Parameters
+              </h5>
+
+              {/* Impact Parameter */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '6px'
+                }}>
+                  <label style={{ 
+                    fontSize: '12px', 
+                    fontWeight: '500', 
+                    color: '#e0e0e0' 
+                  }}>
+                    Impact Parameter
+                  </label>
+                  <span style={{ 
+                    fontSize: '11px', 
+                    color: '#ccc',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    minWidth: '30px',
+                    textAlign: 'center'
+                  }}>
+                    {uiState.impactParameter.toFixed(1)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={uiState.impactParameter}
+                  onChange={e => updateUIState({ impactParameter: parseFloat(e.target.value) })}
+                  style={{
+                    width: '100%',
+                    height: '4px',
+                    background: 'linear-gradient(to right, #28a745 0%, #ffc107 50%, #dc3545 100%)',
+                    outline: 'none',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    WebkitAppearance: 'none',
+                  }}
+                />
+              </div>
+
+              {/* Relative Velocity */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '6px'
+                }}>
+                  <label style={{ 
+                    fontSize: '12px', 
+                    fontWeight: '500', 
+                    color: '#e0e0e0' 
+                  }}>
+                    Relative Velocity
+                  </label>
+                  <span style={{ 
+                    fontSize: '11px', 
+                    color: '#ccc',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    minWidth: '40px',
+                    textAlign: 'center'
+                  }}>
+                    {uiState.relativeVelocity.toFixed(1)} m/s
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.5"
+                  value={uiState.relativeVelocity}
+                  onChange={e => updateUIState({ relativeVelocity: parseFloat(e.target.value) })}
+                  style={{
+                    width: '100%',
+                    height: '4px',
+                    background: 'linear-gradient(to right, #28a745 0%, #ffc107 50%, #dc3545 100%)',
+                    outline: 'none',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    WebkitAppearance: 'none',
+                  }}
+                />
+              </div>
+
+              {/* Temperature */}
+              <div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '6px'
+                }}>
+                  <label style={{ 
+                    fontSize: '12px', 
+                    fontWeight: '500', 
+                    color: '#e0e0e0' 
+                  }}>
+                    Temperature
+                  </label>
+                  <span style={{ 
+                    fontSize: '11px', 
+                    color: '#ccc',
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    minWidth: '30px',
+                    textAlign: 'center'
+                  }}>
+                    {uiState.temperature}K
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="100"
+                  max="600"
+                  value={uiState.temperature}
+                  onChange={e => updateUIState({ temperature: parseInt(e.target.value) })}
+                  style={{
+                    width: '100%',
+                    height: '4px',
+                    background: 'linear-gradient(to right, #007bff 0%, #ffc107 50%, #dc3545 100%)',
+                    outline: 'none',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    WebkitAppearance: 'none',
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Reaction controls always available in tabbed interface */}
@@ -615,8 +968,8 @@ export const TabbedSearch: React.FC = () => {
               disabled={!uiState.reactionInProgress && (!uiState.substrateMolecule || !uiState.nucleophileMolecule)}
               style={{ flex: 1 }}
             >
-              {!uiState.reactionInProgress ? '🚀 Start Reaction' : 
-               uiState.isPlaying ? '⏸️ Pause' : '▶️ Play'}
+              {!uiState.reactionInProgress ? 'Start Reaction' : 
+               uiState.isPlaying ? 'Pause' : 'Play'}
             </button>
             <button 
               className="btn btn-secondary" 
@@ -626,36 +979,8 @@ export const TabbedSearch: React.FC = () => {
                 // Clear any running reaction monitoring intervals
                 sn2ReactionSystem.clearAllIntervals();
                 
-                // Clear all molecules from scene and manager
-                const scene = sceneBridge.getScene();
-                const moleculeManager = sceneBridge.getMoleculeManager();
-                
-                if (scene && moleculeManager) {
-                  // Get all molecules and remove them from scene
-                  const existingMolecules = moleculeManager.getAllMolecules();
-                  console.log(`Found ${existingMolecules.length} molecules to clear`);
-                  
-                  for (const mol of existingMolecules) {
-                    if (mol.group) {
-                      scene.remove(mol.group);
-                      console.log(`Removed molecule: ${mol.name}`);
-                    }
-                  }
-                  
-                  // Clear molecule manager
-                  if (moleculeManager.clearAllMolecules) {
-                    moleculeManager.clearAllMolecules();
-                  } else {
-                    // Fallback: remove molecules one by one
-                    for (const mol of existingMolecules) {
-                      moleculeManager.removeMolecule(mol.name);
-                    }
-                  }
-                  
-                  console.log('🧹 Scene and molecules cleared successfully');
-                } else {
-                  console.warn('⚠️ Scene or molecule manager not available for clearing');
-                }
+                // Use the new clear method from ThreeJSBridge
+                threeJSBridge.clear();
                 
                 // Reset all UI state to initial values
                 updateUIState({
@@ -665,9 +990,9 @@ export const TabbedSearch: React.FC = () => {
                   mainProduct: 'None',
                   leavingGroup: 'None',
                   reactionEquation: 'No reaction yet',
-                  // Reset molecule selections
-                  substrateMolecule: '',
-                  nucleophileMolecule: '',
+                  // Keep molecule selections so user can restart immediately
+                  // substrateMolecule: '',
+                  // nucleophileMolecule: '',
                   // Keep available molecules list so user can select new ones
                   // availableMolecules: [] // Don't clear this - keep demo molecules available
                 });
@@ -684,7 +1009,7 @@ export const TabbedSearch: React.FC = () => {
 
       {/* Debug Tab Content */}
       {activeTab === 'debug' && (
-        <div>
+        <div style={{ padding: '16px' }}>
           <CollapsibleSection title="System Status" defaultOpen={true}>
             <div style={{ padding: '12px' }}>
               <div className="form-group">

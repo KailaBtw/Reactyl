@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RotationPhysicsEngine } from '../physics/rotationPhysicsEngine';
+// RotationPhysicsEngine removed - using chemistry reaction system
 import type { MoleculeGroup } from '../types';
 import { log } from './debug';
 
@@ -20,7 +20,7 @@ export interface RotationState {
 
 export class RotationController {
   private config: RotationConfig;
-  private physicsEngine: RotationPhysicsEngine;
+  // physicsEngine removed - using chemistry reaction system
   private molecule: MoleculeGroup | null = null;
   private isActive: boolean = true;
 
@@ -34,7 +34,7 @@ export class RotationController {
       ...config,
     };
 
-    this.physicsEngine = new RotationPhysicsEngine();
+    // physicsEngine removed - using chemistry reaction system
     log('RotationController initialized');
   }
 
@@ -43,7 +43,7 @@ export class RotationController {
    */
   attachToMolecule(molecule: MoleculeGroup): void {
     this.molecule = molecule;
-    this.physicsEngine.initializeMolecule(molecule, this.config);
+    // physicsEngine removed - using chemistry reaction system
     log(`RotationController attached to ${molecule.name}`);
   }
 
@@ -53,7 +53,7 @@ export class RotationController {
   setMolecule(molecularProperties: any): void {
     if (this.molecule) {
       (this.molecule as any).molecularProperties = molecularProperties;
-      this.physicsEngine.initializeMolecule(this.molecule, this.config);
+      // physicsEngine removed - using chemistry reaction system
       log(`Molecular properties set for ${this.molecule.name}`);
     }
   }
@@ -64,7 +64,7 @@ export class RotationController {
   update(deltaTime: number): void {
     if (!this.molecule || !this.isActive) return;
 
-    this.physicsEngine.update(deltaTime, this.config);
+    // physicsEngine removed - using chemistry reaction system
     this.syncWithMolecule();
   }
 
@@ -74,14 +74,8 @@ export class RotationController {
   private syncWithMolecule(): void {
     if (!this.molecule) return;
 
-    const state = this.physicsEngine.getRotationState();
-
-    // Update molecule's quaternion
-    this.molecule.group.quaternion.copy(state.quaternion);
-
-    // Update molecule's rotation if needed
-    const euler = new THREE.Euler().setFromQuaternion(state.quaternion);
-    this.molecule.group.rotation.copy(euler);
+    // physicsEngine removed - using chemistry reaction system
+    // No rotation sync needed
   }
 
   /**
@@ -90,21 +84,20 @@ export class RotationController {
   applyToObject3D(object3D: THREE.Object3D): void {
     if (!this.isActive) return;
 
-    const state = this.physicsEngine.getRotationState();
-
-    // Update object's quaternion
-    object3D.quaternion.copy(state.quaternion);
-
-    // Update object's rotation if needed
-    const euler = new THREE.Euler().setFromQuaternion(state.quaternion);
-    object3D.rotation.copy(euler);
+    // physicsEngine removed - using chemistry reaction system
+    // No rotation applied
   }
 
   /**
    * Get current rotation state
    */
   getRotationState(): RotationState {
-    return this.physicsEngine.getRotationState();
+    // Return default rotation state since physicsEngine was removed
+    return {
+      angularVelocity: new THREE.Vector3(0, 0, 0),
+      quaternion: new THREE.Quaternion(0, 0, 0, 1),
+      temperature: 298 // Room temperature
+    };
   }
 
   /**
@@ -112,7 +105,7 @@ export class RotationController {
    */
   setMode(mode: 'realistic' | 'demo' | 'manual'): void {
     this.config.mode = mode;
-    this.physicsEngine.setMode(mode);
+    // physicsEngine removed - using chemistry reaction system
     log(`Rotation mode set to: ${mode}`);
   }
 
@@ -121,7 +114,7 @@ export class RotationController {
    */
   setTemperature(temperature: number): void {
     this.config.temperature = temperature;
-    this.physicsEngine.setTemperature(temperature);
+    // physicsEngine removed - using chemistry reaction system
     log(`RotationController: Temperature set to: ${temperature}K`);
   }
 
@@ -130,7 +123,7 @@ export class RotationController {
    */
   setSpeedMultiplier(multiplier: number): void {
     this.config.speedMultiplier = multiplier;
-    this.physicsEngine.setSpeedMultiplier(multiplier);
+    // physicsEngine removed - using chemistry reaction system
     log(`Speed multiplier set to: ${multiplier}`);
   }
 
@@ -142,7 +135,7 @@ export class RotationController {
       this.molecule.group.rotation.set(0, 0, 0);
       this.molecule.group.quaternion.set(0, 0, 0, 1);
     }
-    this.physicsEngine.reset();
+    // physicsEngine removed - using chemistry reaction system
     log('Rotation reset');
   }
 
@@ -166,7 +159,7 @@ export class RotationController {
    */
   updateConfig(newConfig: Partial<RotationConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    this.physicsEngine.updateConfig(this.config);
+    // physicsEngine removed - using chemistry reaction system
     log('Rotation configuration updated');
   }
 
@@ -175,7 +168,7 @@ export class RotationController {
    */
   dispose(): void {
     this.molecule = null;
-    this.physicsEngine.dispose();
+    // physicsEngine removed - using chemistry reaction system
     log('RotationController disposed');
   }
 }

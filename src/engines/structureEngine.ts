@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { ReactionRegistry } from './reactionRegistry';
 import { SN2ReactionHandler } from './handlers/sn2ReactionHandler';
 import { EnhancedMolParser } from '../data/enhancedMolParser';
-import { enhancedCacheService } from '../services/enhancedCacheService';
+// enhancedCacheService removed - using simpleCacheService
 import type { MoleculeGroup, MolecularData } from '../types';
 import type { 
   EnhancedMolecularJSON, 
@@ -71,21 +71,9 @@ export class StructureEngine {
   ): Promise<MolecularStructure> {
     
     try {
-      // Check cache first
-      const cached = await enhancedCacheService.getEnhancedStructure(molecularData.cid.toString());
-      let enhancedData: EnhancedMolecularJSON;
-      
-      if (cached) {
-        enhancedData = cached;
-        log(`💾 Using cached enhanced structure: ${id}`);
-      } else {
-        // Convert to enhanced structure
-        enhancedData = await EnhancedMolParser.convertToEnhanced(molecularData, id);
-        
-        // Cache the enhanced structure
-        await enhancedCacheService.saveEnhancedStructure(molecularData.cid.toString(), enhancedData);
-        log(`🔄 Created and cached enhanced structure: ${id}`);
-      }
+      // Create enhanced structure directly (caching removed for simplicity)
+      const enhancedData: EnhancedMolecularJSON = await EnhancedMolParser.convertToEnhanced(molecularData, id);
+      log(`🔄 Created enhanced structure: ${id}`);
       
       // Create MolecularStructure from enhanced data
       const structure: MolecularStructure = {

@@ -1,5 +1,5 @@
 import * as CANNON from 'cannon-es';
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import type { MolecularProperties } from '../chemistry/molecularPropertiesCalculator';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
@@ -21,7 +21,7 @@ export interface PhysicsStats {
 
 export class CannonPhysicsEngine {
   private world: CANNON.World;
-  private moleculeBodies: Map<MoleculeGroup, PhysicsBodyData> = new Map();
+  private moleculeBodies: Map<string, PhysicsBodyData> = new Map(); // Use molecule ID as key
   private contactMaterial: CANNON.ContactMaterial;
   private defaultMaterial: CANNON.Material;
   private isPaused = false;
@@ -68,7 +68,7 @@ export class CannonPhysicsEngine {
       // Create physics shape from molecular properties
       const shape = this.createMoleculeShape(molecule, molecularProperties);
       if (!shape) {
-        console.warn(`Failed to create physics shape for ${molecule.name}`);
+        log(`Failed to create physics shape for ${molecule.name}`);
         return false;
       }
 
@@ -116,17 +116,18 @@ export class CannonPhysicsEngine {
       // Add to world
       this.world.addBody(body);
 
-      // Store mapping
-      this.moleculeBodies.set(molecule, {
+      // Store mapping using molecule ID
+      this.moleculeBodies.set(molecule.id, {
         body,
         molecule,
         lastSync: performance.now(),
       });
-
+      
       log(`Added ${molecule.name} to physics world with mass ${mass.toFixed(2)}`);
+      
       return true;
     } catch (error) {
-      console.error(`Failed to add molecule ${molecule.name} to physics world:`, error);
+      log(`Physics engine error for ${molecule.name}: ${error}`);
       return false;
     }
   }
@@ -135,10 +136,10 @@ export class CannonPhysicsEngine {
    * Remove a molecule from the physics world
    */
   removeMolecule(molecule: MoleculeGroup): void {
-    const bodyData = this.moleculeBodies.get(molecule);
+    const bodyData = this.moleculeBodies.get(molecule.id);
     if (bodyData) {
       this.world.removeBody(bodyData.body);
-      this.moleculeBodies.delete(molecule);
+      this.moleculeBodies.delete(molecule.id);
       log(`Removed ${molecule.name} from physics world`);
     }
   }
@@ -169,8 +170,8 @@ export class CannonPhysicsEngine {
     }
 
     // Sync Three.js objects with physics bodies
-    for (const [molecule, bodyData] of this.moleculeBodies.entries()) {
-      this.syncMoleculeWithPhysics(molecule, bodyData);
+    for (const [, bodyData] of this.moleculeBodies.entries()) {
+      this.syncMoleculeWithPhysics(bodyData.molecule, bodyData);
     }
 
     // Emit queued collision events AFTER stepping to avoid removing bodies during
@@ -247,9 +248,9 @@ export class CannonPhysicsEngine {
       let molA: MoleculeGroup | undefined;
       let molB: MoleculeGroup | undefined;
 
-      for (const [molecule, bodyData] of this.moleculeBodies.entries()) {
-        if (bodyData.body === bodyA) molA = molecule;
-        if (bodyData.body === bodyB) molB = molecule;
+      for (const [, bodyData] of this.moleculeBodies.entries()) {
+        if (bodyData.body === bodyA) molA = bodyData.molecule;
+        if (bodyData.body === bodyB) molB = bodyData.molecule;
       }
 
       if (molA && molB) {
@@ -270,7 +271,7 @@ export class CannonPhysicsEngine {
    * Apply force to a molecule
    */
   applyForce(molecule: MoleculeGroup, force: THREE.Vector3, worldPoint?: THREE.Vector3): void {
-    const bodyData = this.moleculeBodies.get(molecule);
+    const bodyData = this.moleculeBodies.get(molecule.id);
     if (bodyData) {
       const cannonForce = new CANNON.Vec3(force.x, force.y, force.z);
       if (worldPoint) {
@@ -286,7 +287,7 @@ export class CannonPhysicsEngine {
    * Apply impulse to a molecule
    */
   applyImpulse(molecule: MoleculeGroup, impulse: THREE.Vector3, worldPoint?: THREE.Vector3): void {
-    const bodyData = this.moleculeBodies.get(molecule);
+    const bodyData = this.moleculeBodies.get(molecule.id);
     if (bodyData) {
       const cannonImpulse = new CANNON.Vec3(impulse.x, impulse.y, impulse.z);
       if (worldPoint) {
@@ -298,16 +299,6 @@ export class CannonPhysicsEngine {
     }
   }
 
-  /**
-   * Set molecule velocity
-   */
-  setVelocity(molecule: MoleculeGroup, velocity: THREE.Vector3): void {
-    const bodyData = this.moleculeBodies.get(molecule);
-    if (bodyData) {
-      bodyData.body.velocity.set(velocity.x, velocity.y, velocity.z);
-      molecule.velocity.copy(velocity);
-    }
-  }
 
   /**
    * Get physics world for advanced operations
@@ -320,7 +311,8 @@ export class CannonPhysicsEngine {
    * Get physics body for a molecule
    */
   getPhysicsBody(molecule: MoleculeGroup): CANNON.Body | null {
-    return this.moleculeBodies.get(molecule)?.body || null;
+    const bodyData = this.moleculeBodies.get(molecule.id);
+    return bodyData?.body || null;
   }
 
   /**
@@ -398,6 +390,92 @@ export class CannonPhysicsEngine {
    */
   isSimulationPaused(): boolean {
     return this.isPaused;
+  }
+
+  /**
+   * Set velocity for a molecule (unified state management)
+   */
+  setVelocity(molecule: MoleculeGroup, velocity: THREE.Vector3): void {
+    const body = this.getPhysicsBody(molecule);
+    if (body) {
+      body.velocity.set(velocity.x, velocity.y, velocity.z);
+      log(`✅ Set velocity for ${molecule.name}: (${velocity.x.toFixed(2)}, ${velocity.y.toFixed(2)}, ${velocity.z.toFixed(2)})`);
+    } else {
+      log(`⚠️ No physics body found for ${molecule.name}`);
+    }
+  }
+
+  /**
+   * Get velocity for a molecule (unified state management)
+   */
+  getVelocity(molecule: MoleculeGroup): THREE.Vector3 | null {
+    const body = this.getPhysicsBody(molecule);
+    if (body) {
+      return new THREE.Vector3(body.velocity.x, body.velocity.y, body.velocity.z);
+    }
+    return null;
+  }
+
+  /**
+   * Set position for a molecule (unified state management)
+   */
+  setPosition(molecule: MoleculeGroup, position: THREE.Vector3): void {
+    const body = this.getPhysicsBody(molecule);
+    if (body) {
+      body.position.set(position.x, position.y, position.z);
+      log(`✅ Set position for ${molecule.name}: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+    } else {
+      log(`⚠️ No physics body found for ${molecule.name}`);
+    }
+  }
+
+  /**
+   * Get position for a molecule (unified state management)
+   */
+  getPosition(molecule: MoleculeGroup): THREE.Vector3 | null {
+    const body = this.getPhysicsBody(molecule);
+    if (body) {
+      return new THREE.Vector3(body.position.x, body.position.y, body.position.z);
+    }
+    return null;
+  }
+
+  /**
+   * Set orientation for a molecule (unified state management)
+   */
+  setOrientation(molecule: MoleculeGroup, quaternion: THREE.Quaternion): void {
+    const body = this.getPhysicsBody(molecule);
+    if (body) {
+      body.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+      log(`✅ Set orientation for ${molecule.name}`);
+    } else {
+      log(`⚠️ No physics body found for ${molecule.name}`);
+    }
+  }
+
+  /**
+   * Get orientation for a molecule (unified state management)
+   */
+  getOrientation(molecule: MoleculeGroup): THREE.Quaternion | null {
+    const body = this.getPhysicsBody(molecule);
+    if (body) {
+      return new THREE.Quaternion(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
+    }
+    return null;
+  }
+
+  /**
+   * Clear all physics bodies without disposing the engine
+   */
+  clearAllBodies(): void {
+    // Remove all bodies
+    for (const [, bodyData] of this.moleculeBodies.entries()) {
+      this.world.removeBody(bodyData.body);
+    }
+    this.moleculeBodies.clear();
+
+    // Clear world contacts
+    this.world.contacts.length = 0;
   }
 
   /**

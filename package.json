@@ -6,10 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "backend": "tsx dev-server.ts",
-    "backend:bg": "tsx dev-server.ts &",
+    "backend": "PORT=3001 tsx dev-server.ts",
+    "backend:bg": "PORT=3001 tsx dev-server.ts &",
     "build": "vite build",
-    "start": "node ./src/script.js",
+    "start": "vite dev",
     "convert_pdf": "python3 scripts/parse_thermo_pdf_to_json.py src/data/sources/Standard_Thermodynamic_Values.pdf public/data/enthalpy_from_pdf.json -v -d",
     "test": "echo \"Error: no test specified\" && exit 1",
     "predeploy": "npm run build",
