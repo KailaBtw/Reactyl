@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/MolMod-Molecular_Modeler/',
+  base: '/Reactyl/',
   // enable sourcemaps for useful debug messages in browser inspector
   build: {
     outDir: 'dist', // Output to the root of your project

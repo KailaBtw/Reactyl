@@ -1,5 +1,5 @@
 {
-  "name": "mol_mod",
+  "name": "reactyl",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -22,14 +22,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KailaBtw/MolMod-Molecular_Modeler.git"
+    "url": "git+https://github.com/KailaBtw/Reactyl.git"
   },
   "author": "Ellie Lagrave",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/KailaBtw/MolMod-Molecular_Modeler/issues"
+    "url": "https://github.com/KailaBtw/Reactyl/issues"
   },
-  "homepage": "https://github.com/KailaBtw/MolMod-Molecular_Modeler#readme",
+  "homepage": "https://github.com/KailaBtw/Reactyl#readme",
   "dependencies": {
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",

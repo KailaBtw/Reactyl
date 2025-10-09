@@ -9,7 +9,7 @@ import { log } from '../utils/debug';
 export class SimpleCacheService {
   private molecules: Map<string, MolecularData> = new Map();
   private searchCount = 0;
-  private readonly LOCALSTORAGE_KEY = 'molMod_cache';
+  private readonly LOCALSTORAGE_KEY = 'reactyl_cache';
   private readonly isDev =
     window.location.hostname === 'localhost' || window.location.port === '5173';
 

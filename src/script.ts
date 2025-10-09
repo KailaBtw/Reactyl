@@ -246,7 +246,7 @@ function animate(): void {
 }
 
 /**
- * Initializes the MolMod scene. This function is called when the page is loaded
+ * Initializes the Reactyl scene. This function is called when the page is loaded
  * or when the scene needs to be reset. It sets up the initial molecule,
  * lighting, and GUI.
  *

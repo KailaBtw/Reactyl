@@ -1,8 +1,8 @@
-# MolMod - Molecular Modeler
+# Reactyl
 
 ### Overview
 
-MolMod is a web application for visualizing and interacting with 3D molecular structures. It allows users to load, display, and manipulate molecules in a 3D environment.
+Reactyl is a web application for visualizing and interacting with 3D molecular structures. It allows users to load, display, and manipulate molecules in a 3D environment.
 
 ![Image of the program](./src/assets/program_image.png)
 
@@ -55,7 +55,7 @@ npm run deploy
 -If you encounter permissions issues, you may need to adjust file ownership:
 
 ```
-sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
+sudo chown -R kaila:kaila ../reactyl/ && sudo chown -R kaila ../reactyl/
 ```
 
 </details>
@@ -144,7 +144,7 @@ sudo chown -R kaila:kaila ../mol_mod/ && sudo chown -R kaila ../mol_mod/
 
 - https://molview.org/
 
-[mol_mod]: http://localhost:5500/mol_mod/
+[reactyl]: http://localhost:5500/reactyl/
 
 
 

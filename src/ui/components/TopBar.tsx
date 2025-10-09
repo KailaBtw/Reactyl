@@ -49,7 +49,7 @@ export const TopBar: React.FC = () => {
 
   return (
     <div className="top-bar">
-      <h1>MolMod - Molecular Modeler</h1>
+      <h1>Reactyl</h1>
 
       <div className="control-group" style={{ marginLeft: 'auto', gap: '6px' }}>
         <button className="pill-btn" onClick={handlePlayPause} title={uiState.isPlaying ? 'Pause' : 'Play'}>

@@ -5,6 +5,8 @@ import { collisionEventSystem } from '../physics/collisionEventSystem';
 import { drawMolecule } from '../components/moleculeDrawer';
 import { ChemicalDataService } from '../chemistry/chemicalDataService';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
+import { getOrientationStrategy } from '../reactions/orientationStrategies';
+import { computeKinematics, applyKinematics } from '../reactions/physicsConfigurator';
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
 
@@ -346,19 +348,8 @@ export class ReactionOrchestrator {
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
     
-    switch (reactionType.toLowerCase()) {
-      case 'sn2':
-        this.orientForSN2BacksideAttack(substrate, nucleophile);
-        break;
-      case 'sn1':
-        this.orientForSN1Reaction(substrate, nucleophile);
-        break;
-      case 'e2':
-        this.orientForE2Reaction(substrate, nucleophile);
-        break;
-      default:
-        this.orientForGenericReaction(substrate, nucleophile);
-    }
+    const orient = getOrientationStrategy(reactionType);
+    orient(substrate, nucleophile);
     
     // Sync orientation to physics bodies
     this.syncOrientationToPhysics(substrate);
@@ -367,69 +358,7 @@ export class ReactionOrchestrator {
     log(`✅ Molecules oriented for ${reactionType} reaction`);
   }
   
-  /**
-   * Orient for SN2 backside attack (optimal 180° approach)
-   */
-  private orientForSN2BacksideAttack(substrate: MoleculeState, nucleophile: MoleculeState): void {
-    log('🔄 Applying SN2 backside attack orientation...');
-    
-    // Point nucleophile toward substrate
-    nucleophile.group.lookAt(substrate.group.position);
-    
-    // Orient substrate so leaving group points AWAY from nucleophile
-    substrate.group.rotation.set(0, 0, 0);
-    substrate.group.rotateY(-Math.PI); // -180° rotation for backside attack
-    
-    // Update state
-    substrate.rotation.copy(substrate.group.rotation);
-    nucleophile.rotation.copy(nucleophile.group.rotation);
-    
-    log('✅ SN2 backside attack orientation applied');
-  }
-  
-  /**
-   * Orient for SN1 reaction
-   */
-  private orientForSN1Reaction(substrate: MoleculeState, nucleophile: MoleculeState): void {
-    log('🔄 Applying SN1 orientation...');
-    // SN1 doesn't require specific orientation
-    substrate.group.rotation.set(0, 0, 0);
-    nucleophile.group.rotation.set(0, 0, 0);
-    
-    substrate.rotation.copy(substrate.group.rotation);
-    nucleophile.rotation.copy(nucleophile.group.rotation);
-    
-    log('✅ SN1 orientation applied');
-  }
-  
-  /**
-   * Orient for E2 reaction
-   */
-  private orientForE2Reaction(substrate: MoleculeState, nucleophile: MoleculeState): void {
-    log('🔄 Applying E2 orientation...');
-    // E2 requires anti-coplanar orientation
-    substrate.group.rotation.set(0, 0, 0);
-    nucleophile.group.rotation.set(0, 0, 0);
-    
-    substrate.rotation.copy(substrate.group.rotation);
-    nucleophile.rotation.copy(nucleophile.group.rotation);
-    
-    log('✅ E2 orientation applied');
-  }
-  
-  /**
-   * Generic orientation for unknown reaction types
-   */
-  private orientForGenericReaction(substrate: MoleculeState, nucleophile: MoleculeState): void {
-    log('🔄 Applying generic orientation...');
-    substrate.group.rotation.set(0, 0, 0);
-    nucleophile.group.rotation.set(0, 0, 0);
-    
-    substrate.rotation.copy(substrate.group.rotation);
-    nucleophile.rotation.copy(nucleophile.group.rotation);
-    
-    log('✅ Generic orientation applied');
-  }
+  // Orientation helpers consolidated into orientationStrategies.ts
   
   /**
    * Sync visual orientation to physics bodies
@@ -447,7 +376,8 @@ export class ReactionOrchestrator {
       // Sync orientation to physics body
       const body = this.physicsEngine.getPhysicsBody(moleculeObj);
       if (body) {
-        body.quaternion.copy(molecule.group.quaternion);
+        const q = molecule.group.quaternion;
+        body.quaternion.set(q.x, q.y, q.z, q.w);
         log(`✅ Synced orientation to physics for ${molecule.name}`);
       } else {
         log(`⚠️ No physics body found for ${molecule.name}`);
@@ -469,29 +399,25 @@ export class ReactionOrchestrator {
     
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
-    
-    // Calculate approach direction based on parameters
-    const approachAngleRad = (params.approachAngle * Math.PI) / 180;
-    const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), approachAngleRad);
-    
-    // Set velocities
-    substrate.velocity.set(0, 0, 0); // Substrate stays stationary
-    nucleophile.velocity.copy(direction.clone().negate().multiplyScalar(params.relativeVelocity));
-    
-    // Apply to physics engine - get the molecule objects first
-    const substrateObj = this.moleculeManager.getMolecule(substrate.name);
-    const nucleophileObj = this.moleculeManager.getMolecule(nucleophile.name);
-    
-    
-    if (substrateObj) {
-      this.physicsEngine.setVelocity(substrateObj, substrate.velocity);
-    }
-    if (nucleophileObj) {
-      this.physicsEngine.setVelocity(nucleophileObj, nucleophile.velocity);
-    }
-    
+
+    // Compute and apply kinematics via dedicated module
+    const kin = computeKinematics({
+      approachAngle: params.approachAngle,
+      relativeVelocity: params.relativeVelocity,
+    });
+    substrate.velocity.copy(kin.substrate.velocity);
+    nucleophile.velocity.copy(kin.nucleophile.velocity);
+
+    applyKinematics(
+      this.physicsEngine,
+      this.moleculeManager,
+      substrate.name,
+      nucleophile.name,
+      kin
+    );
+
     // Update state
-    this.state.physics.velocities = [substrate.velocity.clone(), nucleophile.velocity.clone()];
+    this.state.physics.velocities = [kin.substrate.velocity.clone(), kin.nucleophile.velocity.clone()];
     this.state.reaction.approachAngle = params.approachAngle;
     
     log(`✅ Physics configured - approach angle: ${params.approachAngle}°, velocity: ${params.relativeVelocity}`);
@@ -510,7 +436,7 @@ export class ReactionOrchestrator {
       return;
     }
     
-    log(`🔍 Loaded reaction type: ${reactionType.name} with probabilityFactors:`, reactionType.probabilityFactors);
+    // Reaction type loaded from database
     this.collisionSystem.resetReactionState(); // Reset collision system state
     this.collisionSystem.setReactionType(reactionType);
     this.collisionSystem.setTemperature(params.temperature);
@@ -521,18 +447,7 @@ export class ReactionOrchestrator {
     log(`✅ Collision detection configured for ${params.reactionType}`);
   }
   
-  /**
-   * Get human-readable reaction type name
-   */
-  private getReactionTypeName(reactionType: string): string {
-    const names: { [key: string]: string } = {
-      'sn2': 'Bimolecular Nucleophilic Substitution',
-      'sn1': 'Unimolecular Nucleophilic Substitution',
-      'e2': 'Bimolecular Elimination',
-      'e1': 'Unimolecular Elimination'
-    };
-    return names[reactionType.toLowerCase()] || 'Unknown Reaction';
-  }
+  // (removed unused name mapping helper)
   
   /**
    * Start the unified simulation
@@ -552,11 +467,11 @@ export class ReactionOrchestrator {
   /**
    * Handle collision events from the collision system
    */
-  private handleCollisionEvent(event: any): void {
+  private handleCollisionEvent(_event: any): void {
     log('💥 Collision detected in unified system');
     
     // Process the collision through unified system
-    this.executeUnifiedReaction(event);
+    this.executeUnifiedReaction();
     
     // Update reaction progress
     this.state.reaction.progress = 1.0;
@@ -568,7 +483,7 @@ export class ReactionOrchestrator {
   /**
    * Execute reaction using unified approach
    */
-  private executeUnifiedReaction(event: any): void {
+  private executeUnifiedReaction(): void {
     log('🧪 Executing unified reaction...');
     
     // Get molecules from state
@@ -610,7 +525,7 @@ export class ReactionOrchestrator {
   /**
    * Apply SN2-specific transformations (Walden inversion)
    */
-  private applySN2Transformations(substrate: MoleculeState, nucleophile: MoleculeState): void {
+  private applySN2Transformations(substrate: MoleculeState, _nucleophile: MoleculeState): void {
     log('🔄 Applying SN2 Walden inversion...');
     
     // Rotate substrate 180° for Walden inversion
@@ -626,7 +541,7 @@ export class ReactionOrchestrator {
   /**
    * Apply SN1-specific transformations
    */
-  private applySN1Transformations(substrate: MoleculeState, nucleophile: MoleculeState): void {
+  private applySN1Transformations(_substrate: MoleculeState, _nucleophile: MoleculeState): void {
     log('🔄 Applying SN1 transformations...');
     // SN1 doesn't require specific orientation changes
     log('✅ SN1 transformations applied');
@@ -635,7 +550,7 @@ export class ReactionOrchestrator {
   /**
    * Apply E2-specific transformations
    */
-  private applyE2Transformations(substrate: MoleculeState, nucleophile: MoleculeState): void {
+  private applyE2Transformations(_substrate: MoleculeState, _nucleophile: MoleculeState): void {
     log('🔄 Applying E2 transformations...');
     // E2 requires anti-coplanar orientation
     log('✅ E2 transformations applied');

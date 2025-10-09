@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ReactionDemo } from '../../components/reactionDemo';
 import { ReactionOrchestrator } from '../../systems/ReactionOrchestrator';
 import { UnifiedSimulation } from '../../systems/UnifiedSimulation';
 import { physicsEngine } from '../../physics/cannonPhysicsEngine';
@@ -19,7 +18,7 @@ export class ThreeJSBridge {
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: OrbitControls | null = null;
   private moleculeManager: ReturnType<typeof createMoleculeManager> | null = null;
-  private reactionDemo: ReactionDemo | null = null;
+  // Unified system only - no legacy ReactionDemo
   private reactionOrchestrator: ReactionOrchestrator | null = null;
   private unifiedSimulation: UnifiedSimulation | null = null;
 
@@ -126,13 +125,9 @@ export class ThreeJSBridge {
       this.controls.panSpeed = 1.0; // Faster pan
     }
 
-    // Initialize molecule manager and reaction demo
+    // Initialize molecule manager
     if (!this.moleculeManager) {
       this.moleculeManager = createMoleculeManager();
-    }
-
-    if (!this.reactionDemo) {
-      this.reactionDemo = new ReactionDemo(this.scene);
     }
 
     // Initialize unified reaction system
@@ -177,47 +172,15 @@ export class ThreeJSBridge {
     (window as any).moleculeManager = this.moleculeManager;
     (window as any).threeJSBridge = this;
     
-    // Add quick test function for StructureEngine
-    (window as any).quickStructureTest = async () => {
-      console.log('🧪 Quick StructureEngine Test from ThreeJSBridge...');
-      try {
-        // Import StructureEngine dynamically
-        const { StructureEngine } = await import('../../engines/structureEngine');
-        const engine = new StructureEngine(this.scene!);
-        
-        console.log('✅ StructureEngine created successfully');
-        console.log('Available reaction types:', engine.getAvailableReactionTypes());
-        
-        // Store for further testing
-        (window as any).structureEngine = engine;
-        console.log('💡 StructureEngine stored as window.structureEngine');
-        
-        return engine;
-      } catch (error) {
-        console.error('❌ Test failed:', error);
-        return null;
-      }
-    };
+    // (removed legacy quick test exposure)
 
-    // Add toggle function for enhanced demo
-    (window as any).toggleChemistrySystem = () => {
-      this.toggleEnhancedDemo();
-      return false; // Always return false since we're using unified system
-    };
-
-    // Add function to check current demo mode
-    (window as any).isChemistryMode = () => {
-      return false; // Always return false since we're using unified system
-    };
+    // Unified system: no chemistry mode toggles
 
     console.log('Three.js scene initialized with orbit controls');
     console.log('🔧 Scene objects exposed globally for testing');
     
     // Log available test functions
-    const testFunctions = Object.keys(window).filter(key => 
-      key.includes('test') || key.includes('Test') || key.includes('demo') || key.includes('Demo')
-    );
-    console.log('🧪 Available test functions:', testFunctions);
+    // (trimmed test function enumeration for production)
     
     return this.scene;
   }
@@ -294,27 +257,7 @@ export class ThreeJSBridge {
     return this.controls;
   }
 
-  // Reaction demo methods
-  async loadDemoMolecules(): Promise<void> {
-    if (!this.reactionOrchestrator || !this.moleculeManager || !this.scene) {
-      console.error('Reaction orchestrator, molecule manager, or scene not initialized');
-      return;
-    }
-
-    console.log('Loading demo molecules with chemistry reaction system...');
-    // The new architecture handles molecule loading internally
-    console.log('Chemistry reaction system molecules ready');
-  }
-
-  async setupCollision(): Promise<void> {
-    if (!this.reactionDemo || !this.moleculeManager) {
-      console.error('Reaction demo or molecule manager not initialized');
-      return;
-    }
-
-    console.log('Setting up collision...');
-    // The setup is handled in runDemo, but we can add specific setup logic here if needed
-  }
+  // Unified system handles molecule loading and collision setup internally
 
   async startReactionAnimation(): Promise<void> {
     console.log('🚀 ThreeJSBridge.startReactionAnimation() CALLED');
@@ -339,12 +282,7 @@ export class ThreeJSBridge {
       reactionType: 'sn2'
     };
 
-    console.log('🔍 UI State for reaction:', {
-      substrateMolecule: uiState.substrateMolecule,
-      nucleophileMolecule: uiState.nucleophileMolecule,
-      reactionType: uiState.reactionType,
-      temperature: uiState.temperature
-    });
+    // (removed verbose UI state debug log)
 
     // Map UI molecule selections to actual molecule data
     const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
@@ -357,10 +295,7 @@ export class ThreeJSBridge {
     const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || { cid: '6323', name: 'Methyl bromide' };
     const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || { cid: '961', name: 'Hydroxide ion' };
 
-    console.log('🔍 Mapped molecules:', {
-      substrate: substrateMolecule,
-      nucleophile: nucleophileMolecule
-    });
+    // (removed verbose mapped molecules debug log)
 
     const reactionParams = {
       substrateMolecule,
@@ -395,28 +330,14 @@ export class ThreeJSBridge {
   }
 
   async stopReaction(): Promise<void> {
-    if (!this.reactionDemo) {
-      console.error('Reaction demo not initialized');
-      return;
-    }
-
     console.log('Stopping reaction...');
-    // Pause physics engine
+    // Pause physics engine and orchestrator
     physicsEngine.pause();
-
-    // Clear any trajectory visualizations
-    const reactionDemo = this.reactionDemo as any;
-    if (reactionDemo.trajectoryController) {
-      reactionDemo.trajectoryController.clearTrajectoryVisualization();
-    }
+    this.reactionOrchestrator?.stopReaction();
   }
 
   getMoleculeManager() {
     return this.moleculeManager;
-  }
-
-  getReactionDemo() {
-    return this.reactionDemo;
   }
 
   getReactionOrchestrator() {
@@ -431,9 +352,7 @@ export class ThreeJSBridge {
     return this.reactionOrchestrator !== null && this.unifiedSimulation !== null;
   }
 
-  toggleEnhancedDemo(): void {
-    console.log('Enhanced demo enforced');
-  }
+  // No enhanced demo toggles in unified system
 
   private showContextLostMessage() {
     // Create or show context lost message
