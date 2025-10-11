@@ -9,6 +9,7 @@ import { getOrientationStrategy } from '../reactions/orientationStrategies';
 import { computeKinematics, applyKinematics } from '../reactions/physicsConfigurator';
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
+import { reactionAnimationManager } from '../animations/ReactionAnimationManager';
 
 /**
  * Reaction State Interface
@@ -523,20 +524,33 @@ export class ReactionOrchestrator {
   }
 
   /**
-   * Apply SN2-specific transformations (Walden inversion)
+   * Apply SN2-specific transformations (Walden inversion + leaving group departure)
    */
-  private applySN2Transformations(substrate: MoleculeState, _nucleophile: MoleculeState): void {
-    log('🔄 Applying SN2 Walden inversion...');
+  private applySN2Transformations(substrate: MoleculeState, nucleophile: MoleculeState): void {
+    log('🔄 Applying SN2 transformations using animation manager...');
     
-    // Rotate substrate 180° for Walden inversion
-    substrate.group.rotateY(Math.PI);
-    substrate.rotation.copy(substrate.group.rotation);
+    // Use the animation manager for coordinated SN2 animation sequence
+    reactionAnimationManager.animateSN2Reaction(substrate, nucleophile, {
+      waldenInversion: {
+        duration: 1000,
+        onStart: () => log('🎬 Starting Walden inversion...'),
+        onComplete: () => log('✅ Walden inversion complete')
+      },
+      leavingGroupDeparture: {
+        duration: 1500,
+        distance: 5.0,
+        fadeOut: true,
+        onStart: () => log('🚀 Starting leaving group departure...'),
+        onComplete: () => log('✅ Leaving group departure complete')
+      },
+      delayBetweenAnimations: 1000,
+      onStart: () => log('🎬 Starting SN2 reaction animation sequence...'),
+      onComplete: () => log('🎉 SN2 reaction animation sequence complete!')
+    });
     
-    // Update physics body orientation
-    this.syncOrientationToPhysics(substrate);
-    
-    log('✅ SN2 Walden inversion applied');
+    log('✅ SN2 animation sequence started');
   }
+
 
   /**
    * Apply SN1-specific transformations

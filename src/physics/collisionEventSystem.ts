@@ -205,9 +205,9 @@ class CollisionEventSystem {
       event.moleculeB
     );
 
-    // If testing mode is enabled, force 100% reaction probability
+    // If testing mode is enabled, force 100% reaction probability for demo
     if (this.testingMode) {
-      log(`🧪 Testing mode: forcing reaction probability to 100%`);
+      log(`🧪 Testing mode: forcing reaction probability to 100% for demo`);
       (reactionResult as any).probability = 1.0;
       (reactionResult as any).occurs = true;
     }

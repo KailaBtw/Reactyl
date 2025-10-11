@@ -415,7 +415,7 @@ export class ChemistryReactionSystem {
     
     // Rotate substrate to position leaving group away from nucleophile
     // For SN2 backside attack, we need the leaving group to point away from nucleophile
-    substrate.group.rotateY(-Math.PI); // -180° rotation to point leaving group away from nucleophile
+    substrate.group.rotateY(-Math.PI/2); // -90° rotation to point leaving group away from nucleophile
     
     log(`🔄 After rotation - Substrate rotation: (${substrate.group.rotation.x.toFixed(2)}, ${substrate.group.rotation.y.toFixed(2)}, ${substrate.group.rotation.z.toFixed(2)})`);
     log(`🔄 Nucleophile rotation: (${nucleophile.group.rotation.x.toFixed(2)}, ${nucleophile.group.rotation.y.toFixed(2)}, ${nucleophile.group.rotation.z.toFixed(2)})`);

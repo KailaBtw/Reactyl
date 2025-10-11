@@ -370,6 +370,14 @@ export class UnifiedSimulation {
   private handleCollisionDetected(event: any): void {
     log(`💥 Collision detected: angle=${event.data.approachAngle.toFixed(1)}°, energy=${event.data.collisionEnergy.toExponential(2)} kJ/mol`);
     
+    // Update UI with calculated reaction probability
+    if ((window as any).updateUIState) {
+      (window as any).updateUIState({
+        reactionProbability: event.data.reactionProbability * 100 // Convert to percentage
+      });
+      log(`📊 Updated UI reaction probability: ${(event.data.reactionProbability * 100).toFixed(1)}%`);
+    }
+    
     // Update visual indicators
     // Show collision effects
     // etc.
