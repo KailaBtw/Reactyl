@@ -34,7 +34,9 @@ export class ChemistryReactionSystem {
    */
   private setupReactionHandlers(): void {
     collisionEventSystem.registerHandler(event => {
+      log('🔥 OLD CHEMISTRY SYSTEM: Collision handler called');
       if (event.reactionResult?.occurs) {
+        log('🔥 OLD CHEMISTRY SYSTEM: Reaction occurred, executing collision reaction');
         this.executeCollisionReaction(event);
       }
     });
@@ -363,123 +365,18 @@ export class ChemistryReactionSystem {
       // this.structureEngine.createStructure('substrate', substrate, substrate.group.position);
       // this.structureEngine.createStructure('nucleophile', nucleophile, nucleophile.group.position);
       
-      // Orient for reaction type
-      switch (reactionType.toLowerCase()) {
-        case 'sn2':
-          log('🔄 Applying SN2 backside attack orientation...');
-          this.orientForSN2BacksideAttack(substrate, nucleophile);
-          break;
-        case 'sn1':
-          log('🔄 Applying SN1 orientation...');
-          this.orientForSN1Reaction(substrate, nucleophile);
-          break;
-        case 'e2':
-          log('🔄 Applying E2 orientation...');
-          this.orientForE2Reaction(substrate, nucleophile);
-          break;
-        default:
-          log('🔄 Applying generic orientation...');
-          this.orientForGenericReaction(substrate, nucleophile);
-      }
+      // Orientation is now handled by ReactionOrchestrator
+      // No need to orient here to avoid double rotation
+      log('🔄 Skipping orientation - handled by ReactionOrchestrator');
       
       log(`✅ Molecules oriented for ${reactionType} chemical reaction`);
     } catch (error) {
       log(`❌ Orientation error: ${error}`);
-      this.orientForGenericReaction(substrate, nucleophile);
+      // Orientation is handled by ReactionOrchestrator, so just log the error
     }
   }
 
-  /**
-   * Orient for SN2 backside attack
-   */
-  private orientForSN2BacksideAttack(substrate: any, nucleophile: any): void {
-    // For SN2 backside attack:
-    // - Nucleophile should point toward substrate
-    // - Substrate leaving group should point AWAY from nucleophile (backside)
-    
-    const substratePosition = substrate.group.position;
-    const nucleophilePosition = nucleophile.group.position;
-    
-    // Calculate direction from nucleophile to substrate
-    const direction = substratePosition.clone().sub(nucleophilePosition).normalize();
-    const awayFromNucleophile = direction.clone().negate();
-    
-    // Point nucleophile toward substrate
-    nucleophile.group.lookAt(substratePosition);
-    
-    // Orient substrate so leaving group points AWAY from nucleophile
-    // The leaving group (chlorine/bromine) should be on the opposite side from the nucleophile
-    log(`🔄 Before rotation - Substrate rotation: (${substrate.group.rotation.x.toFixed(2)}, ${substrate.group.rotation.y.toFixed(2)}, ${substrate.group.rotation.z.toFixed(2)})`);
-    
-    substrate.group.rotation.set(0, 0, 0);
-    
-    // Rotate substrate to position leaving group away from nucleophile
-    // For SN2 backside attack, we need the leaving group to point away from nucleophile
-    substrate.group.rotateY(-Math.PI/2); // -90° rotation to point leaving group away from nucleophile
-    
-    log(`🔄 After rotation - Substrate rotation: (${substrate.group.rotation.x.toFixed(2)}, ${substrate.group.rotation.y.toFixed(2)}, ${substrate.group.rotation.z.toFixed(2)})`);
-    log(`🔄 Nucleophile rotation: (${nucleophile.group.rotation.x.toFixed(2)}, ${nucleophile.group.rotation.y.toFixed(2)}, ${nucleophile.group.rotation.z.toFixed(2)})`);
-    
-    substrate.group.updateMatrixWorld();
-    nucleophile.group.updateMatrixWorld();
-    
-    // CRITICAL: Update physics bodies to match visual orientation
-    // Otherwise physics engine will override our orientation changes
-    this.syncOrientationToPhysics(substrate);
-    this.syncOrientationToPhysics(nucleophile);
-    
-    log('🔄 Oriented for SN2 backside attack - leaving group points away from nucleophile');
-    log(`🎯 Substrate orientation: leaving group points in direction (${awayFromNucleophile.x.toFixed(2)}, ${awayFromNucleophile.y.toFixed(2)}, ${awayFromNucleophile.z.toFixed(2)})`);
-  }
-  
-  /**
-   * Sync visual molecule orientation to physics body
-   * This prevents the physics engine from overriding our orientation changes
-   */
-  private syncOrientationToPhysics(molecule: any): void {
-    try {
-      const body = physicsEngine.getPhysicsBody(molecule);
-      if (body) {
-        // Update physics body quaternion to match visual molecule
-        body.quaternion.copy(molecule.group.quaternion as any);
-        log(`✅ Synced orientation to physics for ${molecule.name}`);
-      } else {
-        log(`⚠️ No physics body found for ${molecule.name}`);
-      }
-    } catch (error) {
-      log(`⚠️ Failed to sync orientation to physics: ${error}`);
-    }
-  }
-
-  /**
-   * Orient for SN1 reaction
-   */
-  private orientForSN1Reaction(substrate: any, nucleophile: any): void {
-    substrate.group.rotation.set(0, 0, 0);
-    nucleophile.group.rotation.set(0, 0, 0);
-    substrate.group.updateMatrixWorld();
-    nucleophile.group.updateMatrixWorld();
-  }
-
-  /**
-   * Orient for E2 elimination
-   */
-  private orientForE2Reaction(substrate: any, nucleophile: any): void {
-    substrate.group.rotation.set(0, 0, 0);
-    nucleophile.group.rotation.set(0, 0, 0);
-    substrate.group.updateMatrixWorld();
-    nucleophile.group.updateMatrixWorld();
-  }
-
-  /**
-   * Orient for generic reaction
-   */
-  private orientForGenericReaction(substrate: any, nucleophile: any): void {
-    substrate.group.rotation.set(0, 0, 0);
-    nucleophile.group.rotation.set(0, 0, 0);
-    substrate.group.updateMatrixWorld();
-    nucleophile.group.updateMatrixWorld();
-  }
+  // Old orientation methods removed - now using orientationStrategies.ts
 
   /**
    * Execute chemical reaction using StructureEngine

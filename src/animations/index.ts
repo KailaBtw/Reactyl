@@ -24,6 +24,12 @@ export {
   type LeavingGroupDepartureOptions 
 } from './LeavingGroupDepartureAnimation';
 
+export { 
+  SN2MechanismAnimation, 
+  animateSN2Mechanism,
+  type SN2MechanismOptions 
+} from './SN2MechanismAnimation';
+
 // Animation manager
 export { 
   ReactionAnimationManager, 

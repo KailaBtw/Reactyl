@@ -256,8 +256,8 @@ export function drawMolecule(
     sphere.position.x = parseFloat(item.position.x) - moleculeCenter.x;
     sphere.position.y = parseFloat(item.position.y) - moleculeCenter.y;
     sphere.position.z = parseFloat(item.position.z) - moleculeCenter.z;
-    // Tag with atom index for later updates/removal during reactions
-    (sphere as any).userData = { atomIndex };
+    // Tag with atom index and element type for later updates/removal during reactions
+    (sphere as any).userData = { atomIndex, element: item.type };
     molecule.add(sphere); // Add the sphere to the molecule group.
   }
 
@@ -304,8 +304,8 @@ export function drawMolecule(
     cylinder.position.y = parseFloat(atom1.position.y) - moleculeCenter.y;
     cylinder.position.z = parseFloat(atom1.position.z) - moleculeCenter.z;
     cylinder.lookAt(point2); // Make the cylinder point at the second atom.
-    // Tag as bond so the reaction graphics can cleanly remove/rebuild bonds
-    (cylinder as any).userData = { type: 'bond' };
+    // Tag as bond and record connected atom indices for fast lookup during reactions
+    (cylinder as any).userData = { type: 'bond', a: index1, b: index2 };
     molecule.add(cylinder); // Add the cylinder to the molecule group.
   }
   molecule.group.position.z = centerOffset; // Apply the global z offset (currently unused).

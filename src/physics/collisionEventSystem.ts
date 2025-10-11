@@ -119,6 +119,14 @@ class CollisionEventSystem {
   }
 
   /**
+   * Clear all collision event handlers
+   */
+  clearAllHandlers(): void {
+    this.eventHandlers = [];
+    log('🧹 Cleared all collision event handlers');
+  }
+
+  /**
    * Emit a collision event to all registered handlers
    * @param event - Collision event data
    */

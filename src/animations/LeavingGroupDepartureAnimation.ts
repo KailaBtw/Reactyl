@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { AnimationRunner, EasingFunctions, type AnimationOptions } from './AnimationUtils';
 import { log } from '../utils/debug';
+import type { MoleculeState } from '../systems/ReactionOrchestrator';
 
 export interface LeavingGroupDepartureOptions {
   duration?: number;
@@ -15,10 +16,6 @@ export interface LeavingGroupDepartureOptions {
   fadeOut?: boolean;
   onComplete?: () => void;
   onStart?: () => void;
-}
-
-export interface MoleculeState {
-  group: THREE.Group;
 }
 
 /**
@@ -71,10 +68,10 @@ export class LeavingGroupDepartureAnimation {
         leavingGroupAtom.position.copy(currentPosition);
 
         // Fade out if enabled
-        if (fadeOut && leavingGroupAtom.material) {
+        if (fadeOut && (leavingGroupAtom as any).material) {
           const opacity = 1 - progress;
-          leavingGroupAtom.material.opacity = opacity;
-          leavingGroupAtom.material.transparent = true;
+          (leavingGroupAtom as any).material.opacity = opacity;
+          (leavingGroupAtom as any).material.transparent = true;
         }
       },
       onComplete: () => {

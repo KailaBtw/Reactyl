@@ -10,7 +10,7 @@ export type OrientationStrategy = (substrate: MoleculeLike, nucleophile: Molecul
 export const orientSN2Backside: OrientationStrategy = (substrate, nucleophile) => {
   nucleophile.group.lookAt(substrate.group.position);
   substrate.group.rotation.set(0, 0, 0);
-  substrate.group.rotateY(-Math.PI);
+  substrate.group.rotateY(-Math.PI/2); // -90° rotation for proper SN2 backside attack
   substrate.rotation.copy(substrate.group.rotation);
   nucleophile.rotation.copy(nucleophile.group.rotation);
 };

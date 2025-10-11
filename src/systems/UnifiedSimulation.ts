@@ -198,9 +198,18 @@ export class UnifiedSimulation {
     const state = this.orchestrator.getState();
     
     if (state.physics.isSimulationActive) {
-      // Physics engine step is handled by the orchestrator
-      // This is where we would call physicsEngine.step(deltaTime)
-      // but the orchestrator manages this internally
+      // Actually call the physics engine step
+      this.orchestrator.getPhysicsEngine().step(deltaTime);
+      
+      // Debug: log physics step occasionally
+      if (this.frameCount % 60 === 0) { // Log every 60 frames (1 second at 60fps)
+        log(`⚙️ Physics engine step called (deltaTime: ${deltaTime.toFixed(3)}s)`);
+      }
+    } else {
+      // Debug: log when physics is not active
+      if (this.frameCount % 60 === 0) { // Log every 60 frames (1 second at 60fps)
+        log('⚠️ Physics simulation not active - no collisions will be detected');
+      }
     }
   }
   

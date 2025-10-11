@@ -123,7 +123,12 @@ export class ReactionOrchestrator {
    */
   private initializeSystems(): void {
     try {
-      // Set up collision event handlers
+      // Clear any existing handlers to ensure our handler is first
+      log('🧹 Clearing all collision handlers to ensure unified system takes priority');
+      this.collisionSystem.clearAllHandlers();
+      
+      // Set up collision event handlers (register first to be called first)
+      log('🎯 Registering ReactionOrchestrator collision handler');
       this.collisionSystem.registerHandler((event: any) => {
         this.handleCollisionEvent(event);
       });
@@ -468,17 +473,34 @@ export class ReactionOrchestrator {
   /**
    * Handle collision events from the collision system
    */
-  private handleCollisionEvent(_event: any): void {
-    log('💥 Collision detected in unified system');
+  private handleCollisionEvent(event: any): void {
+    log('🎯 REACTION ORCHESTRATOR: Collision detected in unified system');
+    log(`🎯 REACTION ORCHESTRATOR: Event data:`, event);
+    log(`🎯 REACTION ORCHESTRATOR: Event keys:`, Object.keys(event));
+    log(`🎯 REACTION ORCHESTRATOR: reactionResult:`, event.reactionResult);
+    log(`🎯 REACTION ORCHESTRATOR: reactionResult.occurs:`, event.reactionResult?.occurs);
     
-    // Process the collision through unified system
-    this.executeUnifiedReaction();
-    
-    // Update reaction progress
-    this.state.reaction.progress = 1.0;
-    this.state.visual.needsUpdate = true;
-    
-    log('✅ Collision processed by unified system');
+    // Check if reaction occurred
+    if (event.reactionResult?.occurs) {
+      log('🎯 REACTION ORCHESTRATOR: Reaction occurred, executing unified reaction');
+      
+      // Stop physics simulation to prevent molecules from flying away
+      log('🛑 Stopping physics simulation for reaction animation');
+      this.physicsEngine.pause();
+      this.state.physics.isSimulationActive = false;
+      
+      // Process the collision through unified system
+      this.executeUnifiedReaction();
+      
+      // Update reaction progress
+      this.state.reaction.progress = 1.0;
+      this.state.visual.needsUpdate = true;
+      
+      log('✅ REACTION ORCHESTRATOR: Collision processed by unified system');
+    } else {
+      log('🎯 REACTION ORCHESTRATOR: No reaction occurred, skipping');
+      log(`🎯 REACTION ORCHESTRATOR: Reason: reactionResult=${event.reactionResult}, occurs=${event.reactionResult?.occurs}`);
+    }
   }
 
   /**
@@ -491,12 +513,16 @@ export class ReactionOrchestrator {
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
     
+    log(`🧪 Substrate available: ${!!substrate}, Nucleophile available: ${!!nucleophile}`);
+    log(`🧪 Reaction type: ${this.state.reaction.type}`);
+    
     if (!substrate || !nucleophile) {
       log('⚠️ Molecules not available for reaction');
       return;
     }
     
     // Apply reaction-specific transformations
+    log('🧪 Calling applyReactionTransformations...');
     this.applyReactionTransformations(substrate, nucleophile, this.state.reaction.type);
     
     log('✅ Unified reaction executed');
@@ -528,9 +554,16 @@ export class ReactionOrchestrator {
    */
   private applySN2Transformations(substrate: MoleculeState, nucleophile: MoleculeState): void {
     log('🔄 Applying SN2 transformations using animation manager...');
+    log(`🔄 Substrate: ${substrate.name}, Nucleophile: ${nucleophile.name}`);
     
-    // Use the animation manager for coordinated SN2 animation sequence
-    reactionAnimationManager.animateSN2Reaction(substrate, nucleophile, {
+    try {
+      // Check if animation manager is available
+      log(`🔄 reactionAnimationManager available: ${!!reactionAnimationManager}`);
+      log(`🔄 reactionAnimationManager type: ${typeof reactionAnimationManager}`);
+      
+      // Use the animation manager for coordinated SN2 animation sequence
+      log('🔄 Calling reactionAnimationManager.animateSN2Reaction...');
+      reactionAnimationManager.animateSN2Reaction(substrate, nucleophile, {
       waldenInversion: {
         duration: 1000,
         onStart: () => log('🎬 Starting Walden inversion...'),
@@ -546,9 +579,13 @@ export class ReactionOrchestrator {
       delayBetweenAnimations: 1000,
       onStart: () => log('🎬 Starting SN2 reaction animation sequence...'),
       onComplete: () => log('🎉 SN2 reaction animation sequence complete!')
-    });
-    
-    log('✅ SN2 animation sequence started');
+      });
+      
+      log('✅ SN2 animation sequence started');
+    } catch (error) {
+      log(`❌ Error in applySN2Transformations: ${error}`);
+      console.error('SN2 transformation error:', error);
+    }
   }
 
 
@@ -575,6 +612,13 @@ export class ReactionOrchestrator {
    */
   getState(): ReactionState {
     return { ...this.state };
+  }
+
+  /**
+   * Get physics engine for external access
+   */
+  getPhysicsEngine(): CannonPhysicsEngine {
+    return this.physicsEngine;
   }
   
   /**

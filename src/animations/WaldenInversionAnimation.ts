@@ -6,17 +6,13 @@
 import * as THREE from 'three';
 import { AnimationRunner, EasingFunctions, type AnimationOptions } from './AnimationUtils';
 import { log } from '../utils/debug';
+import type { MoleculeState } from '../systems/ReactionOrchestrator';
 
 export interface WaldenInversionOptions {
   duration?: number;
   easing?: (t: number) => number;
   onComplete?: () => void;
   onStart?: () => void;
-}
-
-export interface MoleculeState {
-  group: THREE.Group;
-  rotation: THREE.Euler;
 }
 
 /**
@@ -27,6 +23,7 @@ export class WaldenInversionAnimation {
 
   /**
    * Animate Walden inversion for SN2 reactions
+   * Shows proper umbrella flip mechanism where hydrogens flip to opposite side
    */
   animate(
     substrate: MoleculeState,
@@ -39,26 +36,53 @@ export class WaldenInversionAnimation {
       onStart
     } = options;
 
-    log('🔄 Starting Walden inversion animation...');
+    log('🔄 Starting Walden inversion animation (umbrella flip mechanism)...');
 
     // Call start callback
     if (onStart) {
       onStart();
     }
 
-    const startRotation = substrate.group.rotation.y;
-    const targetRotation = startRotation + Math.PI; // 180° rotation
+    // Find the carbon atom and hydrogen atoms for proper umbrella flip
+    const carbonAtom = this.findCarbonAtom(substrate);
+    const hydrogenAtoms = this.findHydrogenAtoms(substrate);
+    
+    if (!carbonAtom || hydrogenAtoms.length === 0) {
+      log('❌ Could not find carbon or hydrogen atoms for Walden inversion');
+      return new AnimationRunner();
+    }
+
+    // Store initial positions
+    const initialHydrogenPositions = hydrogenAtoms.map(h => h.position.clone());
+    
+    // Calculate umbrella flip: hydrogens move to opposite side of carbon
+    const carbonPosition = carbonAtom.position.clone();
+    const targetHydrogenPositions = initialHydrogenPositions.map(initialPos => {
+      // Vector from carbon to hydrogen
+      const carbonToHydrogen = initialPos.clone().sub(carbonPosition);
+      // Flip to opposite side
+      return carbonPosition.clone().sub(carbonToHydrogen);
+    });
 
     const animationOptions: AnimationOptions = {
       duration,
       easing,
       onUpdate: (progress: number) => {
-        const currentRotation = startRotation + (targetRotation - startRotation) * progress;
-        substrate.group.rotation.y = currentRotation;
+        // Animate each hydrogen to its flipped position
+        hydrogenAtoms.forEach((hydrogen, index) => {
+          const startPos = initialHydrogenPositions[index];
+          const targetPos = targetHydrogenPositions[index];
+          const currentPos = startPos.clone().lerp(targetPos, progress);
+          hydrogen.position.copy(currentPos);
+        });
+        
+        // Also rotate the entire molecule slightly for visual effect
+        const rotationProgress = Math.sin(progress * Math.PI) * 0.1; // Small oscillation
+        substrate.group.rotation.y = rotationProgress;
         substrate.rotation.copy(substrate.group.rotation);
       },
       onComplete: () => {
-        log('✅ Walden inversion animation complete');
+        log('✅ Walden inversion (umbrella flip) animation complete');
         if (onComplete) {
           onComplete();
         }
@@ -69,6 +93,31 @@ export class WaldenInversionAnimation {
     this.animationRunner.run(animationOptions);
 
     return this.animationRunner;
+  }
+
+  /**
+   * Find the carbon atom in the substrate
+   */
+  private findCarbonAtom(substrate: MoleculeState): THREE.Object3D | null {
+    for (const child of substrate.group.children) {
+      if (child.userData && child.userData.element === 'C') {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Find all hydrogen atoms in the substrate
+   */
+  private findHydrogenAtoms(substrate: MoleculeState): THREE.Object3D[] {
+    const hydrogens: THREE.Object3D[] = [];
+    for (const child of substrate.group.children) {
+      if (child.userData && child.userData.element === 'H') {
+        hydrogens.push(child);
+      }
+    }
+    return hydrogens;
   }
 
   /**

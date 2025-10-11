@@ -5,13 +5,10 @@
 
 import { WaldenInversionAnimation, type WaldenInversionOptions } from './WaldenInversionAnimation';
 import { LeavingGroupDepartureAnimation, type LeavingGroupDepartureOptions } from './LeavingGroupDepartureAnimation';
+import { SN2MechanismAnimation, type SN2MechanismOptions } from './SN2MechanismAnimation';
 import { AnimationRunner } from './AnimationUtils';
 import { log } from '../utils/debug';
-
-export interface MoleculeState {
-  group: THREE.Group;
-  rotation: THREE.Euler;
-}
+import type { MoleculeState } from '../systems/ReactionOrchestrator';
 
 export interface SN2AnimationSequenceOptions {
   waldenInversion?: WaldenInversionOptions;
@@ -28,15 +25,18 @@ export interface SN2AnimationSequenceOptions {
 export class ReactionAnimationManager {
   private waldenAnimation: WaldenInversionAnimation;
   private leavingGroupAnimation: LeavingGroupDepartureAnimation;
+  private sn2MechanismAnimation: SN2MechanismAnimation;
   private currentAnimations: AnimationRunner[] = [];
 
   constructor() {
     this.waldenAnimation = new WaldenInversionAnimation();
     this.leavingGroupAnimation = new LeavingGroupDepartureAnimation();
+    this.sn2MechanismAnimation = new SN2MechanismAnimation();
   }
 
   /**
    * Run complete SN2 reaction animation sequence
+   * Uses the new unified SN2 mechanism animation
    */
   animateSN2Reaction(
     substrate: MoleculeState,
@@ -44,44 +44,35 @@ export class ReactionAnimationManager {
     options: SN2AnimationSequenceOptions = {}
   ): void {
     const {
-      waldenInversion = {},
-      leavingGroupDeparture = {},
-      delayBetweenAnimations = 1000, // 1 second delay
       onComplete,
       onStart
     } = options;
 
-    log('🎬 Starting SN2 reaction animation sequence...');
+    log('🎬 Starting complete SN2 mechanism animation...');
+    log(`🎬 Substrate: ${substrate.name}, Nucleophile: ${nucleophile.name}`);
+    log(`🎬 Options:`, options);
 
-    // Call start callback
-    if (onStart) {
-      onStart();
+    try {
+      // ultra-fast timing defaults
+      const totalDuration = 330; // ms
+
+      if (onStart) onStart();
+
+      const sn2Runner = this.sn2MechanismAnimation.animate(substrate, nucleophile, {
+        duration: totalDuration,
+        easing: (t: number) => t,
+        onStart: () => log('🔄 SN2 fast sequence (≤330ms)'),
+        onComplete: () => {
+          log('✅ SN2 fast sequence finished');
+          onComplete?.();
+        }
+      });
+
+      this.currentAnimations.push(sn2Runner);
+    } catch (error) {
+      log(`❌ Error in animateSN2Reaction: ${error}`);
+      console.error('SN2 animation error:', error);
     }
-
-    // Step 1: Walden inversion
-    const waldenRunner = this.waldenAnimation.animate(substrate, {
-      ...waldenInversion,
-      onComplete: () => {
-        log('✅ Walden inversion complete, starting leaving group departure...');
-        
-        // Step 2: Leaving group departure (after delay)
-        setTimeout(() => {
-          const leavingGroupRunner = this.leavingGroupAnimation.animate(substrate, {
-            ...leavingGroupDeparture,
-            onComplete: () => {
-              log('✅ SN2 reaction animation sequence complete');
-              if (onComplete) {
-                onComplete();
-              }
-            }
-          });
-          
-          this.currentAnimations.push(leavingGroupRunner);
-        }, delayBetweenAnimations);
-      }
-    });
-
-    this.currentAnimations.push(waldenRunner);
   }
 
   /**
@@ -112,6 +103,7 @@ export class ReactionAnimationManager {
     
     this.waldenAnimation.stop();
     this.leavingGroupAnimation.stop();
+    this.sn2MechanismAnimation.stop();
     
     this.currentAnimations.forEach(runner => runner.stop());
     this.currentAnimations = [];
@@ -123,6 +115,7 @@ export class ReactionAnimationManager {
   get isAnimating(): boolean {
     return this.waldenAnimation.isRunning || 
            this.leavingGroupAnimation.isRunning ||
+           this.sn2MechanismAnimation.isRunning ||
            this.currentAnimations.some(runner => runner.running);
   }
 
@@ -132,11 +125,13 @@ export class ReactionAnimationManager {
   getStatus(): {
     waldenInversion: boolean;
     leavingGroupDeparture: boolean;
+    sn2Mechanism: boolean;
     totalAnimations: number;
   } {
     return {
       waldenInversion: this.waldenAnimation.isRunning,
       leavingGroupDeparture: this.leavingGroupAnimation.isRunning,
+      sn2Mechanism: this.sn2MechanismAnimation.isRunning,
       totalAnimations: this.currentAnimations.length
     };
   }
