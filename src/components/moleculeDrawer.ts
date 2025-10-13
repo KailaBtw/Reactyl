@@ -4,7 +4,7 @@ import { MolToPhysicsConverter } from '../data/molToPhysics';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';
 import type { MoleculeManager, Position } from '../types';
 import { log } from '../utils/debug';
-import { RotationController } from '../utils/rotationController';
+// RotationController removed - using physics engine for rotation
 
 interface MolObject {
   atoms: Array<{
@@ -220,21 +220,8 @@ export function drawMolecule(
       `Molecule ${name}: ${summary.atomCount} atoms, ${summary.bondCount} bonds, mass: ${summary.totalMass.toFixed(2)}, radius: ${summary.boundingRadius.toFixed(2)}`
     );
 
-    // Create rotation controller
-    const rotationController = new RotationController({
-      mode: 'realistic',
-      temperature: 298, // Default room temperature (will be updated by GUI)
-      speedMultiplier: 1.0, // Normal speed multiplier
-      dampingFactor: 0.98, // Normal damping
-      enableThermalNoise: true,
-    });
-
-    // Set molecular properties and initialize rotation
-    rotationController.setMolecule(molecularProperties);
-
-    // Store in molecule for future use
+    // Store molecular properties for future use
     (molecule as any).molecularProperties = molecularProperties;
-    (molecule as any).rotationController = rotationController;
 
     log(`Rotation and physics systems initialized for ${name} with ${summary.atomCount} atoms`);
   } catch (error) {

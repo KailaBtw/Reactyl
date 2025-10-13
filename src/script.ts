@@ -223,12 +223,7 @@ function animate(): void {
       const group = moleculeObject.getGroup();
 
       // Apply rotation for all molecules with rotation controllers
-      if ((moleculeObject as unknown as { rotationController?: any }).rotationController) {
-        const rotationController = (moleculeObject as unknown as { rotationController: any })
-          .rotationController;
-        rotationController.update(deltaTime);
-        rotationController.applyToObject3D(group);
-      }
+      // RotationController removed - using physics engine for rotation
     }
   }
 

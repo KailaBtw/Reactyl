@@ -149,36 +149,53 @@ export class ReactionOrchestrator {
    * This replaces the fragmented approach with unified coordination
    */
   async runReaction(params: ReactionParams): Promise<void> {
+    console.log('🔥🔥🔥 REACTION ORCHESTRATOR RUN REACTION CALLED 🔥🔥🔥');
+    console.log('🔥🔥🔥 Params:', params);
+    
     if (!this.isInitialized) {
+      console.log('🔥🔥🔥 NOT INITIALIZED - throwing error');
       throw new Error('ReactionOrchestrator not initialized');
     }
     
     if (this.state.reaction.isInProgress) {
+      console.log('🔥🔥🔥 REACTION ALREADY IN PROGRESS - skipping');
       log('⚠️ Reaction already in progress, skipping duplicate call');
       return;
     }
     
     log(`🎯 Starting unified reaction: ${params.reactionType}`);
+    console.log('🔥🔥🔥 About to clear existing state');
     
     try {
       // 1. Clear existing state
       await this.clearExistingState();
+      console.log('🔥🔥🔥 Existing state cleared');
       
       // 2. Load molecules with proper orientation
+      console.log('🔥🔥🔥 About to load molecules with orientation');
       await this.loadMoleculesWithOrientation(params);
+      console.log('🔥🔥🔥 Molecules loaded with orientation');
       
       // 3. Set up physics with correct velocities
+      console.log('🔥🔥🔥 About to configure physics');
       this.configurePhysics(params);
+      console.log('🔥🔥🔥 Physics configured');
       
       
       // 4. Configure collision detection
+      console.log('🔥🔥🔥 About to configure collision detection');
       this.configureCollisionDetection(params);
+      console.log('🔥🔥🔥 Collision detection configured');
       
       // 5. Start unified simulation
+      console.log('🔥🔥🔥 About to start unified simulation');
       this.startUnifiedSimulation();
+      console.log('🔥🔥🔥 Unified simulation started');
       
       log(`✅ Unified ${params.reactionType} reaction started successfully`);
+      console.log('🔥🔥🔥 REACTION ORCHESTRATOR RUN REACTION COMPLETE 🔥🔥🔥');
     } catch (error) {
+      console.log('🔥🔥🔥 REACTION ORCHESTRATOR RUN REACTION ERROR:', error);
       log(`❌ Unified reaction failed: ${error}`);
       this.state.reaction.isInProgress = false;
       throw error;
@@ -214,6 +231,10 @@ export class ReactionOrchestrator {
    * Load molecules with proper orientation for the reaction type
    */
   private async loadMoleculesWithOrientation(params: ReactionParams): Promise<void> {
+    console.log('🔥🔥🔥 LOAD MOLECULES WITH ORIENTATION CALLED 🔥🔥🔥');
+    console.log('🔥🔥🔥 Reaction type:', params.reactionType);
+    console.log('🔥🔥🔥 Substrate:', params.substrateMolecule);
+    console.log('🔥🔥🔥 Nucleophile:', params.nucleophileMolecule);
     log(`🧪 Loading molecules for ${params.reactionType} reaction...`);
     
     try {
@@ -263,16 +284,27 @@ export class ReactionOrchestrator {
         }
       }
       
+      console.log('🔥🔥🔥 About to store molecules in unified state');
       // Store in unified state
       this.state.molecules.substrate = this.createMoleculeState(substrate);
       this.state.molecules.nucleophile = this.createMoleculeState(nucleophile);
+      console.log('🔥🔥🔥 Molecules stored in unified state');
       
       // Apply reaction-specific orientation
-      this.orientMoleculesForReaction(params.reactionType);
+      console.log('🔥🔥🔥 About to call orientMoleculesForReaction');
+      try {
+        this.orientMoleculesForReaction(params.reactionType);
+        console.log('🔥🔥🔥 orientMoleculesForReaction completed successfully');
+      } catch (error) {
+        console.log('🔥🔥🔥 orientMoleculesForReaction ERROR:', error);
+        throw error;
+      }
       
       
       log('✅ Molecules loaded and oriented');
+      console.log('🔥🔥🔥 LOAD MOLECULES WITH ORIENTATION COMPLETE 🔥🔥🔥');
     } catch (error) {
+      console.log('🔥🔥🔥 LOAD MOLECULES WITH ORIENTATION ERROR:', error);
       log(`❌ Molecule loading failed: ${error}`);
       throw error;
     }
@@ -344,24 +376,30 @@ export class ReactionOrchestrator {
    * Orient molecules for the specific reaction type
    */
   private orientMoleculesForReaction(reactionType: string): void {
+    console.log('🔥🔥🔥 REACTION ORCHESTRATOR ORIENT MOLECULES CALLED 🔥🔥🔥');
+    
     if (!this.state.molecules.substrate || !this.state.molecules.nucleophile) {
+      console.log('🔥🔥🔥 MOLECULES NOT LOADED - substrate:', !!this.state.molecules.substrate, 'nucleophile:', !!this.state.molecules.nucleophile);
       throw new Error('Molecules not loaded for orientation');
     }
     
     log(`🔄 Orienting molecules for ${reactionType} reaction...`);
-    
+    console.log('🔥🔥🔥 About to call orientation strategy for', reactionType);
     
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
     
     const orient = getOrientationStrategy(reactionType);
+    console.log('🔥🔥🔥 Orientation strategy obtained:', orient);
     orient(substrate, nucleophile);
+    console.log('🔥🔥🔥 Orientation strategy applied');
     
     // Sync orientation to physics bodies
     this.syncOrientationToPhysics(substrate);
     this.syncOrientationToPhysics(nucleophile);
     
     log(`✅ Molecules oriented for ${reactionType} reaction`);
+    console.log('🔥🔥🔥 REACTION ORCHESTRATOR ORIENTATION COMPLETE 🔥🔥🔥');
   }
   
   // Orientation helpers consolidated into orientationStrategies.ts
@@ -484,10 +522,16 @@ export class ReactionOrchestrator {
     if (event.reactionResult?.occurs) {
       log('🎯 REACTION ORCHESTRATOR: Reaction occurred, executing unified reaction');
       
-      // Stop physics simulation to prevent molecules from flying away
-      log('🛑 Stopping physics simulation for reaction animation');
+      // IMMEDIATELY stop physics simulation to prevent molecules from flying away
+      log('🛑 IMMEDIATELY stopping physics simulation for reaction animation');
       this.physicsEngine.pause();
       this.state.physics.isSimulationActive = false;
+      
+      // Also stop the unified simulation loop
+      if ((window as any).unifiedSimulation) {
+        (window as any).unifiedSimulation.pause('Reaction in progress');
+        log('🛑 Unified simulation paused for reaction');
+      }
       
       // Process the collision through unified system
       this.executeUnifiedReaction();

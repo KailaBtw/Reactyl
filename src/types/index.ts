@@ -72,7 +72,7 @@ export interface MoleculeGroup {
   velocity: THREE.Vector3;
   radius: number;
   molObject: MolObject | null;
-  rotationController?: any; // Will be RotationController type
+  // rotationController removed - using physics engine for rotation
   molecularProperties?: any; // Will be MolecularProperties type
   physicsBody?: any; // CANNON.Body reference for physics integration
   hasPhysics?: boolean; // Flag to indicate if molecule is in physics world

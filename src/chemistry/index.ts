@@ -1,11 +1,9 @@
 /**
  * Chemistry Module
  * 
- * Exports all chemistry-related functionality including the main
- * ChemistryReactionSystem for running chemical reactions.
+ * Exports all chemistry-related functionality.
  */
 
-export { ChemistryReactionSystem } from './reactionSystem';
 export { ChemicalDataService } from './chemicalDataService';
 export { SN2ReactionSystem } from './sn2Reaction';
 export { ReactionDetector } from './reactionDetector';

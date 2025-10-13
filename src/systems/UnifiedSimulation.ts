@@ -214,16 +214,11 @@ export class UnifiedSimulation {
   }
   
   /**
-   * Check for collisions
+   * Check for collisions - handled by physics engine
    */
   private checkCollisions(): void {
-    const state = this.orchestrator.getState();
-    
-    if (state.reaction.isInProgress && state.molecules.substrate && state.molecules.nucleophile) {
-      // Collision detection is handled by the orchestrator
-      // This is where we would check for collisions
-      // but the orchestrator manages this internally
-    }
+    // Collision detection is handled by the physics engine
+    // No manual collision checking needed
   }
   
   /**

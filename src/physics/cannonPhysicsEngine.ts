@@ -97,15 +97,8 @@ export class CannonPhysicsEngine {
       // Set initial velocity
       body.velocity.set(molecule.velocity.x, molecule.velocity.y, molecule.velocity.z);
 
-      // Set angular velocity if rotation controller exists
-      if ((molecule as any).rotationController) {
-        const rotState = (molecule as any).rotationController.getRotationState();
-        body.angularVelocity.set(
-          rotState.angularVelocity.x,
-          rotState.angularVelocity.y,
-          rotState.angularVelocity.z
-        );
-      }
+      // Set initial angular velocity to zero
+      body.angularVelocity.set(0, 0, 0);
 
       // Add damping for stability
       body.linearDamping = 0.03;
@@ -222,17 +215,7 @@ export class CannonPhysicsEngine {
     // Update molecule velocity for compatibility with existing systems
     molecule.velocity.copy(body.velocity as any);
 
-    // Update rotation controller if present
-    if ((molecule as any).rotationController) {
-      const rotController = (molecule as any).rotationController;
-      const rotState = rotController.getRotationState();
-
-      // Apply physics angular velocity to rotation controller
-      rotState.angularVelocity.copy(body.angularVelocity as any);
-
-      // Update quaternion from physics
-      rotState.quaternion.copy(body.quaternion as any);
-    }
+    // RotationController removed - using physics engine for rotation
 
     bodyData.lastSync = performance.now();
   }

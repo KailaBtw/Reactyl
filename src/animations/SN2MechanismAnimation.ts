@@ -57,9 +57,15 @@ export class SN2MechanismAnimation {
     const carbonAtom = this.findNearestCarbonTo(substrate, leavingGroupAtom);
     const nucAtom = this.findNucleophileAtom(nucleophile);
 
+    log(`🔄 Found atoms - Leaving group: ${!!leavingGroupAtom}, Carbon: ${!!carbonAtom}, Nucleophile: ${!!nucAtom}`);
+
     if (!leavingGroupAtom || !carbonAtom || !nucAtom) {
       log('❌ SN2 fast path: required atoms not found (leaving group / carbon / nucleophile)');
-      return new AnimationRunner();
+      log(`❌ Debug - Leaving group: ${leavingGroupAtom ? 'found' : 'missing'}, Carbon: ${carbonAtom ? 'found' : 'missing'}, Nucleophile: ${nucAtom ? 'found' : 'missing'}`);
+      
+      // Fallback: Simple rotation animation for Walden inversion
+      log('🔄 Using fallback simple rotation animation');
+      return this.createFallbackAnimation(substrate, nucleophile, duration, onComplete);
     }
 
     // Record indices from userData for bond ops
@@ -207,6 +213,53 @@ export class SN2MechanismAnimation {
       }
     }
     return null;
+  }
+
+  /**
+   * Create a fallback animation when detailed atom finding fails
+   */
+  private createFallbackAnimation(
+    substrate: MoleculeState,
+    nucleophile: MoleculeState,
+    duration: number,
+    onComplete?: () => void
+  ): AnimationRunner {
+    log('🔄 Creating fallback SN2 animation - simple rotation and movement');
+    
+    const initialSubstrateRotation = substrate.group.quaternion.clone();
+    const initialNucleophilePosition = nucleophile.group.position.clone();
+    
+    // Calculate target positions
+    const substrateCenter = substrate.group.position.clone();
+    const nucleophileTarget = substrateCenter.clone().add(new THREE.Vector3(2, 0, 0));
+    
+    const animationOptions: AnimationOptions = {
+      duration: Math.min(duration, 1000), // Max 1 second for fallback
+      easing: EasingFunctions.easeOutCubic,
+      onUpdate: (progress: number) => {
+        // Rotate substrate for Walden inversion (180 degrees around Y axis)
+        const rotationProgress = Math.min(progress * 2, 1); // Complete rotation in first half
+        const rotationAngle = rotationProgress * Math.PI; // 180 degrees
+        const newQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationAngle);
+        substrate.group.quaternion.copy(initialSubstrateRotation.clone().multiply(newQuaternion));
+        
+        // Move nucleophile towards substrate in second half
+        if (progress > 0.5) {
+          const moveProgress = (progress - 0.5) * 2; // 0 to 1 in second half
+          nucleophile.group.position.lerpVectors(initialNucleophilePosition, nucleophileTarget, moveProgress);
+        }
+      },
+      onComplete: () => {
+        log('✅ Fallback SN2 animation complete');
+        if (onComplete) {
+          onComplete();
+        }
+      }
+    };
+
+    const runner = new AnimationRunner();
+    runner.run(animationOptions);
+    return runner;
   }
 
   /**

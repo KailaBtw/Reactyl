@@ -140,6 +140,10 @@ export class ThreeJSBridge {
           this.camera,
           this.renderer
         );
+        
+        // Expose to window for debugging and control
+        (window as any).unifiedSimulation = this.unifiedSimulation;
+        
         console.log('🎯 Unified reaction system initialized');
       } catch (error) {
         console.warn('⚠️ Unified reaction system failed to initialize:', error);

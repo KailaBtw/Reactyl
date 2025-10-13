@@ -11,7 +11,9 @@
     "build": "vite build",
     "start": "vite dev",
     "convert_pdf": "python3 scripts/parse_thermo_pdf_to_json.py src/data/sources/Standard_Thermodynamic_Values.pdf public/data/enthalpy_from_pdf.json -v -d",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest --run",
+    "test:watch": "vitest --watch",
+    "test:cov": "vitest --coverage",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "check": "biome check .",
@@ -53,8 +55,11 @@
     "@types/dat.gui": "^0.7.13",
     "@types/express": "^5.0.3",
     "@types/three": "^0.179.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "happy-dom": "^12.10.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.9"
   }
 }
