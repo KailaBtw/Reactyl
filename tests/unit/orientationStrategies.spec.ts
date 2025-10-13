@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { orientSN2Backside } from '../../src/reactions/orientationStrategies';
+import { orientSN2Backside, getOrientationStrategy } from '../../src/reactions/orientationStrategies';
 
 function createMockMolecule(name: string) {
 	const group = new THREE.Group();
@@ -42,6 +42,21 @@ describe('orientSN2Backside', () => {
 		// Physics quaternions should match Three.js quaternions
 		expect(substrate.physicsBody.quaternion.equals(substrate.group.quaternion)).toBe(true);
 		expect(nucleophile.physicsBody.quaternion.equals(nucleophile.group.quaternion)).toBe(true);
+	});
+
+	it('ensures getOrientationStrategy("sn2") returns backside strategy', () => {
+		const strat = getOrientationStrategy('sn2');
+		// Apply and ensure it changes the substrate quaternion from identity
+		const initial = substrate.group.quaternion.clone();
+		strat(substrate, nucleophile);
+		expect(substrate.group.quaternion.equals(initial)).toBe(false);
+	});
+
+	it('keeps Euler and quaternion in sync after copy()', () => {
+		orientSN2Backside(substrate, nucleophile);
+		// After orientation, the euler rotation copied from group should match group rotation
+		expect(substrate.rotation.x).toBeCloseTo(substrate.group.rotation.x, 6);
+		expect(nucleophile.rotation.y).toBeCloseTo(nucleophile.group.rotation.y, 6);
 	});
 });
 
