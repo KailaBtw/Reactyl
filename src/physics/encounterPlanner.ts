@@ -1,6 +1,19 @@
+/**
+ * Physics Encounter Planner
+ * 
+ * Business logic for planning and executing molecular encounters.
+ * Uses configuration from config/physics/settings.ts
+ */
+
 import * as THREE from 'three';
-import type { CannonPhysicsEngine } from '../physics/cannonPhysicsEngine';
+import type { CannonPhysicsEngine } from './cannonPhysicsEngine';
 import type { MoleculeManager } from '../types';
+import { 
+  getDefaultSpawnDistance, 
+  getDefaultRelativeVelocity, 
+  getDefaultImpactParameter,
+  type PhysicsConfig 
+} from '../config/physicsSettings';
 
 export interface MoleculeKinematics {
   velocity: THREE.Vector3;
@@ -16,6 +29,22 @@ export interface PhysicsParams {
   relativeVelocity: number; // scene units
 }
 
+export interface SpawnParams extends PhysicsParams {
+  impactParameter: number; // lateral offset
+  spawnDistance?: number; // default from config
+}
+
+export type EncounterMode = 'inline' | 'perpendicular';
+
+export interface EncounterParams extends PhysicsParams {
+  impactParameter: number;
+  spawnDistance?: number;
+  mode: EncounterMode;
+}
+
+/**
+ * Compute kinematics for molecules based on approach parameters
+ */
 export function computeKinematics(params: PhysicsParams): ReactionKinematics {
   const approachAngleRad = (params.approachAngle * Math.PI) / 180;
   const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), approachAngleRad);
@@ -33,6 +62,9 @@ export function computeKinematics(params: PhysicsParams): ReactionKinematics {
   };
 }
 
+/**
+ * Apply computed kinematics to molecules in the physics engine
+ */
 export function applyKinematics(
   physicsEngine: CannonPhysicsEngine,
   moleculeManager: MoleculeManager,
@@ -51,16 +83,14 @@ export function applyKinematics(
   }
 }
 
-export interface SpawnParams extends PhysicsParams {
-  impactParameter: number; // lateral offset
-  spawnDistance?: number; // default 8.0 units
-}
-
+/**
+ * Compute spawn positions for molecules based on encounter parameters
+ */
 export function computeSpawnPositions(params: SpawnParams): {
   substratePosition: THREE.Vector3;
   nucleophilePosition: THREE.Vector3;
 } {
-  const spawnDistance = params.spawnDistance ?? 8.0;
+  const spawnDistance = params.spawnDistance ?? getDefaultSpawnDistance();
   const yawRad = (params.approachAngle * Math.PI) / 180;
   const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
   const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
@@ -75,6 +105,9 @@ export function computeSpawnPositions(params: SpawnParams): {
   return { substratePosition, nucleophilePosition };
 }
 
+/**
+ * Apply spawn positions to molecules in the physics engine
+ */
 export function applySpawnPositions(
   physicsEngine: CannonPhysicsEngine,
   moleculeManager: MoleculeManager,
@@ -95,25 +128,16 @@ export function applySpawnPositions(
   }
 }
 
-// ===============================
-// High-level encounter planning
-// ===============================
-
-export type EncounterMode = 'inline' | 'perpendicular';
-
-export interface EncounterParams extends PhysicsParams {
-  impactParameter: number;
-  spawnDistance?: number;
-  mode: EncounterMode;
-}
-
+/**
+ * Compute complete encounter plan (positions + velocities) based on mode
+ */
 export function computeEncounter(params: EncounterParams): {
   substratePosition: THREE.Vector3;
   nucleophilePosition: THREE.Vector3;
   substrateVelocity: THREE.Vector3;
   nucleophileVelocity: THREE.Vector3;
 } {
-  const distance = params.spawnDistance ?? 8.0;
+  const distance = params.spawnDistance ?? getDefaultSpawnDistance();
   const yawRad = (params.approachAngle * Math.PI) / 180;
   const d = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
   const r = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
@@ -138,6 +162,9 @@ export function computeEncounter(params: EncounterParams): {
   return { substratePosition, nucleophilePosition, substrateVelocity, nucleophileVelocity };
 }
 
+/**
+ * Apply complete encounter plan to molecules
+ */
 export function applyEncounter(
   physicsEngine: CannonPhysicsEngine,
   moleculeManager: MoleculeManager,
@@ -161,5 +188,3 @@ export function applyEncounter(
   if (substrateObj) physicsEngine.setVelocity(substrateObj as any, plan.substrateVelocity);
   if (nucleophileObj) physicsEngine.setVelocity(nucleophileObj as any, plan.nucleophileVelocity);
 }
-
-

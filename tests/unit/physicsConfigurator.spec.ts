@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as THREE from 'three';
-import { computeKinematics, applyKinematics } from '../../src/reactions/physicsConfigurator';
+import { computeKinematics, applyKinematics } from '../../src/physics/encounterPlanner';
 import { physicsEngine } from '../../src/physics/cannonPhysicsEngine';
 
 describe('Physics Configurator', () => {

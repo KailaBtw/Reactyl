@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import { orientSN2Backside } from '../../src/config/molecule/positioning';
+import { orientSN2Backside } from '../../src/config/moleculePositioning';
 
 describe('Visual Validation Tests', () => {
   let scene: THREE.Scene;

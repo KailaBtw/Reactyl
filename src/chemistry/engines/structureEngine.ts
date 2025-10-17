@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { ReactionRegistry } from './reactionRegistry';
 import { SN2ReactionHandler } from './handlers/sn2ReactionHandler';
-import { EnhancedMolParser } from '../data/enhancedMolParser';
+import { EnhancedMolParser } from '../../services/data/enhancedMolParser';
 // enhancedCacheService removed - using simpleCacheService
 import type { MoleculeGroup, MolecularData } from '../types';
 import type { 
@@ -16,7 +16,7 @@ import type {
 } from '../types/enhanced-molecular';
 import type { MolecularStructure, TransitionState } from './reactionHandler';
 import { log } from '../utils/debug';
-import { ATOM_CONFIGS } from '../config/visual/atoms';
+import { ATOM_CONFIGS } from '../config/atomConfig';
 
 export class StructureEngine {
   private structures: Map<string, MolecularStructure> = new Map();

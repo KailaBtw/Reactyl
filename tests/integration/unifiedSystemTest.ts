@@ -1,7 +1,7 @@
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 import { UnifiedSimulation } from '../../src/systems/UnifiedSimulation';
 import { reactionEventBus } from '../../src/events/ReactionEventBus';
-import { getReactionConfig } from '../../src/config/reaction/settings';
+import { getReactionConfig } from '../../src/config/reactionSettings';
 import { log } from '../../src/utils/debug';
 
 /**

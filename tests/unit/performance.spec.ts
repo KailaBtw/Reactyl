@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { orientSN2Backside } from '../../src/config/molecule/positioning';
+import { orientSN2Backside } from '../../src/config/moleculePositioning';
 import { createCollisionEvent } from '../../src/physics/collisionEventSystem';
-import { computeKinematics } from '../../src/reactions/physicsConfigurator';
+import { computeKinematics } from '../../src/physics/encounterPlanner';
 
 describe('Performance Tests', () => {
   beforeEach(() => {

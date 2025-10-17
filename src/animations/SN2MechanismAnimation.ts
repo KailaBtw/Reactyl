@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { AnimationRunner, EasingFunctions, type AnimationOptions } from './AnimationUtils';
-import { BondHandler } from '../reactions/BondHandler';
+import { BondHandler } from '../chemistry/BondHandler';
 import { log } from '../utils/debug';
 import type { MoleculeState } from '../systems/ReactionOrchestrator';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { orientSN2Backside, getOrientationStrategy } from '../../src/config/molecule/positioning';
+import { orientSN2Backside, getOrientationStrategy } from '../../src/config/moleculePositioning';
 
 function createMockMolecule(name: string) {
 	const group = new THREE.Group();

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { molFileToJSON } from '../data/molFileToJSON';
-import { MolToPhysicsConverter } from '../data/molToPhysics';
+import { molFileToJSON } from '../services/data/molFileToJSON';
+import { MolToPhysicsConverter } from '../services/data/molToPhysics';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';
 import type { MoleculeManager, Position } from '../types';
 import { log } from '../utils/debug';

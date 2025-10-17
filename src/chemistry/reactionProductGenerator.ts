@@ -3,7 +3,7 @@ import { createMoleculeGroup } from '../services/moleculeManager';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
 import type { ReactionResult } from './reactionDetector';
-import { getAttackModeConfig, applyProductOrientation } from '../config/molecule/attackModes';
+import { getAttackModeConfig, applyProductOrientation } from '../config/attackModes';
 
 /**
  * Interface for reaction product definitions

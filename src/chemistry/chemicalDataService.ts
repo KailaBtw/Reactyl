@@ -1,4 +1,4 @@
-import { extractPubChemMetadata } from '../data/molFileToJSON';
+import { extractPubChemMetadata } from '../services/data/molFileToJSON';
 import { simpleCacheService } from '../services/simpleCacheService';
 import type { MolecularData, ReactivityData } from '../types';
 import { log } from '../utils/debug';

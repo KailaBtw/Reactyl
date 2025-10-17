@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { orientSN2Backside } from '../../src/config/molecule/positioning';
+import { orientSN2Backside } from '../../src/config/moleculePositioning';
 
 function molecule(name: string) {
   return {

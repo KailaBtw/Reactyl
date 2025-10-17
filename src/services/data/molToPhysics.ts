@@ -3,7 +3,7 @@ import {
   type MolecularProperties,
   MolecularPropertiesCalculator,
   type Atom as PhysicsAtom,
-} from '../chemistry/molecularPropertiesCalculator';
+} from '../../chemistry/molecularPropertiesCalculator';
 
 // Import your existing MOL parsing types from molFileToJSON
 import type { Atom as MolAtom, MolObject } from './molFileToJSON';
