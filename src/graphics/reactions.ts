@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
-import { createAtomMesh, getAtomConfig } from '../config/atomConfig';
+import { createAtomMesh, getAtomConfig } from '../config/visual/atoms';
 
 /**
  * Minimal Reaction Graphics System

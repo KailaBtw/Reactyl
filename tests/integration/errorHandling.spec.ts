@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import { orientSN2Backside } from '../../src/reactions/orientationStrategies';
+import { orientSN2Backside } from '../../src/config/molecule/positioning';
 import { ReactionDetector } from '../../src/chemistry/reactionDetector';
 
 describe('Error Handling Integration', () => {

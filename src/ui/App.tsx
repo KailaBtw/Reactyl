@@ -63,7 +63,7 @@ const initialState: UIState = {
   temperature: 298,
   approachAngle: 180,
   impactParameter: 0.0,
-  relativeVelocity: 5.0,
+  relativeVelocity: 15.0,
   substrateMolecule: '',
   nucleophileMolecule: '',
   availableMolecules: [],

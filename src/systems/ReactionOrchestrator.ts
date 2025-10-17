@@ -5,8 +5,8 @@ import { collisionEventSystem } from '../physics/collisionEventSystem';
 import { drawMolecule } from '../components/moleculeDrawer';
 import { ChemicalDataService } from '../chemistry/chemicalDataService';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
-import { getOrientationStrategy } from '../reactions/orientationStrategies';
-import { computeKinematics, applyKinematics } from '../reactions/physicsConfigurator';
+import { getOrientationStrategy } from '../config/molecule/positioning';
+import { computeEncounter, applyEncounter } from '../reactions/physicsConfigurator';
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
 import { reactionAnimationManager } from '../animations/ReactionAnimationManager';
@@ -231,7 +231,7 @@ export class ReactionOrchestrator {
           substrate = await this.loadMolecule(
             params.substrateMolecule.cid,
             params.substrateMolecule.name,
-            { x: 0, y: 0, z: 0 },
+            { x: 0, y: 0, z: 7.5 }, // Substrate positioned away from center
             false // No random rotation for precise positioning
           );
           
@@ -240,7 +240,7 @@ export class ReactionOrchestrator {
           nucleophile = await this.loadMolecule(
             params.nucleophileMolecule.cid,
             params.nucleophileMolecule.name,
-            { x: 0, y: 0, z: -8 }, // Initial separation
+            { x: 0, y: 0, z: -7.5 }, // Nucleophile positioned away from center
             false // No random rotation for precise positioning
           );
           
@@ -352,6 +352,17 @@ export class ReactionOrchestrator {
     
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
+
+    // Ensure deterministic starting orientation for substrate (no 90° offsets)
+    substrate.group.quaternion.set(0, 0, 0, 1);
+    substrate.group.rotation.set(0, 0, 0);
+    substrate.rotation.copy(substrate.group.rotation);
+    // If a rotation controller exists, reset it as well
+    if ((substrate as any).rotationController?.reset) {
+      try { (substrate as any).rotationController.reset(); } catch { /* no-op */ }
+    }
+    // Sync to physics so subsequent orientation steps start from a clean baseline
+    this.syncOrientationToPhysics(substrate);
     
     const orient = getOrientationStrategy(reactionType);
     orient(substrate, nucleophile);
@@ -405,24 +416,24 @@ export class ReactionOrchestrator {
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
 
-    // Compute and apply kinematics via dedicated module
-    const kin = computeKinematics({
+    // Plan a deterministic encounter (perpendicular or inline) and apply positions + velocities
+    const mode = Math.abs(params.approachAngle % 180) === 90 ? 'perpendicular' : 'inline';
+    const plan = computeEncounter({
       approachAngle: params.approachAngle,
       relativeVelocity: params.relativeVelocity,
-    });
-    substrate.velocity.copy(kin.substrate.velocity);
-    nucleophile.velocity.copy(kin.nucleophile.velocity);
-
-    applyKinematics(
+      impactParameter: params.impactParameter,
+      mode,
+    } as any);
+    applyEncounter(
       this.physicsEngine,
       this.moleculeManager,
       substrate.name,
       nucleophile.name,
-      kin
+      plan
     );
 
     // Update state
-    this.state.physics.velocities = [kin.substrate.velocity.clone(), kin.nucleophile.velocity.clone()];
+    this.state.physics.velocities = [plan.substrateVelocity.clone(), plan.nucleophileVelocity.clone()];
     this.state.reaction.approachAngle = params.approachAngle;
     
     log(`✅ Physics configured - approach angle: ${params.approachAngle}°, velocity: ${params.relativeVelocity}`);
@@ -583,7 +594,14 @@ export class ReactionOrchestrator {
       },
       delayBetweenAnimations: 1000,
       onStart: () => log('🎬 Starting SN2 reaction animation sequence...'),
-      onComplete: () => log('🎉 SN2 reaction animation sequence complete!')
+      onComplete: () => {
+        log('🎉 SN2 reaction animation sequence complete!');
+        // Ensure final Walden inversion orientation matches backside attack (umbrella flip)
+        this.applyWaldenInversionCorrection(substrate, nucleophile);
+        // Resume physics simulation after correction
+        this.physicsEngine.resume();
+        log('▶️ Physics simulation resumed after reaction');
+      }
       });
       
       log('✅ SN2 animation sequence started');
@@ -610,6 +628,21 @@ export class ReactionOrchestrator {
     log('🔄 Applying E2 transformations...');
     // E2 requires anti-coplanar orientation
     log('✅ E2 transformations applied');
+  }
+  
+  /**
+   * Ensure the Walden inversion leaves substrate oriented opposite to the original
+   * Using the attack axis (vector from substrate to nucleophile) as rotation axis.
+   */
+  private applyWaldenInversionCorrection(substrate: MoleculeState, nucleophile: MoleculeState): void {
+    const attackAxis = new THREE.Vector3()
+      .subVectors(nucleophile.group.position, substrate.group.position)
+      .normalize();
+    if (attackAxis.lengthSq() === 0) return;
+    const q = new THREE.Quaternion().setFromAxisAngle(attackAxis, Math.PI);
+    substrate.group.applyQuaternion(q);
+    substrate.rotation.copy(substrate.group.rotation);
+    this.syncOrientationToPhysics(substrate);
   }
   
   /**

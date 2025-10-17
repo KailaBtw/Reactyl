@@ -302,11 +302,11 @@ export function drawMolecule(
   // set the molecules group position (using three group)
   molecule.group.position.copy(new THREE.Vector3(position.x, position.y, position.z));
 
-  // Use this to define a target for the molecule, currently they all vector to the center
-  const targetPosition = new THREE.Vector3(1, 1, 1);
-
-  // Set an initial velocity toward the target
-  moleculeManager.setMoleculeVelocity(name, targetPosition, 4); // sped up for faster testing and sim
+  // Don't set automatic velocities - let the physics configuration handle this
+  // moleculeManager.setMoleculeVelocity(name, targetPosition, 4); // REMOVED - interferes with physics config
+  
+  // Initialize with zero velocity - physics configuration will set proper velocities
+  molecule.velocity.set(0, 0, 0);
 
   // Ensure physics body exists and gets the initial velocity
   try {

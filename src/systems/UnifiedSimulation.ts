@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ReactionOrchestrator, ReactionState } from './ReactionOrchestrator';
 import { reactionEventBus } from '../events/ReactionEventBus';
-import { getReactionConfig } from '../config/ReactionConfig';
+import { getReactionConfig } from '../config/reaction/settings';
 import { log } from '../utils/debug';
 
 /**

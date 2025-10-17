@@ -87,6 +87,7 @@ export class CannonPhysicsEngine {
         molecule.group.position.y,
         molecule.group.position.z
       );
+      log(`Physics body for ${molecule.name} created at position (${body.position.x.toFixed(2)}, ${body.position.y.toFixed(2)}, ${body.position.z.toFixed(2)})`);
       body.quaternion.set(
         molecule.group.quaternion.x,
         molecule.group.quaternion.y,
@@ -192,19 +193,10 @@ export class CannonPhysicsEngine {
     molecule: MoleculeGroup,
     properties: MolecularProperties
   ): CANNON.Shape | null {
-    if (!molecule.molObject || !molecule.molObject.atoms) {
-      return null;
-    }
-
-    // Use convex hull for accurate molecular collision detection
-    const hullVertices = this.createConvexHullVertices(molecule);
-    if (!hullVertices || hullVertices.length < 4) {
-      // Fallback to sphere if hull creation fails
-      const radius = Math.max(properties.boundingRadius, 0.5);
-      return new CANNON.Sphere(radius);
-    }
-
-    return new CANNON.ConvexPolyhedron(hullVertices);
+    // Temporarily use simple sphere collision for debugging
+    const radius = Math.max(properties.boundingRadius, 0.5);
+    log(`Creating sphere collision shape for ${molecule.name} with radius ${radius.toFixed(2)}`);
+    return new CANNON.Sphere(radius);
   }
 
   private createConvexHullVertices(molecule: MoleculeGroup): CANNON.Vec3[] | null {
@@ -293,6 +285,11 @@ export class CannonPhysicsEngine {
 
     // Update molecule velocity for compatibility with existing systems
     molecule.velocity.copy(body.velocity as any);
+
+    // Debug: Log position changes occasionally
+    if (Math.random() < 0.01) { // 1% chance to log
+      log(`Syncing ${molecule.name}: physics body at (${body.position.x.toFixed(2)}, ${body.position.y.toFixed(2)}, ${body.position.z.toFixed(2)}), velocity (${body.velocity.x.toFixed(2)}, ${body.velocity.y.toFixed(2)}, ${body.velocity.z.toFixed(2)})`);
+    }
 
     // RotationController removed - using physics engine for rotation
 

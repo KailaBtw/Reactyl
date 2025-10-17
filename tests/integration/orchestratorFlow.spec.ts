@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import * as strategies from '../../src/reactions/orientationStrategies';
+import * as strategies from '../../src/config/molecule/positioning';
 import { reactionAnimationManager } from '../../src/animations/ReactionAnimationManager';
 import { collisionEventSystem } from '../../src/physics/collisionEventSystem';
 

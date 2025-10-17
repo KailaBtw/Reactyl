@@ -1,8 +1,8 @@
-import { ReactionOrchestrator } from '../systems/ReactionOrchestrator';
-import { UnifiedSimulation } from '../systems/UnifiedSimulation';
-import { reactionEventBus } from '../events/ReactionEventBus';
-import { getReactionConfig } from '../config/ReactionConfig';
-import { log } from '../utils/debug';
+import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
+import { UnifiedSimulation } from '../../src/systems/UnifiedSimulation';
+import { reactionEventBus } from '../../src/events/ReactionEventBus';
+import { getReactionConfig } from '../../src/config/reaction/settings';
+import { log } from '../../src/utils/debug';
 
 /**
  * Test the unified system architecture
@@ -212,6 +212,9 @@ export async function runUnifiedSystemTests(): Promise<void> {
     test.dispose();
   }
 }
+
+
+
 
 
 

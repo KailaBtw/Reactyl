@@ -1,6 +1,6 @@
-import { reactionEventBus } from '../events/ReactionEventBus';
-import { getReactionConfig } from '../config/ReactionConfig';
-import { log } from '../utils/debug';
+import { reactionEventBus } from '../../src/events/ReactionEventBus';
+import { getReactionConfig } from '../../src/config/reaction/settings';
+import { log } from '../../src/utils/debug';
 
 /**
  * Test the unified system to ensure it's working properly
@@ -40,6 +40,9 @@ export function testUnifiedSystem(): void {
 
 // Run the test
 testUnifiedSystem();
+
+
+
 
 
 

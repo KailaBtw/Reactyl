@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import { getOrientationStrategy } from '../../src/reactions/orientationStrategies';
+import { getOrientationStrategy } from '../../src/config/molecule/positioning';
 
 describe('Reaction Types Integration', () => {
   let scene: THREE.Scene;

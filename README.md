@@ -86,6 +86,46 @@ sudo chown -R kaila:kaila ../reactyl/ && sudo chown -R kaila ../reactyl/
 
 </details>
 
+## Configuration Parameters
+
+### Reaction Orientation
+Configure attack modes and molecular orientation in `src/config/molecule/attackModes.ts`:
+
+```typescript
+// SN2 Attack Modes
+'backside': { nucleophileYaw: Math.PI, substrateYaw: Math.PI/2, productYaw: Math.PI/2 }
+'frontside': { nucleophileYaw: 0, substrateYaw: 0, productYaw: 0 }
+'perpendicular': { nucleophileYaw: Math.PI/2, substrateYaw: 0, productYaw: Math.PI/2 }
+```
+
+**Product Orientation**: The `productYaw` field controls how the resulting molecule is oriented after the reaction completes. The system automatically detects the attack mode from the approach angle and applies the appropriate product rotation.
+
+### Physics Encounter
+Configure spawn positions and velocities in `src/reactions/physicsConfigurator.ts`:
+
+## Configuration Structure
+
+The config system is organized modularly:
+
+```
+src/config/
+├── molecule/
+│   ├── attackModes.ts      # Attack mode parameters (backside, frontside, etc.)
+│   └── positioning.ts      # Molecule positioning functions
+├── reaction/
+│   └── settings.ts         # Reaction configuration settings
+└── visual/
+    └── atoms.ts           # Atom visual properties and colors
+```
+
+```typescript
+// Encounter Parameters
+spawnDistance: 8.0        // Initial separation distance
+approachAngle: 180        // Degrees (180° = backside, 90° = perpendicular)
+relativeVelocity: 15      // Scene units per second
+impactParameter: 0        // Lateral offset for collision
+```
+
 ## Data structure explanations
 
 <details><summary>mol file format explanation (click to expand)</summary>

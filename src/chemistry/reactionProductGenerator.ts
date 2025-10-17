@@ -3,6 +3,7 @@ import { createMoleculeGroup } from '../services/moleculeManager';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
 import type { ReactionResult } from './reactionDetector';
+import { getAttackModeConfig, applyProductOrientation } from '../config/molecule/attackModes';
 
 /**
  * Interface for reaction product definitions
@@ -105,8 +106,8 @@ export class ReactionProductGenerator {
     if (!leavingGroup) return null;
 
     // Add products to scene
-    this.addProductToScene(mainProduct, scene, new THREE.Vector3(5, 0, 0));
-    this.addProductToScene(leavingGroup, scene, new THREE.Vector3(-5, 0, 0));
+    this.addProductToScene(mainProduct, scene, new THREE.Vector3(5, 0, 0), 'sn2', 'backside');
+    this.addProductToScene(leavingGroup, scene, new THREE.Vector3(-5, 0, 0), 'sn2', 'backside');
 
     return { mainProduct, leavingGroup };
   }
@@ -241,10 +242,36 @@ export class ReactionProductGenerator {
   private addProductToScene(
     product: MoleculeGroup,
     scene: THREE.Scene,
-    position: THREE.Vector3
+    position: THREE.Vector3,
+    reactionType?: string,
+    attackMode?: string
   ): void {
     // Position the product
     product.group.position.copy(position);
+
+    // Apply product orientation based on reaction type and attack mode
+    try {
+      // Get current UI state to determine attack mode
+      const uiState = (window as any).uiState;
+      const currentReactionType = reactionType || uiState?.reactionType || 'sn2';
+      const currentApproachAngle = uiState?.approachAngle || 180;
+      
+      // Determine attack mode from approach angle
+      let currentAttackMode: string;
+      if (Math.abs(currentApproachAngle % 180) === 90) {
+        currentAttackMode = 'perpendicular';
+      } else if (currentApproachAngle === 0) {
+        currentAttackMode = 'frontside';
+      } else {
+        currentAttackMode = 'backside';
+      }
+      
+      const config = getAttackModeConfig(currentReactionType, currentAttackMode as any);
+      applyProductOrientation(product.group, config.productYaw);
+      log(`Applied product orientation: ${(config.productYaw * 180 / Math.PI).toFixed(1)}° for ${currentReactionType} ${currentAttackMode} (angle: ${currentApproachAngle}°)`);
+    } catch (error) {
+      log(`Failed to apply product orientation: ${error}`);
+    }
 
     // Add to scene
     scene.add(product.group);

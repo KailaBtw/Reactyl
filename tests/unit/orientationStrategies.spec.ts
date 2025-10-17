@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { orientSN2Backside, getOrientationStrategy } from '../../src/reactions/orientationStrategies';
+import { orientSN2Backside, getOrientationStrategy } from '../../src/config/molecule/positioning';
 
 function createMockMolecule(name: string) {
 	const group = new THREE.Group();
@@ -32,11 +32,11 @@ describe('orientSN2Backside', () => {
 		nucleophile.group.position.set(0, 0, -5);
 	});
 
-	it('rotates substrate ~180° around Y and aligns nucleophile', () => {
+	it('rotates substrate +90° around Y and aligns nucleophile', () => {
 		const initialSubstrateQuat = substrate.group.quaternion.clone();
 		orientSN2Backside(substrate, nucleophile);
 
-		// Substrate: 180° around Y => quaternion should differ from initial
+		// Substrate: +90° around Y => quaternion should differ from initial
 		expect(substrate.group.quaternion.equals(initialSubstrateQuat)).toBe(false);
 
 		// Physics quaternions should match Three.js quaternions

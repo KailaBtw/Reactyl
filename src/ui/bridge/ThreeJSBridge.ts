@@ -279,7 +279,7 @@ export class ThreeJSBridge {
     const uiState = (window as any).uiState || {
       approachAngle: 180,
       impactParameter: 0.0,
-      relativeVelocity: 20.0,
+      relativeVelocity: 15.0,
       temperature: 1200,
       substrateMolecule: 'demo_Methyl_bromide',
       nucleophileMolecule: 'demo_Hydroxide_ion',

@@ -16,7 +16,7 @@ import type {
 } from '../types/enhanced-molecular';
 import type { MolecularStructure, TransitionState } from './reactionHandler';
 import { log } from '../utils/debug';
-import { ATOM_CONFIGS } from '../config/atomConfig';
+import { ATOM_CONFIGS } from '../config/visual/atoms';
 
 export class StructureEngine {
   private structures: Map<string, MolecularStructure> = new Map();

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { orientSN2Backside, orientSN1, orientE2, getOrientationStrategy } from '../../src/reactions/orientationStrategies';
+import { orientSN2Backside, orientSN1, orientE2, getOrientationStrategy } from '../../src/config/molecule/positioning';
 
 describe('Molecule Orientation Integration', () => {
   beforeEach(() => {
