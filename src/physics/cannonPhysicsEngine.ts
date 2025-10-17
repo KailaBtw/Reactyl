@@ -117,6 +117,8 @@ export class CannonPhysicsEngine {
       });
       
       log(`Added ${molecule.name} to physics world with mass ${mass.toFixed(2)}`);
+      log(`Physics world now has ${this.world.bodies.length} bodies`);
+      log(`MoleculeBodies map has ${this.moleculeBodies.size} entries`);
       
       return true;
     } catch (error) {
@@ -170,12 +172,14 @@ export class CannonPhysicsEngine {
     // Emit queued collision events AFTER stepping to avoid removing bodies during
     // Cannon's narrowphase, which can cause bi undefined errors
     if (this.pendingCollisionPairs.length > 0) {
+      log(`Processing ${this.pendingCollisionPairs.length} pending collision pairs`);
       const pairs = this.pendingCollisionPairs.slice();
       this.pendingCollisionPairs.length = 0;
       for (const { a, b } of pairs) {
         // Skip if either molecule began a reaction since queuing
         if ((a as any).reactionInProgress || (b as any).reactionInProgress) continue;
         const collisionEvent = createCollisionEvent(a, b);
+        log(`Emitting collision event for ${a.name} and ${b.name}`);
         collisionEventSystem.emitCollision(collisionEvent);
       }
     }
@@ -192,14 +196,89 @@ export class CannonPhysicsEngine {
       return null;
     }
 
-    // For molecular simulation, use sphere shapes for performance and stability
-    // Convex hulls can be unstable with small, fast-moving objects
-    const radius = Math.max(properties.boundingRadius, 0.5); // Minimum radius
-    return new CANNON.Sphere(radius);
+    // Use convex hull for accurate molecular collision detection
+    const hullVertices = this.createConvexHullVertices(molecule);
+    if (!hullVertices || hullVertices.length < 4) {
+      // Fallback to sphere if hull creation fails
+      const radius = Math.max(properties.boundingRadius, 0.5);
+      return new CANNON.Sphere(radius);
+    }
 
-    // Alternative: Use Box shape for more accurate collisions
-    // const halfExtents = properties.boundingBox.getSize(new THREE.Vector3()).multiplyScalar(0.5);
-    // return new CANNON.Box(new CANNON.Vec3(halfExtents.x, halfExtents.y, halfExtents.z));
+    return new CANNON.ConvexPolyhedron(hullVertices);
+  }
+
+  private createConvexHullVertices(molecule: MoleculeGroup): CANNON.Vec3[] | null {
+    if (!molecule.molObject || !molecule.molObject.atoms) {
+      return null;
+    }
+
+    // Get all atom positions in world space
+    const points: CANNON.Vec3[] = [];
+    for (const atom of molecule.molObject.atoms) {
+      const localPos = new CANNON.Vec3(
+        parseFloat(atom.position.x),
+        parseFloat(atom.position.y),
+        parseFloat(atom.position.z)
+      );
+      points.push(localPos);
+    }
+
+    if (points.length < 4) {
+      return null; // Need at least 4 points for a 3D convex hull
+    }
+
+    // Simple convex hull algorithm for Cannon.js
+    return this.computeConvexHull(points);
+  }
+
+  private computeConvexHull(points: CANNON.Vec3[]): CANNON.Vec3[] {
+    if (points.length < 4) return points;
+
+    const hull: CANNON.Vec3[] = [];
+
+    // Find the point with lowest z coordinate
+    let startPoint = points[0];
+    for (const point of points) {
+      if (point.z < startPoint.z || 
+          (point.z === startPoint.z && point.y < startPoint.y) ||
+          (point.z === startPoint.z && point.y === startPoint.y && point.x < startPoint.x)) {
+        startPoint = point;
+      }
+    }
+
+    let currentPoint = startPoint;
+    hull.push(currentPoint);
+
+    // Find next point by looking for the one that makes the smallest angle
+    do {
+      let nextPoint = points[0] === currentPoint ? points[1] : points[0];
+
+      for (const point of points) {
+        if (point === currentPoint) continue;
+
+        // Check if this point is "more to the right" than nextPoint
+        const cross = this.getCrossProduct(currentPoint, nextPoint, point);
+        if (cross > 0 || 
+            (cross === 0 && currentPoint.distanceTo(point) > currentPoint.distanceTo(nextPoint))) {
+          nextPoint = point;
+        }
+      }
+
+      if (nextPoint === startPoint) break; // Back to start
+
+      hull.push(nextPoint);
+      currentPoint = nextPoint;
+    } while (currentPoint !== startPoint && hull.length < points.length); // Safety check
+
+    return hull;
+  }
+
+  private getCrossProduct(a: CANNON.Vec3, b: CANNON.Vec3, c: CANNON.Vec3): number {
+    const ab = b.clone().vsub(a);
+    const ac = c.clone().vsub(a);
+    
+    // Cross product in 2D (looking down the z-axis)
+    return ab.x * ac.y - ab.y * ac.x;
   }
 
   /**
@@ -242,6 +321,9 @@ export class CannonPhysicsEngine {
         // Queue the pair for emission after step completes
         this.pendingCollisionPairs.push({ a: molA, b: molB });
         log(`Physics collision detected between ${molA.name} and ${molB.name}`);
+        log(`Collision point: bodyA at (${bodyA.position.x.toFixed(2)}, ${bodyA.position.y.toFixed(2)}, ${bodyA.position.z.toFixed(2)}), bodyB at (${bodyB.position.x.toFixed(2)}, ${bodyB.position.y.toFixed(2)}, ${bodyB.position.z.toFixed(2)})`);
+      } else {
+        log(`Collision detected but molecules not found: molA=${molA?.name || 'null'}, molB=${molB?.name || 'null'}`);
       }
     });
 

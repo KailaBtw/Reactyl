@@ -25,7 +25,6 @@ import { sceneBridge } from './services/SceneBridge'; // Bridge for React-Three.
 // My Imports - Application-Specific Modules
 import { createMoleculeManager } from './services/moleculeManager'; // Import the MoleculeManager factory.
 import { addObjectDebug, DEBUG_MODE, initFpsDebug, log, updateFpsDebug } from './utils/debug'; // Import debugging utilities.
-// import { findCenter } from "./utils/findCenter"; // Import for finding molecule center (not currently used).
 
 import type { MoleculeManager } from './types';
 
