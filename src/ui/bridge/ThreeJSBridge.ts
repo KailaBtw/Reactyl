@@ -229,6 +229,25 @@ export class ThreeJSBridge {
         }
       }
     }
+
+    // Only update stats display visibility if it actually changed
+    if (!previousState || previousState.showStats !== uiState.showStats) {
+      const fpsContainer = document.getElementById('fps-meter');
+      if (uiState.showStats) {
+        if (!fpsContainer) {
+          // Import and initialize FPS debug
+          import('../../utils/debug').then(({ initFpsDebug }) => {
+            initFpsDebug();
+          });
+        } else {
+          fpsContainer.style.display = 'block';
+        }
+      } else {
+        if (fpsContainer) {
+          fpsContainer.style.display = 'none';
+        }
+      }
+    }
   }
 
   render() {
@@ -330,6 +349,13 @@ export class ThreeJSBridge {
       console.log('🚀 COMPLETED unified reaction system');
     } catch (error) {
       console.error('❌ Unified reaction failed:', error);
+    }
+  }
+
+  pauseReactionAnimation(): void {
+    console.log('⏸️ ThreeJSBridge.pauseReactionAnimation() CALLED');
+    if (this.reactionOrchestrator) {
+      this.reactionOrchestrator.stopReaction();
     }
   }
 
@@ -505,6 +531,12 @@ export class ThreeJSBridge {
     this.camera = null;
 
     console.log('ThreeJSBridge disposed and cleaned up');
+  }
+
+  setBackgroundColor(color: string): void {
+    if (this.scene) {
+      this.scene.background = new THREE.Color(color);
+    }
   }
 }
 

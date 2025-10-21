@@ -1,13 +1,10 @@
 import type React from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { BottomBar } from './components/BottomBar';
-import { MobileReactionBar } from './components/MobileReactionBar';
-import { RightSidebar } from './components/RightSidebar';
-import { SceneContainer } from './components/SceneContainer';
-import { TopBar } from './components/TopBar';
+import { MainLayout } from './components/MainLayout';
 import { UIStateProvider } from './context/UIStateContext';
-import './App.css';
+import { threeJSBridge } from './bridge/ThreeJSBridge';
+// import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
   // Time controls
@@ -124,19 +121,53 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [uiState.bottomBarExpanded]);
 
+  // Map UIState to MainLayout props
+  const mainLayoutProps = {
+    currentReaction: uiState.reactionType,
+    substrate: uiState.substrateMolecule,
+    nucleophile: uiState.nucleophileMolecule,
+    attackMode: uiState.approachAngle === 180 ? 'backside' : 
+                uiState.approachAngle === 0 ? 'front' : 'side',
+    impactParameter: uiState.impactParameter,
+    isPlaying: uiState.isPlaying,
+    timeScale: uiState.timeScale,
+    onReactionChange: (reaction: string) => updateUIState({ reactionType: reaction }),
+    onSubstrateChange: (substrate: string) => updateUIState({ substrateMolecule: substrate }),
+    onNucleophileChange: (nucleophile: string) => updateUIState({ nucleophileMolecule: nucleophile }),
+    onAttackModeChange: (mode: string) => {
+      const angle = mode === 'backside' ? 180 : 
+                   mode === 'front' ? 0 : 
+                   mode === 'side' ? 90 :
+                   mode === 'glancing' ? 135 : 45; // glancing blow or missed
+      console.log('Attack mode changed:', mode, 'angle:', angle);
+      updateUIState({ approachAngle: angle });
+    },
+    onImpactParameterChange: (value: number) => updateUIState({ impactParameter: value }),
+    onPlay: () => {
+      console.log('Play button clicked');
+      updateUIState({ isPlaying: true });
+    },
+    onPause: () => {
+      console.log('Pause button clicked');
+      updateUIState({ isPlaying: false });
+    },
+    onReset: () => {
+      console.log('Reset button clicked');
+      // Call your existing reset logic
+      threeJSBridge.clear();
+      updateUIState({ 
+        isPlaying: false, 
+        reactionInProgress: false,
+        distance: 0,
+        timeToCollision: 0
+      });
+    },
+    onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
+  };
+
   return (
     <UIStateProvider value={{ uiState, updateUIState }}>
-      <div className="app">
-        <TopBar />
-        <div className="main-content">
-          <div className="scene-area" style={{ position: 'relative' }}>
-            <SceneContainer ref={sceneRef} />
-          </div>
-          <RightSidebar />
-        </div>
-        <MobileReactionBar />
-        <BottomBar />
-      </div>
+      <MainLayout {...mainLayoutProps} />
     </UIStateProvider>
   );
 };
