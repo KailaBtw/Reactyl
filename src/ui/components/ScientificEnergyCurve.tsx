@@ -32,8 +32,8 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
   const transitionStateEnergy = reactantEnergy + activationEnergy;
   const deltaH = productEnergy - reactantEnergy;
   
-  // Set up coordinate system with minimal margins for labels
-  const margin = { top: 20, right: 30, bottom: 30, left: 50 };
+  // Set up coordinate system with proper margins to prevent overlap
+  const margin = { top: 30, right: 50, bottom: 50, left: 60 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
   
@@ -230,18 +230,18 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
         {/* Activation Energy Arrow (Ea) */}
         <g className="activation-energy">
           <line
-            x1={reactantX + 80}
+            x1={reactantX + 60}
             y1={reactantY}
-            x2={reactantX + 80}
+            x2={reactantX + 60}
             y2={transitionY}
             stroke="#ef4444"
             strokeWidth="2"
             markerEnd="url(#redarrow)"
           />
           <text
-            x={reactantX + 95}
+            x={reactantX + 70}
             y={(reactantY + transitionY) / 2}
-            className="text-sm font-semibold fill-red-600"
+            className="text-xs font-semibold fill-red-600"
             textAnchor="start"
             dominantBaseline="middle"
           >
@@ -252,18 +252,18 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
         {/* Enthalpy Change Arrow (ΔH) */}
         <g className="enthalpy-change">
           <line
-            x1={productX - 80}
+            x1={productX - 60}
             y1={reactantY}
-            x2={productX - 80}
+            x2={productX - 60}
             y2={productY}
             stroke={deltaH < 0 ? "#10b981" : "#f59e0b"}
             strokeWidth="2"
             markerEnd="url(#bluearrow)"
           />
           <text
-            x={productX - 65}
+            x={productX - 50}
             y={(reactantY + productY) / 2}
-            className={`text-sm font-semibold ${deltaH < 0 ? 'fill-green-600' : 'fill-orange-600'}`}
+            className={`text-xs font-semibold ${deltaH < 0 ? 'fill-green-600' : 'fill-orange-600'}`}
             textAnchor="start"
             dominantBaseline="middle"
           >

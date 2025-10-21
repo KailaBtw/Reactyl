@@ -60,7 +60,7 @@ const initialState: UIState = {
   temperature: 298,
   approachAngle: 180,
   impactParameter: 0.0,
-  relativeVelocity: 15.0,
+  relativeVelocity: 150.0,
   substrateMolecule: '',
   nucleophileMolecule: '',
   availableMolecules: [],
@@ -127,22 +127,27 @@ export const App: React.FC = () => {
     substrate: uiState.substrateMolecule,
     nucleophile: uiState.nucleophileMolecule,
     attackMode: uiState.approachAngle === 180 ? 'backside' : 
-                uiState.approachAngle === 0 ? 'front' : 'side',
+                uiState.approachAngle === 0 ? 'frontside' : 
+                uiState.approachAngle === 90 ? 'perpendicular' :
+                uiState.approachAngle === 135 ? 'glancing' : 'missed',
     impactParameter: uiState.impactParameter,
     isPlaying: uiState.isPlaying,
     timeScale: uiState.timeScale,
+    relativeVelocity: uiState.relativeVelocity || 150.0,
     onReactionChange: (reaction: string) => updateUIState({ reactionType: reaction }),
     onSubstrateChange: (substrate: string) => updateUIState({ substrateMolecule: substrate }),
     onNucleophileChange: (nucleophile: string) => updateUIState({ nucleophileMolecule: nucleophile }),
     onAttackModeChange: (mode: string) => {
       const angle = mode === 'backside' ? 180 : 
-                   mode === 'front' ? 0 : 
-                   mode === 'side' ? 90 :
-                   mode === 'glancing' ? 135 : 45; // glancing blow or missed
+                   mode === 'frontside' ? 0 : 
+                   mode === 'perpendicular' ? 90 :
+                   mode === 'glancing' ? 135 : 45; // missed
       console.log('Attack mode changed:', mode, 'angle:', angle);
       updateUIState({ approachAngle: angle });
     },
     onImpactParameterChange: (value: number) => updateUIState({ impactParameter: value }),
+    onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
+    onRelativeVelocityChange: (value: number) => updateUIState({ relativeVelocity: value }),
     onPlay: () => {
       console.log('Play button clicked');
       updateUIState({ isPlaying: true });
@@ -162,7 +167,6 @@ export const App: React.FC = () => {
         timeToCollision: 0
       });
     },
-    onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
   };
 
   return (

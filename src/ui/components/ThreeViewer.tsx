@@ -1,5 +1,4 @@
 import React, { forwardRef, useEffect, useRef } from 'react';
-import * as THREE from 'three';
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
 import { MoleculeColorLegend } from './MoleculeColorLegend';
@@ -8,11 +7,13 @@ import type { UIState } from '../App';
 interface ThreeViewerProps {
   backgroundColor?: string;
   theme?: string;
+  themeClasses?: any;
 }
 
 export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({ 
   backgroundColor = '#1a1a1a',
-  theme = 'blue'
+  theme = 'blue',
+  themeClasses
 }, ref) => {
   const { uiState } = useUIState();
   const animationIdRef = useRef<number | null>(null);
@@ -78,11 +79,7 @@ export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({
       }
     }
 
-    if (prevState.timeScale !== currentState.timeScale) {
-      threeJSBridge.setTimeScale(currentState.timeScale);
-    }
-
-    // Update the ThreeJSBridge with all UI state changes (including showAxes, showStats)
+    // Update the ThreeJSBridge with all UI state changes (including timeScale, showAxes, showStats)
     threeJSBridge.updateFromUIState(currentState, prevState);
 
     // Update previous state
@@ -95,7 +92,7 @@ export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({
           className="w-full h-full relative"
           style={{ background: backgroundColor }} // Fallback while Three.js loads
         >
-          <MoleculeColorLegend theme={theme} />
+          <MoleculeColorLegend theme={theme} themeClasses={themeClasses} />
         </div>
       );
 });

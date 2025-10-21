@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ATOM_CONFIGS } from '../../config/atomConfig';
 
 interface MoleculeColorLegendProps {
   className?: string;
   theme?: string;
+  themeClasses?: any;
 }
 
-export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ className = '', theme = 'blue' }) => {
+export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ className = '', theme = 'blue', themeClasses }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get molecule colors from config
@@ -80,7 +81,7 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ classN
                   className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0"
                   style={{ backgroundColor: color }}
                 />
-                <span className="text-xs font-bold text-gray-700">
+                <span className={`text-xs font-bold ${themeClasses?.text || 'text-gray-700'}`}>
                   {isExpanded ? name : element}
                 </span>
               </div>
@@ -88,7 +89,7 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ classN
             {!isExpanded && (
               <div className="flex items-center gap-2 mt-1">
                 <motion.svg 
-                  className="w-3 h-3 text-gray-500" 
+                  className={`w-3 h-3 ${themeClasses?.textSecondary || 'text-gray-500'}`} 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -97,7 +98,7 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ classN
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </motion.svg>
-                <span className="text-xs text-gray-500">More</span>
+                <span className={`text-xs ${themeClasses?.textSecondary || 'text-gray-500'}`}>More</span>
               </div>
             )}
             {isExpanded && (
@@ -108,7 +109,7 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ classN
                       className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0"
                       style={{ backgroundColor: color }}
                     />
-                    <span className="text-xs font-bold text-gray-700">{name}</span>
+                    <span className={`text-xs font-bold ${themeClasses?.text || 'text-gray-700'}`}>{name}</span>
                   </div>
                 ))}
               </>

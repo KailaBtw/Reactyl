@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ColorPicker } from './ColorPicker';
+import { ColorSwatchSelector } from './ColorSwatchSelector';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -40,24 +41,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const themes = [
-    { id: 'light', name: 'Light', description: 'Clean white interface' },
-    { id: 'dark', name: 'Dark', description: 'Modern dark interface' },
-    { id: 'blue', name: 'Blue', description: 'Professional blue theme' },
-    { id: 'green', name: 'Green', description: 'Nature-inspired green' },
-    { id: 'purple', name: 'Purple', description: 'Creative purple theme' },
+  // Background color options
+  const backgroundOptions = [
+    { id: 'light', name: 'Light', color: '#f8fafc' },
+    { id: 'dark', name: 'Dark', color: '#1a1a1a' },
+    { id: 'deep-blue', name: 'Blue', color: '#1e3a8a' },
   ];
 
-  const getThemeColor = (themeId: string): string => {
-    switch (themeId) {
-      case 'light': return '#ffffff';
-      case 'dark': return '#1f2937';
-      case 'blue': return '#3b82f6';
-      case 'green': return '#10b981';
-      case 'purple': return '#8b5cf6';
-      default: return '#ffffff';
-    }
+  // Theme options
+  const themeOptions = [
+    { id: 'light', name: 'Light', color: '#f8fafc' },
+    { id: 'dark', name: 'Dark', color: '#1f2937' },
+    { id: 'blue', name: 'Blue', color: '#dbeafe' },
+    { id: 'green', name: 'Green', color: '#dcfce7' },
+    { id: 'purple', name: 'Purple', color: '#f3e8ff' },
+  ];
+
+  // Theme color mapping for selection indicators
+  const getThemeColor = (themeId: string) => {
+    const colorMap: { [key: string]: string } = {
+      'light': '#6b7280', // gray
+      'dark': '#374151', // dark gray
+      'blue': '#3b82f6', // blue
+      'green': '#10b981', // emerald
+      'purple': '#8b5cf6', // violet
+    };
+    return colorMap[themeId] || '#3b82f6';
   };
+
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -72,7 +84,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            ⚙️ Settings
+            Settings
           </h2>
           <button
             onClick={onClose}
@@ -89,88 +101,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Visual Settings */}
           <section>
             <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
-              🎨 Visual Settings
+              Visual Settings
             </h3>
             <div className="space-y-4">
-              {/* Background Color */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  3D Scene Background
-                </label>
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-10 h-10 rounded border-2 border-gray-300 cursor-pointer hover:border-blue-500 transition-colors"
-                    style={{ backgroundColor: backgroundColor }}
-                    onClick={() => setShowColorPicker(!showColorPicker)}
-                  />
-                  <div className="flex gap-2">
-                    <button 
-                      className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                      onClick={() => onBackgroundColorChange('#1a1a1a')}
-                    >
-                      Dark
-                    </button>
-                    <button 
-                      className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                      onClick={() => onBackgroundColorChange('#f0f0f0')}
-                    >
-                      Light
-                    </button>
-                    <button 
-                      className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                      onClick={() => onBackgroundColorChange('#0f172a')}
-                    >
-                      Deep Blue
-                    </button>
-                  </div>
-                </div>
-                {showColorPicker && (
-                  <div className="mt-3">
-                    <ColorPicker 
-                      color={backgroundColor}
-                      onChange={onBackgroundColorChange}
-                      onClose={() => setShowColorPicker(false)}
-                    />
-                  </div>
-                )}
-              </div>
+              <ColorSwatchSelector
+                title="3D Scene Background"
+                options={backgroundOptions}
+                selectedId={backgroundColor === '#f0f0f0' ? 'light' :
+                          backgroundColor === '#1a1a1a' ? 'dark' :
+                          backgroundColor === '#0f172a' ? 'deep-blue' : 'light'}
+                onSelectionChange={(id) => {
+                  const colorMap: { [key: string]: string } = {
+                    'light': '#f0f0f0',
+                    'dark': '#1a1a1a',
+                    'deep-blue': '#0f172a'
+                  };
+                  onBackgroundColorChange(colorMap[id] || '#f0f0f0');
+                }}
+                themeColor="#3b82f6"
+              />
 
-              {/* UI Theme Presets */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  UI Theme
-                </label>
-                <div className="grid grid-cols-5 gap-3">
-                  {themes.map((theme) => (
-                    <label key={theme.id} className="relative cursor-pointer">
-                      <input
-                        type="radio"
-                        name="uiTheme"
-                        value={theme.id}
-                        checked={uiTheme === theme.id}
-                        onChange={(e) => onUIThemeChange(e.target.value)}
-                        className="sr-only"
-                      />
-                      <div className={`w-16 h-16 rounded-lg border-2 transition-all ${
-                        uiTheme === theme.id 
-                          ? 'border-blue-500 shadow-md' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`} style={{ backgroundColor: getThemeColor(theme.id) }}>
-                        {uiTheme === theme.id && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-center mt-2">
-                        <div className="text-xs font-medium text-gray-700">{theme.name}</div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <ColorSwatchSelector
+                title="Theme"
+                options={themeOptions}
+                selectedId={uiTheme}
+                onSelectionChange={onUIThemeChange}
+                themeColor={getThemeColor(uiTheme)}
+              />
 
             </div>
           </section>
@@ -178,7 +135,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Display Settings */}
           <section>
             <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
-              📊 Display Options
+              Display Options
             </h3>
             <div className="space-y-4">
               {/* Show Axes */}
