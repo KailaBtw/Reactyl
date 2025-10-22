@@ -2,23 +2,27 @@ import React from 'react';
 
 interface SimulationControlsProps {
   isPlaying: boolean;
+  timeScale: number;
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
+  onTimeScaleChange: (value: number) => void;
   themeClasses: any;
 }
 
 export const SimulationControls: React.FC<SimulationControlsProps> = ({
   isPlaying,
+  timeScale,
   onPlay,
   onPause,
   onReset,
+  onTimeScaleChange,
   themeClasses
 }) => {
   return (
-    <section className={`p-5 border-b ${themeClasses.card.includes('border-') ? themeClasses.card.split(' ').find(cls => cls.startsWith('border-')) : 'border-gray-100'}`}>
-      <h3 className={`text-base font-semibold mb-3 flex items-center gap-2 ${themeClasses.text}`}>
-        SIMULATION
+    <section className={`p-5 border-b ${themeClasses.card.includes('border-') ? themeClasses.card.split(' ').find((cls: string) => cls.startsWith('border-')) : 'border-gray-100'}`}>
+      <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${themeClasses.text}`}>
+        Simulation
       </h3>
       <div className="space-y-3">
         {/* Status Indicator */}
@@ -32,20 +36,40 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           </div>
         </div>
         
+        {/* Speed Control */}
+        <div>
+          <label className={`block text-xs font-medium mb-2 ${themeClasses.textSecondary}`}>
+            Playback Speed: {timeScale.toFixed(1)}x
+          </label>
+          <input 
+            type="range"
+            min="0.1"
+            max="2.0"
+            step="0.1"
+            value={timeScale}
+            onChange={(e) => onTimeScaleChange(parseFloat(e.target.value))}
+            className="slider w-full"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>Slow Motion</span>
+            <span>Fast Forward</span>
+          </div>
+        </div>
+        
         {/* Play/Pause and Reset Buttons */}
         <div className="flex gap-2">
           <button 
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium ${
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 ${
               isPlaying 
-                ? 'bg-red-500 text-white border-red-500 shadow-sm' 
-                : 'bg-green-500 text-white border-green-500 shadow-sm'
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white border-red-500 shadow-red-200 shadow-md' 
+                : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-500 shadow-blue-200 shadow-md'
             }`}
             onClick={isPlaying ? onPause : onPlay}
           >
             {isPlaying ? 'Pause' : 'Play'}
           </button>
           <button 
-            className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium ${themeClasses.button}`}
+            className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 bg-gradient-to-r from-red-400 to-orange-500 text-white border-red-400 shadow-red-200 shadow-md`}
             onClick={onReset}
           >
             <span>🔄</span>

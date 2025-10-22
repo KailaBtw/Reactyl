@@ -190,21 +190,21 @@ export function calculateReactionEnthalpy(
  */
 export const STANDARD_THERMODYNAMIC_DATA = {
   SN2: {
-    activationEnergy: 45.2, // kJ/mol
+    activationEnergy: 30.0, // kJ/mol - realistic for CH3Br + OH-
     reactionEnthalpy: -23.1, // kJ/mol (exothermic)
     reactantEnergy: 0, // Reference point
     productEnergy: -23.1, // Final energy
     temperature: 298.15 // Room temperature
   },
   SN1: {
-    activationEnergy: 85.4, // kJ/mol (higher barrier)
+    activationEnergy: 85.0, // kJ/mol (higher barrier for carbocation)
     reactionEnthalpy: -15.2, // kJ/mol
     reactantEnergy: 0,
     productEnergy: -15.2,
     temperature: 298.15
   },
   E2: {
-    activationEnergy: 52.3, // kJ/mol
+    activationEnergy: 60.0, // kJ/mol - intermediate for elimination
     reactionEnthalpy: -18.7, // kJ/mol
     reactantEnergy: 0,
     productEnergy: -18.7,

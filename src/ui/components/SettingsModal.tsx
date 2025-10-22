@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ColorPicker } from './ColorPicker';
 import { ColorSwatchSelector } from './ColorSwatchSelector';
 
@@ -39,8 +40,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showUIColorPicker, setShowUIColorPicker] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   // Background color options
   const backgroundOptions = [
     { id: 'light', name: 'Light', color: '#f8fafc' },
@@ -72,15 +71,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Invisible backdrop for click-to-close */}
-      <div 
-        className="absolute inset-0"
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {/* Animated backdrop */}
+          <motion.div 
+            className="absolute inset-0 bg-black/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+          
+          {/* Animated Modal */}
+          <motion.div 
+            className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200"
+            initial={{ 
+              opacity: 0, 
+              scale: 0.8, 
+              y: 50 
+            }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1, 
+              y: 0 
+            }}
+            exit={{ 
+              opacity: 0, 
+              scale: 0.8, 
+              y: 50 
+            }}
+            transition={{ 
+              type: "spring", 
+              damping: 25, 
+              stiffness: 300,
+              duration: 0.3 
+            }}
+          >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -170,16 +203,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+          {/* Footer */}
+          <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Close
+            </button>
+          </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

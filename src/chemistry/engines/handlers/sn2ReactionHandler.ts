@@ -599,7 +599,7 @@ export class SN2ReactionHandler extends ReactionHandler {
    */
   private calculateRateConstant(conditions?: ReactionConditions): number {
     const temperature = conditions?.temperature || 298; // K
-    const activationEnergy = 75000; // J/mol
+    const activationEnergy = 30000; // J/mol (30 kJ/mol for CH3Br + OH-)
     const R = 8.314; // J/(mol·K)
     const A = 1e10; // Pre-exponential factor
     

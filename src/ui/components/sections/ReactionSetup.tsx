@@ -1,21 +1,20 @@
 import React from 'react';
 import { AttackModeSelector } from './AttackModeSelector';
+import { IdealButton } from './IdealButton';
 
 interface ReactionSetupProps {
   currentReaction: string;
   substrate: string;
   nucleophile: string;
-  attackMode: string;
-  impactParameter: number;
-  timeScale: number;
+  attackAngle: number;
   relativeVelocity: number;
+  temperature?: number;
   onReactionChange: (reaction: string) => void;
   onSubstrateChange: (substrate: string) => void;
   onNucleophileChange: (nucleophile: string) => void;
-  onAttackModeChange: (mode: string) => void;
-  onImpactParameterChange: (value: number) => void;
-  onTimeScaleChange: (value: number) => void;
+  onAttackAngleChange: (angle: number) => void;
   onRelativeVelocityChange: (value: number) => void;
+  onTemperatureChange?: (value: number) => void;
   themeClasses: any;
 }
 
@@ -23,23 +22,21 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
   currentReaction,
   substrate,
   nucleophile,
-  attackMode,
-  impactParameter,
-  timeScale,
+  attackAngle,
   relativeVelocity,
+  temperature = 298,
   onReactionChange,
   onSubstrateChange,
   onNucleophileChange,
-  onAttackModeChange,
-  onImpactParameterChange,
-  onTimeScaleChange,
+  onAttackAngleChange,
   onRelativeVelocityChange,
+  onTemperatureChange,
   themeClasses
 }) => {
   return (
     <section className="p-5 border-b border-gray-100">
-      <h3 className={`text-base font-semibold mb-4 flex items-center gap-2 ${themeClasses.text}`}>
-        REACTION SETUP
+      <h3 className={`text-sm font-semibold mb-4 flex items-center gap-2 ${themeClasses.text}`}>
+        Reaction Setup
       </h3>
       <div className="space-y-3">
         {/* Reaction Type */}
@@ -91,49 +88,26 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
         
         {/* Attack Mode - Using extracted component */}
         <AttackModeSelector
-          attackMode={attackMode}
-          onAttackModeChange={onAttackModeChange}
+          attackAngle={attackAngle}
+          onAttackAngleChange={onAttackAngleChange}
+          reactionType={currentReaction}
           themeClasses={themeClasses}
         />
         
-        {/* Impact Parameter and Speed - Side by Side */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={`block text-xs font-medium mb-1 ${themeClasses.textSecondary}`}>
-              Impact: {impactParameter.toFixed(1)} Å
-            </label>
-            <input 
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={impactParameter}
-              onChange={(e) => onImpactParameterChange(parseFloat(e.target.value))}
-              className="slider w-full h-1"
-            />
-          </div>
-          
-          <div>
-            <label className={`block text-xs font-medium mb-1 ${themeClasses.textSecondary}`}>
-              Speed: {timeScale.toFixed(1)}x
-            </label>
-            <input 
-              type="range"
-              min="0.1"
-              max="1.5"
-              step="0.05"
-              value={timeScale}
-              onChange={(e) => onTimeScaleChange(parseFloat(e.target.value))}
-              className="slider w-full h-1"
-            />
-          </div>
-        </div>
-        
-        {/* Relative Velocity - Full Width */}
+        {/* Relative Velocity - Clean and Simple */}
         <div>
-          <label className={`block text-xs font-medium mb-1 ${themeClasses.textSecondary}`}>
-            Relative Velocity: {relativeVelocity.toFixed(1)} m/s
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className={`text-xs font-medium ${themeClasses.textSecondary}`}>
+              Collision Velocity: {relativeVelocity.toFixed(0)} m/s
+            </label>
+            <IdealButton
+              isActive={relativeVelocity >= 380} // Consider "ideal" when velocity is 380+ m/s
+              onClick={() => onRelativeVelocityChange(400)} // 400 m/s gives ~32 kJ/mol, well above 30 kJ/mol activation
+              activeText="Ideal"
+              inactiveText="Ideal"
+              themeClasses={themeClasses}
+            />
+          </div>
           <input 
             type="range"
             min="50"
@@ -141,8 +115,41 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             step="10"
             value={relativeVelocity}
             onChange={(e) => onRelativeVelocityChange(parseFloat(e.target.value))}
-            className="slider w-full h-1"
+            className="slider w-full"
           />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>Low Energy</span>
+            <span>High Energy</span>
+          </div>
+        </div>
+        
+        {/* Temperature Slider */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className={`text-xs font-medium ${themeClasses.textSecondary}`}>
+              Temperature: {temperature}K
+            </label>
+            <IdealButton
+              isActive={temperature >= 298 && temperature <= 350} // Consider "ideal" when temperature is 298-350K
+              onClick={() => onTemperatureChange?.(298)} // 298K (room temperature) is ideal
+              activeText="Ideal"
+              inactiveText="Ideal"
+              themeClasses={themeClasses}
+            />
+          </div>
+          <input 
+            type="range"
+            min="100"
+            max="600"
+            step="10"
+            value={temperature}
+            onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
+            className="slider w-full"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>100K</span>
+            <span>600K</span>
+          </div>
         </div>
       </div>
     </section>

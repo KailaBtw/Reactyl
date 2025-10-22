@@ -58,6 +58,7 @@
     "@types/cannon": "^0.1.13",
     "@types/dat.gui": "^0.7.13",
     "@types/express": "^5.0.3",
+    "@types/plotly.js-dist-min": "^2.3.4",
     "@types/three": "^0.179.0",
     "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.4.21",

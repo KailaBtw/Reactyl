@@ -126,28 +126,22 @@ export const App: React.FC = () => {
     currentReaction: uiState.reactionType,
     substrate: uiState.substrateMolecule,
     nucleophile: uiState.nucleophileMolecule,
-    attackMode: uiState.approachAngle === 180 ? 'backside' : 
-                uiState.approachAngle === 0 ? 'frontside' : 
-                uiState.approachAngle === 90 ? 'perpendicular' :
-                uiState.approachAngle === 135 ? 'glancing' : 'missed',
-    impactParameter: uiState.impactParameter,
+    attackAngle: uiState.approachAngle,
     isPlaying: uiState.isPlaying,
     timeScale: uiState.timeScale,
     relativeVelocity: uiState.relativeVelocity || 150.0,
+    temperature: uiState.temperature || 298,
+    distance: uiState.distance,
     onReactionChange: (reaction: string) => updateUIState({ reactionType: reaction }),
     onSubstrateChange: (substrate: string) => updateUIState({ substrateMolecule: substrate }),
     onNucleophileChange: (nucleophile: string) => updateUIState({ nucleophileMolecule: nucleophile }),
-    onAttackModeChange: (mode: string) => {
-      const angle = mode === 'backside' ? 180 : 
-                   mode === 'frontside' ? 0 : 
-                   mode === 'perpendicular' ? 90 :
-                   mode === 'glancing' ? 135 : 45; // missed
-      console.log('Attack mode changed:', mode, 'angle:', angle);
+    onAttackAngleChange: (angle: number) => {
+      console.log('Attack angle changed:', angle);
       updateUIState({ approachAngle: angle });
     },
-    onImpactParameterChange: (value: number) => updateUIState({ impactParameter: value }),
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
     onRelativeVelocityChange: (value: number) => updateUIState({ relativeVelocity: value }),
+    onTemperatureChange: (value: number) => updateUIState({ temperature: value }),
     onPlay: () => {
       console.log('Play button clicked');
       updateUIState({ isPlaying: true });

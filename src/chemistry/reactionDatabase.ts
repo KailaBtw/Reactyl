@@ -21,10 +21,10 @@ export const REACTION_TYPES: Record<string, ReactionType> = {
         },
       ],
     },
-    activationEnergy: 80, // kJ/mol
+    activationEnergy: 30, // kJ/mol - realistic for CH3Br + OH- SN2
     optimalAngle: 180, // backside attack
     probabilityFactors: {
-      temperature: T => Math.exp(-8000 / (8.314 * T)), // Reduced activation energy for demo
+      temperature: T => Math.exp(-30000 / (8.314 * T)), // 30 kJ/mol activation energy
       orientation: angle => {
         const deviation = Math.abs(angle - 180);
         const tolerance = 60; // More forgiving tolerance
@@ -53,10 +53,10 @@ export const REACTION_TYPES: Record<string, ReactionType> = {
         },
       ],
     },
-    activationEnergy: 120, // kJ/mol - higher due to carbocation formation
+    activationEnergy: 85, // kJ/mol - higher due to carbocation formation
     optimalAngle: 0, // No specific angle requirement
     probabilityFactors: {
-      temperature: T => Math.exp(-120000 / (8.314 * T)),
+      temperature: T => Math.exp(-85000 / (8.314 * T)), // 85 kJ/mol activation energy
       orientation: _angle => 1.0, // No orientation dependence
     },
   },

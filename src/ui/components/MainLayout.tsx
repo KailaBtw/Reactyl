@@ -6,23 +6,25 @@ import { ReactionSetup } from './sections/ReactionSetup';
 import { SimulationControls } from './sections/SimulationControls';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
 import { useUIState } from '../context/UIStateContext';
+import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
 
 interface MainLayoutProps {
   currentReaction: string;
   substrate: string;
   nucleophile: string;
-  attackMode: string;
-  impactParameter: number;
+  attackAngle: number;
   isPlaying: boolean;
   timeScale: number;
   relativeVelocity: number;
+  temperature: number;
+  distance?: number;
   onReactionChange: (reaction: string) => void;
   onSubstrateChange: (substrate: string) => void;
   onNucleophileChange: (nucleophile: string) => void;
-  onAttackModeChange: (mode: string) => void;
-  onImpactParameterChange: (value: number) => void;
+  onAttackAngleChange: (angle: number) => void;
   onTimeScaleChange: (value: number) => void;
   onRelativeVelocityChange: (value: number) => void;
+  onTemperatureChange: (value: number) => void;
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -32,18 +34,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   currentReaction,
   substrate,
   nucleophile,
-  attackMode,
-  impactParameter,
+  attackAngle,
   isPlaying,
   timeScale,
   relativeVelocity,
+  temperature,
+  distance = 0,
   onReactionChange,
   onSubstrateChange,
   onNucleophileChange,
-  onAttackModeChange,
-  onImpactParameterChange,
+  onAttackAngleChange,
   onTimeScaleChange,
   onRelativeVelocityChange,
+  onTemperatureChange,
   onPlay,
   onPause,
   onReset,
@@ -109,14 +112,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const themeClasses = getThemeClasses();
 
 
-  // Thermodynamic data for energy profile
-  const thermodynamicData = {
-    activationEnergy: 45.2,
-    enthalpyOfFormation: -23.1,
-    reactantEnergy: 0,
-    productEnergy: -23.1,
-    transitionStateEnergy: 45.2
-  };
+  // Calculate thermodynamic data based on actual selected molecules
+  const thermodynamicData = calculateThermodynamicData(
+    substrate || 'demo_Methyl_bromide',
+    nucleophile || 'demo_Hydroxide_ion', 
+    currentReaction
+  );
 
   return (
     <div className={`h-screen flex flex-col font-sans ${themeClasses.background}`}>
@@ -136,7 +137,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             ⚙
           </button>
           <button 
-            className={`w-9 h-9 border-0 rounded-md text-base cursor-pointer transition-colors focus:ring-2 focus:ring-blue-500 ${themeClasses.button}`}
+            className={`w-9 h-9 border-0 rounded-md text-base cursor-pointer transition-colors focus:ring-2 focus:ring-blue-500 ${themeClasses.button} hover:scale-105 active:scale-95`}
             onClick={() => setShowHelp(!showHelp)}
             title="Help"
           >
@@ -158,14 +159,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           {/* Bottom Energy Panel - Only spans left area */}
-          <BottomEnergyPanel 
-            thermodynamicData={thermodynamicData}
-            isPlaying={isPlaying}
-            themeClasses={themeClasses}
-            reactionType={currentReaction}
-            reactionProgress={0}
-            currentVelocity={relativeVelocity}
-          />
+        <BottomEnergyPanel 
+          thermodynamicData={{
+            activationEnergy: thermodynamicData.activationEnergy,
+            enthalpyOfFormation: thermodynamicData.enthalpyChange,
+            reactantEnergy: thermodynamicData.reactantEnergy,
+            productEnergy: thermodynamicData.productEnergy,
+            transitionStateEnergy: thermodynamicData.transitionStateEnergy
+          }}
+          isPlaying={isPlaying}
+          themeClasses={themeClasses}
+          reactionType={currentReaction}
+          reactionProgress={0}
+          currentVelocity={relativeVelocity}
+          distance={distance}
+          substrate={substrate}
+          nucleophile={nucleophile}
+          substrateMass={thermodynamicData.substrateMass}
+          nucleophileMass={thermodynamicData.nucleophileMass}
+          attackAngle={attackAngle}
+        />
         </div>
 
         {/* Right Control Panel */}
@@ -174,25 +187,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             currentReaction={currentReaction}
             substrate={substrate}
             nucleophile={nucleophile}
-            attackMode={attackMode}
-            impactParameter={impactParameter}
-            timeScale={timeScale}
+            attackAngle={attackAngle}
             relativeVelocity={relativeVelocity}
+            temperature={temperature}
             onReactionChange={onReactionChange}
             onSubstrateChange={onSubstrateChange}
             onNucleophileChange={onNucleophileChange}
-            onAttackModeChange={onAttackModeChange}
-            onImpactParameterChange={onImpactParameterChange}
-            onTimeScaleChange={onTimeScaleChange}
+            onAttackAngleChange={onAttackAngleChange}
             onRelativeVelocityChange={onRelativeVelocityChange}
+            onTemperatureChange={onTemperatureChange}
             themeClasses={themeClasses}
           />
 
           <SimulationControls
             isPlaying={isPlaying}
+            timeScale={timeScale}
             onPlay={onPlay}
             onPause={onPause}
             onReset={onReset}
+            onTimeScaleChange={onTimeScaleChange}
             themeClasses={themeClasses}
           />
 
