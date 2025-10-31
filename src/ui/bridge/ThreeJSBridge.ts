@@ -162,8 +162,8 @@ export class ThreeJSBridge {
       initFpsDebug();
     }
 
-    // Position and orient the camera
-    this.camera.position.set(10, 10, 10);
+    // Position and orient the camera (slightly closer for better default zoom)
+    this.camera.position.set(8, 8, 12);
     this.camera.lookAt(0, 0, 0);
 
     // Initialize the scene bridge for React components

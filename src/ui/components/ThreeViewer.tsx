@@ -3,6 +3,7 @@ import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
 import { MoleculeColorLegend } from './MoleculeColorLegend';
 import { ViewportMoveHint } from './ViewportMoveHint';
+import { MiniAxisOverlay } from './MiniAxisOverlay';
 import type { UIState } from '../App';
 
 interface ThreeViewerProps {
@@ -115,6 +116,7 @@ export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({
       style={{ background: backgroundColor }}
     >
       <MoleculeColorLegend theme={theme} themeClasses={themeClasses} />
+      <MiniAxisOverlay />
       <ViewportMoveHint visible={showMoveHint} />
     </div>
   );

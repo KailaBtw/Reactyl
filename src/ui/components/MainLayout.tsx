@@ -17,7 +17,6 @@ interface MainLayoutProps {
   timeScale: number;
   relativeVelocity: number;
   temperature: number;
-  distance?: number;
   onReactionChange: (reaction: string) => void;
   onSubstrateChange: (substrate: string) => void;
   onNucleophileChange: (nucleophile: string) => void;
@@ -41,7 +40,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   timeScale,
   relativeVelocity,
   temperature,
-  distance = 0,
   onReactionChange,
   onSubstrateChange,
   onNucleophileChange,
@@ -129,7 +127,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       <header className={`flex justify-between items-center pl-2 pr-5 py-3 ${themeClasses.card} border-b shadow-sm min-h-[60px]`}>
         <div className="flex items-center gap-5">
           <img 
-            src={`${import.meta.env.BASE_URL}Reactyl_small.png`} 
+            src={`${(import.meta as any).env.BASE_URL}Reactyl_small.png`} 
             alt="Reactyl Logo" 
             className="h-8 w-auto"
           />
@@ -181,12 +179,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           reactionType={currentReaction}
           reactionProgress={0}
           currentVelocity={relativeVelocity}
-          distance={distance}
           substrate={substrate}
           nucleophile={nucleophile}
           substrateMass={thermodynamicData.substrateMass}
           nucleophileMass={thermodynamicData.nucleophileMass}
           attackAngle={attackAngle}
+          timeScale={timeScale}
+          reactionProbability={uiState.reactionProbability}
         />
         </div>
 

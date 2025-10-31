@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlotlyEnergyProfile } from '../ScientificallyAccuratePlotlyEnergyProfile';
 import { getReactionMasses } from '../../utils/molecularMassLookup';
+import { LiveDataCard } from './LiveDataCard';
 
 interface BottomEnergyPanelProps {
   thermodynamicData: {
@@ -15,12 +16,13 @@ interface BottomEnergyPanelProps {
   reactionType?: string;
   reactionProgress?: number;
   currentVelocity?: number;
-  distance?: number;
   substrate?: string;
   nucleophile?: string;
   substrateMass?: number;
   nucleophileMass?: number;
   attackAngle?: number;
+  timeScale?: number;
+  reactionProbability?: number; // 0..100 percent
 }
 
 export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
@@ -30,12 +32,13 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
   reactionType = 'SN2',
   reactionProgress = 0,
   currentVelocity = 0,
-  distance = 0,
   substrate = 'demo_Methyl_bromide',
   nucleophile = 'demo_Hydroxide_ion',
   substrateMass: propSubstrateMass,
   nucleophileMass: propNucleophileMass,
-  attackAngle = 180
+  attackAngle = 180,
+  timeScale = 1.0,
+  reactionProbability = 0
 }) => {
   // Use provided molecular masses or fallback to lookup
   const substrateMass = propSubstrateMass || getReactionMasses(substrate, nucleophile).substrateMass;
@@ -52,41 +55,37 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
             </h3>
             
             {/* Data Grid */}
-            <div className="space-y-2">
-              {/* Top row - narrower cards */}
-              <div className="grid grid-cols-2 gap-2">
-                {/* Activation Energy */}
-                <div className="bg-white border border-gray-200 rounded p-2">
-                  <div className="text-xs text-gray-500">Activation Energy</div>
-                  <div className="text-lg font-mono font-bold text-red-600">{thermodynamicData.activationEnergy.toFixed(1)}</div>
-                  <div className="text-xs text-gray-400">kJ/mol</div>
-                </div>
-                
-                {/* Enthalpy Change */}
-                <div className="bg-white border border-gray-200 rounded p-2">
-                  <div className="text-xs text-gray-500">Enthalpy Change</div>
-                  <div className="text-lg font-mono font-bold text-green-600">{thermodynamicData.enthalpyOfFormation.toFixed(1)}</div>
-                  <div className="text-xs text-gray-400">kJ/mol</div>
-                </div>
+            <div className="space-y-3">
+              {/* Top row */}
+              <div className="grid grid-cols-2 gap-3">
+                <LiveDataCard
+                  label="Relative Velocity"
+                  value={currentVelocity}
+                  unit="m/s"
+                  valueColor="text-blue-700"
+                />
+                <LiveDataCard
+                  label="Approach Angle"
+                  value={attackAngle}
+                  unit="°"
+                  valueColor="text-indigo-700"
+                />
               </div>
-              
-              {/* Bottom row - wider cards */}
-              <div className="grid grid-cols-2 gap-2">
-                {/* Progress */}
-                <div className="bg-white border border-gray-200 rounded p-2">
-                  <div className="text-xs text-gray-500">Reaction Progress</div>
-                  <div className="text-lg font-mono font-bold text-blue-600">{(reactionProgress * 100).toFixed(0)}%</div>
-                  <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                    <div className="bg-blue-500 h-1 rounded-full" style={{width: `${reactionProgress * 100}%`}}></div>
-                  </div>
-                </div>
-                
-                {/* Distance */}
-                <div className="bg-white border border-gray-200 rounded p-2">
-                  <div className="text-xs text-gray-500">Distance</div>
-                  <div className="text-lg font-mono font-bold text-orange-600">{distance.toFixed(1)}</div>
-                  <div className="text-xs text-gray-400">Å</div>
-                </div>
+
+              {/* Bottom row */}
+              <div className="grid grid-cols-2 gap-3">
+                <LiveDataCard
+                  label="Reaction Probability"
+                  value={reactionProbability}
+                  unit="%"
+                  valueColor="text-emerald-700"
+                />
+                <LiveDataCard
+                  label="Time Scale"
+                  value={timeScale}
+                  unit="x"
+                  valueColor="text-gray-800"
+                />
               </div>
             </div>
             
