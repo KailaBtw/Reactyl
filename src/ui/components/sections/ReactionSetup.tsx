@@ -50,9 +50,9 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             className={`w-full text-sm px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
           >
             <option value="sn2">SN2 - Bimolecular Substitution</option>
-            <option value="sn1">SN1 - Unimolecular Substitution</option>
-            <option value="e2">E2 - Bimolecular Elimination</option>
-            <option value="e1">E1 - Unimolecular Elimination</option>
+            <option value="sn1" disabled style={{color: '#999', backgroundColor: '#f5f5f5'}}>SN1 - Unimolecular Substitution (Coming Soon)</option>
+            <option value="e2" disabled style={{color: '#999', backgroundColor: '#f5f5f5'}}>E2 - Bimolecular Elimination (Coming Soon)</option>
+            <option value="e1" disabled style={{color: '#999', backgroundColor: '#f5f5f5'}}>E1 - Unimolecular Elimination (Coming Soon)</option>
           </select>
         </div>
         
@@ -67,8 +67,8 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               onChange={(e) => onSubstrateChange(e.target.value)}
               className={`w-full text-xs px-2 py-1.5 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
             >
-              <option value="demo_Methyl_bromide">CH₃Br</option>
-              <option value="demo_Ethyl_iodide">C₂H₅I</option>
+              <option value="demo_Methyl_bromide">Methyl bromide (CH₃Br)</option>
+              <option value="demo_Ethyl_iodide">Ethyl iodide (C₂H₅I)</option>
             </select>
           </div>
           <div>
@@ -80,8 +80,8 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               onChange={(e) => onNucleophileChange(e.target.value)}
               className={`w-full text-xs px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
             >
-              <option value="demo_Hydroxide_ion">OH⁻</option>
-              <option value="demo_Cyanide_ion">CN⁻</option>
+              <option value="demo_Hydroxide_ion">Hydroxide ion (OH⁻)</option>
+              <option value="demo_Cyanide_ion">Cyanide ion (CN⁻)</option>
             </select>
           </div>
         </div>

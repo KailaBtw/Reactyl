@@ -122,8 +122,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   return (
     <div className={`h-screen flex flex-col font-sans ${themeClasses.background}`}>
       {/* Top Header */}
-      <header className={`flex justify-between items-center px-5 py-3 ${themeClasses.card} border-b shadow-sm min-h-[60px]`}>
+      <header className={`flex justify-between items-center pl-2 pr-5 py-3 ${themeClasses.card} border-b shadow-sm min-h-[60px]`}>
         <div className="flex items-center gap-5">
+          <img 
+            src={`${import.meta.env.BASE_URL}Reactyl_small.png`} 
+            alt="Reactyl Logo" 
+            className="h-8 w-auto"
+          />
           <h1 className={`text-xl font-semibold m-0 ${themeClasses.text}`}>
             Reactyl
           </h1>

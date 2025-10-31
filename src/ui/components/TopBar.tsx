@@ -11,7 +11,15 @@ export const TopBar: React.FC = () => {
         await threeJSBridge.startReactionAnimation();
         updateUIState({ isPlaying: true, reactionInProgress: true });
       } else {
-        updateUIState({ isPlaying: !uiState.isPlaying });
+        if (uiState.isPlaying) {
+          // Pause
+          updateUIState({ isPlaying: false });
+        } else {
+          // Play again -> clear scene and restart to avoid overlaps
+          threeJSBridge.clear();
+          await threeJSBridge.startReactionAnimation();
+          updateUIState({ isPlaying: true, reactionInProgress: true });
+        }
       }
     } catch (e) {
       // no-op UI level

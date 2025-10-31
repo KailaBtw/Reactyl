@@ -37,8 +37,20 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
         console.error('Error starting reaction animation:', error);
       }
     } else {
-      // Toggle play/pause
-      updateUIState({ isPlaying: !uiState.isPlaying });
+      // If reaction exists already
+      if (uiState.isPlaying) {
+        // Pause
+        updateUIState({ isPlaying: false });
+      } else {
+        // Play pressed again without clearing -> clear and restart
+        try {
+          threeJSBridge.clear();
+          await threeJSBridge.startReactionAnimation();
+          updateUIState({ isPlaying: true, reactionInProgress: true });
+        } catch (error) {
+          console.error('Error restarting reaction (mobile):', error);
+        }
+      }
     }
   };
 

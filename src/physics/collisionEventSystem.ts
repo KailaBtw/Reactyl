@@ -3,6 +3,7 @@ import { ReactionDetector, type ReactionResult } from '../chemistry/reactionDete
 import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
 import { log } from '../utils/debug';
 import { reactionEventBus } from '../events/ReactionEventBus';
+import { calculateAngleProbability } from '../ui/utils/angleProbability';
 // reactionDemo removed - using chemistry reaction system
 
 /**
@@ -213,11 +214,43 @@ class CollisionEventSystem {
       event.moleculeB
     );
 
-    // If testing mode is enabled, force 100% reaction probability for demo
+    // RAPID OVERRIDE: Use UI-calculated probability instead of forcing 100%
     if (this.testingMode) {
-      log(`🧪 Testing mode: forcing reaction probability to 100% for demo`);
-      (reactionResult as any).probability = 1.0;
-      (reactionResult as any).occurs = true;
+      // Get UI state for real probability calculation
+      const uiState = (window as any).uiState;
+      if (uiState) {
+        const { approachAngle, relativeVelocity, temperature, reactionType } = uiState;
+        
+        // Calculate kinetic energy from UI
+        const velocityScale = relativeVelocity / 500;
+        const maxKineticEnergy = 40;
+        const kineticEnergy = velocityScale * maxKineticEnergy * Math.sqrt(temperature / 298);
+        
+        // Get angle probability from UI calculation
+        const angleResult = calculateAngleProbability(approachAngle, reactionType);
+        
+        // Calculate energy probability
+        const activationEnergy = 30;
+        const energyRatio = kineticEnergy / activationEnergy;
+        let energyProbability = 0;
+        if (energyRatio >= 1.0) energyProbability = 0.95;
+        else if (energyRatio >= 0.9) energyProbability = 0.7;
+        else if (energyRatio >= 0.8) energyProbability = 0.4;
+        else if (energyRatio >= 0.6) energyProbability = 0.1;
+        else energyProbability = 0.01;
+        
+        // Use real calculated probability
+        const realProbability = energyProbability * angleResult.probability;
+        (reactionResult as any).probability = realProbability;
+        (reactionResult as any).occurs = Math.random() < realProbability;
+        
+        log(`🎯 UI Override: Using calculated probability ${(realProbability * 100).toFixed(1)}% instead of forcing 100%`);
+      } else {
+        // Fallback to original behavior if UI state not available
+        log(`🧪 Testing mode: forcing reaction probability to 100% for demo`);
+        (reactionResult as any).probability = 1.0;
+        (reactionResult as any).occurs = true;
+      }
     }
 
     // If reaction occurs, set flag to prevent duplicate processing and mark molecules busy

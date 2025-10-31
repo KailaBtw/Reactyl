@@ -159,6 +159,9 @@ export function computeEncounter(params: EncounterParams): {
   const substrateVelocity = new THREE.Vector3(0, 0, 0);
   // Velocity toward substrate (origin) from nucleophile position is +d scaled
   const nucleophileVelocity = d.clone().multiplyScalar(params.relativeVelocity);
+  
+  console.log(`🎯 Computed encounter - relativeVelocity: ${params.relativeVelocity}, nucleophileVelocity:`, nucleophileVelocity);
+  
   return { substratePosition, nucleophilePosition, substrateVelocity, nucleophileVelocity };
 }
 
@@ -185,6 +188,41 @@ export function applyEncounter(
   // Velocities
   const substrateObj = moleculeManager.getMolecule(substrateName);
   const nucleophileObj = moleculeManager.getMolecule(nucleophileName);
-  if (substrateObj) physicsEngine.setVelocity(substrateObj as any, plan.substrateVelocity);
-  if (nucleophileObj) physicsEngine.setVelocity(nucleophileObj as any, plan.nucleophileVelocity);
+  
+  // FAST AF OVERRIDE: Force UI velocity directly with VISUAL SCALING
+  const uiState = (window as any).uiState;
+  if (uiState && uiState.relativeVelocity) {
+    // VISUAL EDUCATION SCALING: Scale down for visible, educational movement
+    const visualScale = 0.1; // Scale down by 10x for visual education
+    const scaledVelocity = uiState.relativeVelocity * visualScale;
+    
+    console.log(`🎯 VISUAL OVERRIDE: UI velocity ${uiState.relativeVelocity} m/s → scaled to ${scaledVelocity} m/s for education`);
+    
+    // Create velocity vectors based on scaled UI velocity
+    const approachAngleRad = (uiState.approachAngle * Math.PI) / 180;
+    const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), approachAngleRad);
+    
+    // Substrate stays still, nucleophile moves toward it at educational speed
+    const substrateVelocity = new THREE.Vector3(0, 0, 0);
+    const nucleophileVelocity = direction.clone().multiplyScalar(scaledVelocity);
+    
+    if (substrateObj) {
+      physicsEngine.setVelocity(substrateObj as any, substrateVelocity);
+      console.log(`🚀 FAST OVERRIDE substrate velocity:`, substrateVelocity);
+    }
+    if (nucleophileObj) {
+      physicsEngine.setVelocity(nucleophileObj as any, nucleophileVelocity);
+      console.log(`🚀 FAST OVERRIDE nucleophile velocity:`, nucleophileVelocity);
+    }
+  } else {
+    // Fallback to original plan
+    if (substrateObj) {
+      physicsEngine.setVelocity(substrateObj as any, plan.substrateVelocity);
+      console.log(`🚀 Setting substrate velocity:`, plan.substrateVelocity);
+    }
+    if (nucleophileObj) {
+      physicsEngine.setVelocity(nucleophileObj as any, plan.nucleophileVelocity);
+      console.log(`🚀 Setting nucleophile velocity:`, plan.nucleophileVelocity);
+    }
+  }
 }

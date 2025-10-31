@@ -961,8 +961,20 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                     console.error('Error starting reaction animation:', error);
                   }
                 } else {
-                  // If reaction is in progress, toggle play/pause
-                  updateUIState({ isPlaying: !uiState.isPlaying });
+                  // If reaction is in progress
+                  if (uiState.isPlaying) {
+                    // Pause
+                    updateUIState({ isPlaying: false });
+                  } else {
+                    // Play pressed again while a reaction exists -> clear and restart
+                    try {
+                      threeJSBridge.clear();
+                      await threeJSBridge.startReactionAnimation();
+                      updateUIState({ isPlaying: true, reactionInProgress: true });
+                    } catch (error) {
+                      console.error('Error restarting reaction:', error);
+                    }
+                  }
                 }
               }}
               disabled={!uiState.reactionInProgress && (!uiState.substrateMolecule || !uiState.nucleophileMolecule)}

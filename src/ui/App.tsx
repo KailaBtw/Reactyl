@@ -142,9 +142,21 @@ export const App: React.FC = () => {
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
     onRelativeVelocityChange: (value: number) => updateUIState({ relativeVelocity: value }),
     onTemperatureChange: (value: number) => updateUIState({ temperature: value }),
-    onPlay: () => {
+    onPlay: async () => {
       console.log('Play button clicked');
-      updateUIState({ isPlaying: true });
+      try {
+        if (!uiState.reactionInProgress) {
+          await threeJSBridge.startReactionAnimation();
+          updateUIState({ isPlaying: true, reactionInProgress: true });
+        } else {
+          // If paused with an existing reaction, clear and restart to avoid overlap
+          threeJSBridge.clear();
+          await threeJSBridge.startReactionAnimation();
+          updateUIState({ isPlaying: true, reactionInProgress: true });
+        }
+      } catch (e) {
+        console.error('Error handling Play:', e);
+      }
     },
     onPause: () => {
       console.log('Pause button clicked');
