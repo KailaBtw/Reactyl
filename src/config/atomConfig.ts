@@ -86,6 +86,55 @@ export const ATOM_CONFIGS: Record<string, AtomConfig> = {
     color: 0x800080,
     geometry: new THREE.SphereGeometry(0.7, 32, 32),
     material: new THREE.MeshStandardMaterial({ color: 0x800080 })
+  },
+  Li: {
+    element: 'Li',
+    radius: 0.7,
+    color: 0xcc80ff,
+    geometry: new THREE.SphereGeometry(0.7, 32, 32),
+    material: new THREE.MeshStandardMaterial({ color: 0xcc80ff })
+  },
+  Na: {
+    element: 'Na',
+    radius: 0.9,
+    color: 0xab5cf2,
+    geometry: new THREE.SphereGeometry(0.9, 32, 32),
+    material: new THREE.MeshStandardMaterial({ color: 0xab5cf2 })
+  },
+  K: {
+    element: 'K',
+    radius: 1.0,
+    color: 0x8f40d4,
+    geometry: new THREE.SphereGeometry(1.0, 32, 32),
+    material: new THREE.MeshStandardMaterial({ color: 0x8f40d4 })
+  },
+  Mg: {
+    element: 'Mg',
+    radius: 0.9,
+    color: 0x8aff00,
+    geometry: new THREE.SphereGeometry(0.9, 32, 32),
+    material: new THREE.MeshStandardMaterial({ color: 0x8aff00 })
+  },
+  Ca: {
+    element: 'Ca',
+    radius: 1.0,
+    color: 0x3dff00,
+    geometry: new THREE.SphereGeometry(1.0, 32, 32),
+    material: new THREE.MeshStandardMaterial({ color: 0x3dff00 })
+  },
+  Si: {
+    element: 'Si',
+    radius: 1.1,
+    color: 0xdaa520,
+    geometry: new THREE.SphereGeometry(1.1, 32, 32),
+    material: new THREE.MeshStandardMaterial({ color: 0xdaa520 })
+  },
+  B: {
+    element: 'B',
+    radius: 0.7,
+    color: 0x00ff80,
+    geometry: new THREE.SphereGeometry(0.7, 32, 32),
+    material: new THREE.MeshStandardMaterial({ color: 0x00ff80 })
   }
 };
 

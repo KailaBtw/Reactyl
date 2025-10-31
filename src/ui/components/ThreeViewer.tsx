@@ -2,6 +2,7 @@ import React, { forwardRef, useEffect, useRef } from 'react';
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
 import { MoleculeColorLegend } from './MoleculeColorLegend';
+import { ViewportMoveHint } from './ViewportMoveHint';
 import type { UIState } from '../App';
 
 interface ThreeViewerProps {
@@ -86,13 +87,35 @@ export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({
     previousUIStateRef.current = currentState;
   }, [uiState]);
 
-      return (
-        <div 
-          ref={ref} 
-          className="w-full h-full relative"
-          style={{ background: backgroundColor }} // Fallback while Three.js loads
-        >
-          <MoleculeColorLegend theme={theme} themeClasses={themeClasses} />
-        </div>
-      );
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [showMoveHint, setShowMoveHint] = React.useState(true);
+
+  React.useEffect(() => {
+    // Hide after first interaction
+    const node = containerRef.current;
+    if (!node) return;
+    const onPointerDown = () => setShowMoveHint(false);
+    node.addEventListener('pointerdown', onPointerDown);
+    const t = window.setTimeout(() => setShowMoveHint(false), 5000);
+    return () => {
+      node.removeEventListener('pointerdown', onPointerDown);
+      window.clearTimeout(t);
+    };
+  }, []);
+
+  return (
+    <div 
+      ref={(el) => {
+        // forward ref for external use
+        if (typeof ref === 'function') ref(el as HTMLDivElement);
+        else if (ref) (ref as any).current = el;
+        containerRef.current = el;
+      }}
+      className="w-full h-full relative"
+      style={{ background: backgroundColor }}
+    >
+      <MoleculeColorLegend theme={theme} themeClasses={themeClasses} />
+      <ViewportMoveHint visible={showMoveHint} />
+    </div>
+  );
 });

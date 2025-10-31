@@ -18,8 +18,19 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ classN
       { element: 'C', color: `#${ATOM_CONFIGS.C.color.toString(16).padStart(6, '0')}`, name: 'Carbon' },
       { element: 'O', color: `#${ATOM_CONFIGS.O.color.toString(16).padStart(6, '0')}`, name: 'Oxygen' },
       { element: 'N', color: `#${ATOM_CONFIGS.N.color.toString(16).padStart(6, '0')}`, name: 'Nitrogen' },
+      { element: 'Cl', color: `#${ATOM_CONFIGS.Cl.color.toString(16).padStart(6, '0')}`, name: 'Chlorine' },
       { element: 'Br', color: `#${ATOM_CONFIGS.Br.color.toString(16).padStart(6, '0')}`, name: 'Bromine' },
       { element: 'I', color: `#${ATOM_CONFIGS.I.color.toString(16).padStart(6, '0')}`, name: 'Iodine' },
+      { element: 'F', color: `#${ATOM_CONFIGS.F.color.toString(16).padStart(6, '0')}`, name: 'Fluorine' },
+      { element: 'S', color: `#${ATOM_CONFIGS.S.color.toString(16).padStart(6, '0')}`, name: 'Sulfur' },
+      { element: 'P', color: `#${ATOM_CONFIGS.P.color.toString(16).padStart(6, '0')}`, name: 'Phosphorus' },
+      { element: 'Si', color: `#${ATOM_CONFIGS.Si.color.toString(16).padStart(6, '0')}`, name: 'Silicon' },
+      { element: 'B', color: `#${ATOM_CONFIGS.B.color.toString(16).padStart(6, '0')}`, name: 'Boron' },
+      { element: 'Li', color: `#${ATOM_CONFIGS.Li.color.toString(16).padStart(6, '0')}`, name: 'Lithium' },
+      { element: 'Na', color: `#${ATOM_CONFIGS.Na.color.toString(16).padStart(6, '0')}`, name: 'Sodium' },
+      { element: 'K', color: `#${ATOM_CONFIGS.K.color.toString(16).padStart(6, '0')}`, name: 'Potassium' },
+      { element: 'Mg', color: `#${ATOM_CONFIGS.Mg.color.toString(16).padStart(6, '0')}`, name: 'Magnesium' },
+      { element: 'Ca', color: `#${ATOM_CONFIGS.Ca.color.toString(16).padStart(6, '0')}`, name: 'Calcium' },
     ];
   };
 
