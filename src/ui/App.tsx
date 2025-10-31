@@ -58,7 +58,7 @@ const initialState: UIState = {
   isPlaying: false,
   timeScale: 1.0,
   temperature: 298,
-  approachAngle: 180,
+  approachAngle: 100,
   impactParameter: 0.0,
   relativeVelocity: 150.0,
   substrateMolecule: '',

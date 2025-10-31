@@ -202,6 +202,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           <SimulationControls
             isPlaying={isPlaying}
             timeScale={timeScale}
+            currentReaction={currentReaction}
+            attackAngle={attackAngle}
+            relativeVelocity={relativeVelocity}
+            temperature={temperature}
             onPlay={onPlay}
             onPause={onPause}
             onReset={onReset}
