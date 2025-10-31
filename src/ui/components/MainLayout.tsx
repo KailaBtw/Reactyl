@@ -28,6 +28,8 @@ interface MainLayoutProps {
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
+  autoplay: boolean;
+  onAutoplayChange: (enabled: boolean) => void;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
@@ -50,6 +52,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   onPlay,
   onPause,
   onReset,
+  autoplay,
+  onAutoplayChange,
 }) => {
   const { uiState, updateUIState } = useUIState();
   const [backgroundColor, setBackgroundColor] = useState('#1a1a1a');
@@ -215,6 +219,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             onPause={onPause}
             onReset={onReset}
             onTimeScaleChange={onTimeScaleChange}
+          autoplay={autoplay}
+          onAutoplayChange={onAutoplayChange}
             themeClasses={themeClasses}
           />
 

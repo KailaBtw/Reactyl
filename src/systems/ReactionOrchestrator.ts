@@ -5,7 +5,7 @@ import { collisionEventSystem } from '../physics/collisionEventSystem';
 import { drawMolecule } from '../components/moleculeDrawer';
 import { ChemicalDataService } from '../chemistry/chemicalDataService';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
-import { getOrientationStrategy } from '../config/moleculePositioning';
+// Orientation handled simplistically (identity rotations); detailed strategies not needed
 import { computeEncounter, applyEncounter } from '../physics/encounterPlanner';
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
@@ -348,30 +348,27 @@ export class ReactionOrchestrator {
       throw new Error('Molecules not loaded for orientation');
     }
     
-    log(`🔄 Orienting molecules for ${reactionType} reaction...`);
+    log(`🔄 Simplified orientation for ${reactionType} reaction...`);
     
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
 
-    // Ensure deterministic starting orientation for substrate (no 90° offsets)
+    // Decomplicate: keep both molecules with identity rotation; encounter planner handles positions/velocities.
     substrate.group.quaternion.set(0, 0, 0, 1);
     substrate.group.rotation.set(0, 0, 0);
+    // // Adjust substrate to face correctly: rotate 90° around Y
+    substrate.group.rotateY(3 * Math.PI / 2);
     substrate.rotation.copy(substrate.group.rotation);
-    // If a rotation controller exists, reset it as well
-    if ((substrate as any).rotationController?.reset) {
-      try { (substrate as any).rotationController.reset(); } catch { /* no-op */ }
-    }
-    // Sync to physics so subsequent orientation steps start from a clean baseline
-    this.syncOrientationToPhysics(substrate);
-    
-    const orient = getOrientationStrategy(reactionType);
-    orient(substrate, nucleophile);
-    
-    // Sync orientation to physics bodies
+
+    nucleophile.group.quaternion.set(0, 0, 0, 1);
+    nucleophile.group.rotation.set(0, 0, 0);
+    nucleophile.rotation.copy(nucleophile.group.rotation);
+
+    // Sync to physics bodies
     this.syncOrientationToPhysics(substrate);
     this.syncOrientationToPhysics(nucleophile);
     
-    log(`✅ Molecules oriented for ${reactionType} reaction`);
+    log(`✅ Simplified orientation applied (identity rotations)`);
   }
   
   // Orientation helpers consolidated into orientationStrategies.ts

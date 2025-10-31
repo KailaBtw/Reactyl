@@ -43,7 +43,7 @@ export interface PhysicsConfig {
 }
 
 export const PHYSICS_CONFIG: PhysicsConfig = {
-  defaultSpawnDistance: 8.0,
+  defaultSpawnDistance: 20.0,
   defaultRelativeVelocity: 15.0,
   defaultImpactParameter: 0.0,
   

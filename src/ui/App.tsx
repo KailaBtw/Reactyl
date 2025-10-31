@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { MainLayout } from './components/MainLayout';
 import { UIStateProvider } from './context/UIStateContext';
 import { threeJSBridge } from './bridge/ThreeJSBridge';
+import { reactionEventBus } from '../events/ReactionEventBus';
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
@@ -46,6 +47,7 @@ export interface UIState {
   distance: number;
   timeToCollision: number;
   reactionProbability: number;
+  autoplay: boolean;
 }
 
 // Helper function to determine if screen is large enough for expanded bottom bar
@@ -79,12 +81,14 @@ const initialState: UIState = {
   distance: 0,
   timeToCollision: 0,
   reactionProbability: 0,
+  autoplay: false,
 };
 
 export const App: React.FC = () => {
   const [uiState, setUIState] = useState<UIState>(initialState);
   const sceneRef = useRef<HTMLDivElement>(null);
   const threeSceneRef = useRef<THREE.Scene | null>(null);
+  const autoplayTimeoutRef = useRef<number | null>(null);
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -121,6 +125,30 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [uiState.bottomBarExpanded]);
 
+  // Autoplay: restart shortly after a collision if enabled and not paused
+  useEffect(() => {
+    const handler = (_event: any) => {
+      if (!uiState.autoplay) return;
+      if (!uiState.isPlaying) return;
+      // Delay after collision before restarting
+      const delayMs = 1500;
+      if (autoplayTimeoutRef.current) {
+        clearTimeout(autoplayTimeoutRef.current);
+      }
+      autoplayTimeoutRef.current = window.setTimeout(async () => {
+        try {
+          threeJSBridge.clear();
+          await threeJSBridge.startReactionAnimation();
+          updateUIState({ isPlaying: true, reactionInProgress: true });
+        } catch (err) {
+          console.error('Autoplay restart failed:', err);
+        }
+      }, delayMs);
+    };
+    reactionEventBus.on('collision-detected', handler);
+    return () => reactionEventBus.off('collision-detected', handler);
+  }, [uiState.autoplay, uiState.isPlaying, updateUIState]);
+
   // Map UIState to MainLayout props
   const mainLayoutProps = {
     currentReaction: uiState.reactionType,
@@ -142,6 +170,29 @@ export const App: React.FC = () => {
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
     onRelativeVelocityChange: (value: number) => updateUIState({ relativeVelocity: value }),
     onTemperatureChange: (value: number) => updateUIState({ temperature: value }),
+    autoplay: uiState.autoplay,
+    onAutoplayChange: async (enabled: boolean) => {
+      updateUIState({ autoplay: enabled });
+      if (enabled) {
+        try {
+          if (!uiState.reactionInProgress) {
+            await threeJSBridge.startReactionAnimation();
+            updateUIState({ isPlaying: true, reactionInProgress: true });
+          } else if (!uiState.isPlaying) {
+            threeJSBridge.clear();
+            await threeJSBridge.startReactionAnimation();
+            updateUIState({ isPlaying: true, reactionInProgress: true });
+          }
+        } catch (e) {
+          console.error('Failed to start autoplay run:', e);
+        }
+      } else {
+        if (autoplayTimeoutRef.current) {
+          clearTimeout(autoplayTimeoutRef.current);
+          autoplayTimeoutRef.current = null;
+        }
+      }
+    },
     onPlay: async () => {
       console.log('Play button clicked');
       try {
@@ -160,6 +211,10 @@ export const App: React.FC = () => {
     },
     onPause: () => {
       console.log('Pause button clicked');
+      if (autoplayTimeoutRef.current) {
+        clearTimeout(autoplayTimeoutRef.current);
+        autoplayTimeoutRef.current = null;
+      }
       updateUIState({ isPlaying: false });
     },
     onReset: () => {
