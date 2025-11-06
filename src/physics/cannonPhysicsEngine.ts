@@ -173,14 +173,12 @@ export class CannonPhysicsEngine {
     // Emit queued collision events AFTER stepping to avoid removing bodies during
     // Cannon's narrowphase, which can cause bi undefined errors
     if (this.pendingCollisionPairs.length > 0) {
-      log(`Processing ${this.pendingCollisionPairs.length} pending collision pairs`);
       const pairs = this.pendingCollisionPairs.slice();
       this.pendingCollisionPairs.length = 0;
       for (const { a, b } of pairs) {
         // Skip if either molecule began a reaction since queuing
         if ((a as any).reactionInProgress || (b as any).reactionInProgress) continue;
         const collisionEvent = createCollisionEvent(a, b);
-        log(`Emitting collision event for ${a.name} and ${b.name}`);
         collisionEventSystem.emitCollision(collisionEvent);
       }
     }
@@ -193,9 +191,7 @@ export class CannonPhysicsEngine {
     molecule: MoleculeGroup,
     properties: MolecularProperties
   ): CANNON.Shape | null {
-    // Temporarily use simple sphere collision for debugging
     const radius = Math.max(properties.boundingRadius, 0.5);
-    log(`Creating sphere collision shape for ${molecule.name} with radius ${radius.toFixed(2)}`);
     return new CANNON.Sphere(radius);
   }
 
@@ -286,11 +282,6 @@ export class CannonPhysicsEngine {
     // Update molecule velocity for compatibility with existing systems
     molecule.velocity.copy(body.velocity as any);
 
-    // Debug: Log position changes occasionally
-    if (Math.random() < 0.01) { // 1% chance to log
-      log(`Syncing ${molecule.name}: physics body at (${body.position.x.toFixed(2)}, ${body.position.y.toFixed(2)}, ${body.position.z.toFixed(2)}), velocity (${body.velocity.x.toFixed(2)}, ${body.velocity.y.toFixed(2)}, ${body.velocity.z.toFixed(2)})`);
-    }
-
     // RotationController removed - using physics engine for rotation
 
     bodyData.lastSync = performance.now();
@@ -317,10 +308,6 @@ export class CannonPhysicsEngine {
         if ((molA as any).reactionInProgress || (molB as any).reactionInProgress) return;
         // Queue the pair for emission after step completes
         this.pendingCollisionPairs.push({ a: molA, b: molB });
-        log(`Physics collision detected between ${molA.name} and ${molB.name}`);
-        log(`Collision point: bodyA at (${bodyA.position.x.toFixed(2)}, ${bodyA.position.y.toFixed(2)}, ${bodyA.position.z.toFixed(2)}), bodyB at (${bodyB.position.x.toFixed(2)}, ${bodyB.position.y.toFixed(2)}, ${bodyB.position.z.toFixed(2)})`);
-      } else {
-        log(`Collision detected but molecules not found: molA=${molA?.name || 'null'}, molB=${molB?.name || 'null'}`);
       }
     });
 

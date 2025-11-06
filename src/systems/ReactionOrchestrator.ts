@@ -115,7 +115,6 @@ export class ReactionOrchestrator {
     };
     
     this.initializeSystems();
-    log('🎯 ReactionOrchestrator initialized - unified system ready');
   }
   
   /**
@@ -124,11 +123,9 @@ export class ReactionOrchestrator {
   private initializeSystems(): void {
     try {
       // Clear any existing handlers to ensure our handler is first
-      log('🧹 Clearing all collision handlers to ensure unified system takes priority');
       this.collisionSystem.clearAllHandlers();
       
       // Set up collision event handlers (register first to be called first)
-      log('🎯 Registering ReactionOrchestrator collision handler');
       this.collisionSystem.registerHandler((event: any) => {
         this.handleCollisionEvent(event);
       });
@@ -137,9 +134,8 @@ export class ReactionOrchestrator {
       this.physicsEngine.resume();
       
       this.isInitialized = true;
-      log('✅ All systems initialized and coordinated');
     } catch (error) {
-      log(`❌ System initialization failed: ${error}`);
+      log(`System initialization failed: ${error}`);
       throw error;
     }
   }
@@ -155,11 +151,8 @@ export class ReactionOrchestrator {
     }
     
     if (this.state.reaction.isInProgress) {
-      log('⚠️ Reaction already in progress, skipping duplicate call');
       return;
     }
-    
-    log(`🎯 Starting unified reaction: ${params.reactionType}`);
     
     try {
       // 1. Clear existing state
@@ -176,10 +169,8 @@ export class ReactionOrchestrator {
       
       // 5. Start unified simulation
       this.startUnifiedSimulation();
-      
-      log(`✅ Unified ${params.reactionType} reaction started successfully`);
     } catch (error) {
-      log(`❌ Unified reaction failed: ${error}`);
+      log(`Unified reaction failed: ${error}`);
       this.state.reaction.isInProgress = false;
       throw error;
     }
@@ -189,8 +180,6 @@ export class ReactionOrchestrator {
    * Clear all existing state and molecules
    */
   private async clearExistingState(): Promise<void> {
-    log('🧹 Clearing existing state...');
-    
     // Clear all physics bodies
     this.physicsEngine.clearAllBodies();
     
@@ -205,8 +194,6 @@ export class ReactionOrchestrator {
     this.state.molecules.nucleophile = null;
     this.state.reaction.isInProgress = false;
     this.state.reaction.progress = 0;
-    
-    log('✅ Existing state cleared');
   }
 
   
@@ -214,8 +201,6 @@ export class ReactionOrchestrator {
    * Load molecules with proper orientation for the reaction type
    */
   private async loadMoleculesWithOrientation(params: ReactionParams): Promise<void> {
-    log(`🧪 Loading molecules for ${params.reactionType} reaction...`);
-    
     try {
       // Try to load molecules, with fallback to demo molecules
       let substrate, nucleophile;
@@ -226,7 +211,7 @@ export class ReactionOrchestrator {
       
       while (retryCount < maxRetries) {
         try {
-          log(`🔧 Attempting to load substrate (attempt ${retryCount + 1}/${maxRetries}): ${params.substrateMolecule.name} (CID: ${params.substrateMolecule.cid})`);
+          log(`Attempting to load substrate (attempt ${retryCount + 1}/${maxRetries}): ${params.substrateMolecule.name} (CID: ${params.substrateMolecule.cid})`);
           // Load substrate molecule
           substrate = await this.loadMolecule(
             params.substrateMolecule.cid,
@@ -235,7 +220,7 @@ export class ReactionOrchestrator {
             false // No random rotation for precise positioning
           );
           
-          log(`🔧 Attempting to load nucleophile (attempt ${retryCount + 1}/${maxRetries}): ${params.nucleophileMolecule.name} (CID: ${params.nucleophileMolecule.cid})`);
+          log(`Attempting to load nucleophile (attempt ${retryCount + 1}/${maxRetries}): ${params.nucleophileMolecule.name} (CID: ${params.nucleophileMolecule.cid})`);
           // Load nucleophile molecule
           nucleophile = await this.loadMolecule(
             params.nucleophileMolecule.cid,
@@ -244,14 +229,14 @@ export class ReactionOrchestrator {
             false // No random rotation for precise positioning
           );
           
-          log(`🔧 Molecules loaded successfully: substrate=${!!substrate}, nucleophile=${!!nucleophile}`);
+          log(`Molecules loaded successfully: substrate=${!!substrate}, nucleophile=${!!nucleophile}`);
           break; // Success, exit retry loop
         } catch (error) {
           retryCount++;
-          log(`⚠️ Attempt ${retryCount}/${maxRetries} failed: ${error}`);
+          log(`Attempt ${retryCount}/${maxRetries} failed: ${error}`);
           
           if (retryCount >= maxRetries) {
-            log(`❌ Molecule loading failed after ${maxRetries} attempts`);
+            log(`Molecule loading failed after ${maxRetries} attempts`);
             throw new Error(`Failed to load molecules after ${maxRetries} attempts. Substrate: ${params.substrateMolecule.name}, Nucleophile: ${params.nucleophileMolecule.name}. Error: ${error}`);
           }
           
@@ -265,15 +250,9 @@ export class ReactionOrchestrator {
       this.state.molecules.nucleophile = this.createMoleculeState(nucleophile);
       
       // Apply reaction-specific orientation
-      try {
-        this.orientMoleculesForReaction(params.reactionType);
-      } catch (error) {
-        throw error;
-      }
-      
-      log('✅ Molecules loaded and oriented');
+      this.orientMoleculesForReaction(params.reactionType);
     } catch (error) {
-      log(`❌ Molecule loading failed: ${error}`);
+      log(`Molecule loading failed: ${error}`);
       throw error;
     }
   }
@@ -283,17 +262,12 @@ export class ReactionOrchestrator {
    */
   private async loadMolecule(cid: string, name: string, position: { x: number; y: number; z: number }, applyRandomRotation: boolean): Promise<any> {
     try {
-      log(`🧪 Loading molecule: ${name} (CID: ${cid})`);
-      log(`🧪 Position: (${position.x}, ${position.y}, ${position.z})`);
-      
       // First, fetch the molecule data using ChemicalDataService
       const molecularData = await this.chemicalDataService.fetchMoleculeByCID(cid);
       
       if (!molecularData || !molecularData.mol3d) {
         throw new Error(`No MOL data available for ${name} (CID: ${cid})`);
       }
-      
-      log(`✅ Fetched MOL data for ${name}: ${molecularData.mol3d.length} characters`);
       
       // Now draw the molecule with the actual MOL data
       drawMolecule(
@@ -313,13 +287,10 @@ export class ReactionOrchestrator {
         throw new Error(`Failed to load molecule ${name} (CID: ${cid})`);
       }
       
-      log(`Retrieved molecule ${name} with ID: ${molecule.id}`);
-      
-      log(`✅ Successfully loaded molecule: ${name}`);
       return molecule;
     } catch (error) {
-      log(`❌ Failed to load molecule ${name}: ${error}`);
-      log(`❌ Error details:`, error);
+      log(`Failed to load molecule ${name}: ${error}`);
+      log(`Error details:`, error);
       throw error;
     }
   }
@@ -348,8 +319,6 @@ export class ReactionOrchestrator {
       throw new Error('Molecules not loaded for orientation');
     }
     
-    log(`🔄 Simplified orientation for ${reactionType} reaction...`);
-    
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
 
@@ -367,8 +336,6 @@ export class ReactionOrchestrator {
     // Sync to physics bodies
     this.syncOrientationToPhysics(substrate);
     this.syncOrientationToPhysics(nucleophile);
-    
-    log(`✅ Simplified orientation applied (identity rotations)`);
   }
   
   // Orientation helpers consolidated into orientationStrategies.ts
@@ -382,7 +349,7 @@ export class ReactionOrchestrator {
       // Get the molecule object from the molecule manager
       const moleculeObj = this.moleculeManager.getMolecule(molecule.name);
       if (!moleculeObj) {
-        log(`⚠️ Molecule object not found for ${molecule.name}`);
+        log(`Molecule object not found for ${molecule.name}`);
         return;
       }
       
@@ -391,12 +358,9 @@ export class ReactionOrchestrator {
       if (body) {
         const q = molecule.group.quaternion;
         body.quaternion.set(q.x, q.y, q.z, q.w);
-        log(`✅ Synced orientation to physics for ${molecule.name}`);
-      } else {
-        log(`⚠️ No physics body found for ${molecule.name}`);
       }
     } catch (error) {
-      log(`⚠️ Failed to sync orientation to physics: ${error}`);
+      log(`Failed to sync orientation to physics: ${error}`);
     }
   }
   
@@ -404,8 +368,6 @@ export class ReactionOrchestrator {
    * Configure physics with correct velocities and parameters
    */
   private configurePhysics(params: ReactionParams): void {
-    log('⚙️ Configuring physics parameters...');
-    
     if (!this.state.molecules.substrate || !this.state.molecules.nucleophile) {
       throw new Error('Molecules not loaded for physics configuration');
     }
@@ -433,19 +395,17 @@ export class ReactionOrchestrator {
     this.state.physics.velocities = [plan.substrateVelocity.clone(), plan.nucleophileVelocity.clone()];
     this.state.reaction.approachAngle = params.approachAngle;
     
-    log(`✅ Physics configured - approach angle: ${params.approachAngle}°, velocity: ${params.relativeVelocity}`);
+    log(`Physics configured - approach angle: ${params.approachAngle}°, velocity: ${params.relativeVelocity}`);
   }
   
   /**
    * Configure collision detection system
    */
   private configureCollisionDetection(params: ReactionParams): void {
-    log('🔍 Configuring collision detection...');
-    
     // Get the full reaction type from the database
     const reactionType = REACTION_TYPES[params.reactionType.toLowerCase()];
     if (!reactionType) {
-      log(`❌ Unknown reaction type: ${params.reactionType}`);
+      log(`Unknown reaction type: ${params.reactionType}`);
       return;
     }
     
@@ -456,8 +416,6 @@ export class ReactionOrchestrator {
     this.collisionSystem.setTestingMode(true); // Force 100% success for demo
     
     this.state.reaction.type = params.reactionType;
-    
-    log(`✅ Collision detection configured for ${params.reactionType}`);
   }
   
   // (removed unused name mapping helper)
@@ -466,40 +424,34 @@ export class ReactionOrchestrator {
    * Start the unified simulation
    */
   private startUnifiedSimulation(): void {
-    log('🚀 Starting unified simulation...');
-    
     this.state.physics.isSimulationActive = true;
     this.state.reaction.isInProgress = true;
     this.state.visual.needsUpdate = true;
     
     this.physicsEngine.resume();
-    
-    log('✅ Unified simulation started');
   }
   
   /**
    * Handle collision events from the collision system
    */
   private handleCollisionEvent(event: any): void {
-    log('🎯 REACTION ORCHESTRATOR: Collision detected in unified system');
-    log(`🎯 REACTION ORCHESTRATOR: Event data:`, event);
-    log(`🎯 REACTION ORCHESTRATOR: Event keys:`, Object.keys(event));
-    log(`🎯 REACTION ORCHESTRATOR: reactionResult:`, event.reactionResult);
-    log(`🎯 REACTION ORCHESTRATOR: reactionResult.occurs:`, event.reactionResult?.occurs);
+    // Check if we're in rate simulation mode - if so, skip pause logic
+    const uiState = (window as any).uiState;
+    const isRateMode = uiState && uiState.simulationMode === 'rate';
+    
+    if (isRateMode) {
+      return; // Let the rate simulator handle collisions without pausing
+    }
     
     // Check if reaction occurred
     if (event.reactionResult?.occurs) {
-      log('🎯 REACTION ORCHESTRATOR: Reaction occurred, executing unified reaction');
-      
       // IMMEDIATELY stop physics simulation to prevent molecules from flying away
-      log('🛑 IMMEDIATELY stopping physics simulation for reaction animation');
       this.physicsEngine.pause();
       this.state.physics.isSimulationActive = false;
       
       // Also stop the unified simulation loop
       if ((window as any).unifiedSimulation) {
         (window as any).unifiedSimulation.pause('Reaction in progress');
-        log('🛑 Unified simulation paused for reaction');
       }
       
       // Process the collision through unified system
@@ -508,11 +460,6 @@ export class ReactionOrchestrator {
       // Update reaction progress
       this.state.reaction.progress = 1.0;
       this.state.visual.needsUpdate = true;
-      
-      log('✅ REACTION ORCHESTRATOR: Collision processed by unified system');
-    } else {
-      log('🎯 REACTION ORCHESTRATOR: No reaction occurred, skipping');
-      log(`🎯 REACTION ORCHESTRATOR: Reason: reactionResult=${event.reactionResult}, occurs=${event.reactionResult?.occurs}`);
     }
   }
 
@@ -520,33 +467,22 @@ export class ReactionOrchestrator {
    * Execute reaction using unified approach
    */
   private executeUnifiedReaction(): void {
-    log('🧪 Executing unified reaction...');
-    
     // Get molecules from state
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
     
-    log(`🧪 Substrate available: ${!!substrate}, Nucleophile available: ${!!nucleophile}`);
-    log(`🧪 Reaction type: ${this.state.reaction.type}`);
-    
     if (!substrate || !nucleophile) {
-      log('⚠️ Molecules not available for reaction');
       return;
     }
     
     // Apply reaction-specific transformations
-    log('🧪 Calling applyReactionTransformations...');
     this.applyReactionTransformations(substrate, nucleophile, this.state.reaction.type);
-    
-    log('✅ Unified reaction executed');
   }
 
   /**
    * Apply reaction-specific transformations
    */
   private applyReactionTransformations(substrate: MoleculeState, nucleophile: MoleculeState, reactionType: string): void {
-    log(`🔄 Applying ${reactionType} transformations...`);
-    
     switch (reactionType.toLowerCase()) {
       case 'sn2':
         this.applySN2Transformations(substrate, nucleophile);
@@ -558,7 +494,7 @@ export class ReactionOrchestrator {
         this.applyE2Transformations(substrate, nucleophile);
         break;
       default:
-        log(`⚠️ Unknown reaction type: ${reactionType}`);
+        log(`Unknown reaction type: ${reactionType}`);
     }
   }
 
@@ -566,44 +502,32 @@ export class ReactionOrchestrator {
    * Apply SN2-specific transformations (Walden inversion + leaving group departure)
    */
   private applySN2Transformations(substrate: MoleculeState, nucleophile: MoleculeState): void {
-    log('🔄 Applying SN2 transformations using animation manager...');
-    log(`🔄 Substrate: ${substrate.name}, Nucleophile: ${nucleophile.name}`);
-    
     try {
-      // Check if animation manager is available
-      log(`🔄 reactionAnimationManager available: ${!!reactionAnimationManager}`);
-      log(`🔄 reactionAnimationManager type: ${typeof reactionAnimationManager}`);
-      
       // Use the animation manager for coordinated SN2 animation sequence
-      log('🔄 Calling reactionAnimationManager.animateSN2Reaction...');
       reactionAnimationManager.animateSN2Reaction(substrate, nucleophile, {
       waldenInversion: {
         duration: 1000,
-        onStart: () => log('🎬 Starting Walden inversion...'),
-        onComplete: () => log('✅ Walden inversion complete')
+        onStart: () => {},
+        onComplete: () => {}
       },
       leavingGroupDeparture: {
         duration: 1500,
         distance: 5.0,
         fadeOut: true,
-        onStart: () => log('🚀 Starting leaving group departure...'),
-        onComplete: () => log('✅ Leaving group departure complete')
+        onStart: () => {},
+        onComplete: () => {}
       },
       delayBetweenAnimations: 1000,
-      onStart: () => log('🎬 Starting SN2 reaction animation sequence...'),
+      onStart: () => {},
       onComplete: () => {
-        log('🎉 SN2 reaction animation sequence complete!');
         // Ensure final Walden inversion orientation matches backside attack (umbrella flip)
         this.applyWaldenInversionCorrection(substrate, nucleophile);
         // Resume physics simulation after correction
         this.physicsEngine.resume();
-        log('▶️ Physics simulation resumed after reaction');
       }
       });
-      
-      log('✅ SN2 animation sequence started');
     } catch (error) {
-      log(`❌ Error in applySN2Transformations: ${error}`);
+      log(`Error in applySN2Transformations: ${error}`);
       console.error('SN2 transformation error:', error);
     }
   }
@@ -613,18 +537,14 @@ export class ReactionOrchestrator {
    * Apply SN1-specific transformations
    */
   private applySN1Transformations(_substrate: MoleculeState, _nucleophile: MoleculeState): void {
-    log('🔄 Applying SN1 transformations...');
     // SN1 doesn't require specific orientation changes
-    log('✅ SN1 transformations applied');
   }
 
   /**
    * Apply E2-specific transformations
    */
   private applyE2Transformations(_substrate: MoleculeState, _nucleophile: MoleculeState): void {
-    log('🔄 Applying E2 transformations...');
     // E2 requires anti-coplanar orientation
-    log('✅ E2 transformations applied');
   }
   
   /**
@@ -667,26 +587,18 @@ export class ReactionOrchestrator {
    * Stop the current reaction
    */
   stopReaction(): void {
-    log('⏹️ Stopping unified reaction...');
-    
     this.state.physics.isSimulationActive = false;
     this.state.reaction.isInProgress = false;
     this.state.reaction.progress = 0;
     
     this.physicsEngine.pause();
-    
-    log('✅ Unified reaction stopped');
   }
   
   /**
    * Clean up resources
    */
   dispose(): void {
-    log('🧹 Disposing ReactionOrchestrator...');
-    
     this.stopReaction();
     this.clearExistingState();
-    
-    log('✅ ReactionOrchestrator disposed');
   }
 }

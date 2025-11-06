@@ -48,7 +48,6 @@ export class UnifiedSimulation {
     this.renderer = renderer;
     
     this.setupEventHandlers();
-    log('🎬 UnifiedSimulation initialized');
   }
   
   /**
@@ -71,8 +70,6 @@ export class UnifiedSimulation {
     reactionEventBus.on('error-occurred', (event) => {
       this.handleErrorOccurred(event);
     });
-    
-    log('📡 Event handlers registered');
   }
   
   /**
@@ -80,7 +77,6 @@ export class UnifiedSimulation {
    */
   start(): void {
     if (this.isRunning) {
-      log('⚠️ Simulation already running');
       return;
     }
     
@@ -89,7 +85,6 @@ export class UnifiedSimulation {
     this.animationId = requestAnimationFrame((time) => this.updateLoop(time));
     
     reactionEventBus.emitSimulationResumed();
-    log('🚀 Unified simulation started');
   }
   
   /**
@@ -97,7 +92,6 @@ export class UnifiedSimulation {
    */
   stop(): void {
     if (!this.isRunning) {
-      log('⚠️ Simulation not running');
       return;
     }
     
@@ -108,7 +102,6 @@ export class UnifiedSimulation {
     }
     
     reactionEventBus.emitSimulationPaused('Manual stop');
-    log('⏹️ Unified simulation stopped');
   }
   
   /**
@@ -116,7 +109,6 @@ export class UnifiedSimulation {
    */
   pause(reason: string = 'Manual pause'): void {
     if (this.isPaused) {
-      log('⚠️ Simulation already paused');
       return;
     }
     
@@ -125,7 +117,6 @@ export class UnifiedSimulation {
     this.pauseStartTime = performance.now();
     
     reactionEventBus.emitSimulationPaused(reason);
-    log(`⏸️ Simulation paused: ${reason}`);
   }
   
   /**
@@ -133,7 +124,6 @@ export class UnifiedSimulation {
    */
   resume(): void {
     if (!this.isPaused) {
-      log('⚠️ Simulation not paused');
       return;
     }
     
@@ -141,7 +131,6 @@ export class UnifiedSimulation {
     const pauseDuration = performance.now() - this.pauseStartTime;
     
     reactionEventBus.emitSimulationResumed();
-    log(`▶️ Simulation resumed (paused for ${pauseDuration.toFixed(0)}ms)`);
   }
   
   /**
@@ -200,16 +189,6 @@ export class UnifiedSimulation {
     if (state.physics.isSimulationActive) {
       // Actually call the physics engine step
       this.orchestrator.getPhysicsEngine().step(deltaTime);
-      
-      // Debug: log physics step occasionally
-      if (this.frameCount % 60 === 0) { // Log every 60 frames (1 second at 60fps)
-        log(`⚙️ Physics engine step called (deltaTime: ${deltaTime.toFixed(3)}s)`);
-      }
-    } else {
-      // Debug: log when physics is not active
-      if (this.frameCount % 60 === 0) { // Log every 60 frames (1 second at 60fps)
-        log('⚠️ Physics simulation not active - no collisions will be detected');
-      }
     }
   }
   
@@ -443,7 +422,6 @@ export class UnifiedSimulation {
   dispose(): void {
     this.stop();
     reactionEventBus.dispose();
-    log('🧹 UnifiedSimulation disposed');
   }
 }
 

@@ -95,10 +95,6 @@ export function molFileToJSON(molFile: string): MolObject {
 
   const split: string[] = molContent.split('\n'); // Split the molFile content into lines.
 
-  // Debug: Log the MOL file structure
-  console.log('🔍 MOL file structure:');
-  console.log('Lines count:', split.length);
-  console.log('First 5 lines:', split.slice(0, 5));
 
   // --- Parse Header Section ---
   molObj.header = {} as MolHeader;
@@ -121,7 +117,7 @@ export function molFileToJSON(molFile: string): MolObject {
 
   // Check if we have enough lines for a valid MOL file
   if (split.length < 4) {
-    console.error('❌ Invalid MOL file: Not enough lines. Expected at least 4 lines, got:', split.length);
+    console.error('Invalid MOL file: Not enough lines. Expected at least 4 lines, got:', split.length);
     console.error('MOL file content:', molContent);
     throw new Error('Invalid MOL file format: Not enough lines');
   }
@@ -133,7 +129,7 @@ export function molFileToJSON(molFile: string): MolObject {
       countChunks.push(split[3].slice(i, i + 3)); // Extract 3-character chunks.
     }
   } else {
-    console.error('❌ Invalid MOL file: Counts line is empty or undefined');
+    console.error('Invalid MOL file: Counts line is empty or undefined');
     throw new Error('Invalid MOL file format: Counts line is empty');
   }
 
@@ -149,7 +145,7 @@ export function molFileToJSON(molFile: string): MolObject {
   // Check if we have enough lines for atom data
   const numAtoms = parseInt(molObj.counts.molecules, 10) || 0;
   if (numAtoms > 0 && split.length < 4 + numAtoms) {
-    console.error('❌ Invalid MOL file: Not enough lines for atom data. Expected at least', 4 + numAtoms, 'lines, got:', split.length);
+    console.error('Invalid MOL file: Not enough lines for atom data. Expected at least', 4 + numAtoms, 'lines, got:', split.length);
     throw new Error('Invalid MOL file format: Not enough lines for atom data');
   }
   
@@ -175,7 +171,7 @@ export function molFileToJSON(molFile: string): MolObject {
   const bondsEndIndex: number = bondsStartIndex + numBonds;
   
   if (numBonds > 0 && split.length < bondsEndIndex) {
-    console.error('❌ Invalid MOL file: Not enough lines for bond data. Expected at least', bondsEndIndex, 'lines, got:', split.length);
+    console.error('Invalid MOL file: Not enough lines for bond data. Expected at least', bondsEndIndex, 'lines, got:', split.length);
     throw new Error('Invalid MOL file format: Not enough lines for bond data');
   }
   

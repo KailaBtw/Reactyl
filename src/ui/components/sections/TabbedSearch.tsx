@@ -97,10 +97,6 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
 
   // Auto-populate dropdowns on component mount (centralized list)
   useEffect(() => {
-    console.log('[TabbedSearch] useEffect running - checking molecule list');
-    console.log('[TabbedSearch] AVAILABLE_MOLECULES:', AVAILABLE_MOLECULES);
-    console.log('[TabbedSearch] uiState.availableMolecules:', uiState.availableMolecules);
-    
     // Always update to the centralized list
     const targetMolecules = [...AVAILABLE_MOLECULES];
     const currentMolecules = uiState.availableMolecules;
@@ -110,27 +106,12 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
       currentMolecules.length !== targetMolecules.length ||
       !targetMolecules.every(mol => currentMolecules.includes(mol));
     
-    console.log('[TabbedSearch] needsUpdate:', needsUpdate, {
-      currentLength: currentMolecules.length,
-      targetLength: targetMolecules.length,
-      missing: targetMolecules.filter(mol => !currentMolecules.includes(mol))
-    });
-    
     if (needsUpdate) {
-      console.log(`[TabbedSearch] UPDATING molecule list:`, {
-        current: currentMolecules,
-        target: targetMolecules,
-        currentLength: currentMolecules.length,
-        targetLength: targetMolecules.length
-      });
       updateUIState({
         availableMolecules: targetMolecules,
         substrateMolecule: uiState.substrateMolecule || DEFAULT_SUBSTRATE,
         nucleophileMolecule: uiState.nucleophileMolecule || DEFAULT_NUCLEOPHILE,
       });
-      console.log('[TabbedSearch] updateUIState called with:', targetMolecules);
-    } else {
-      console.log('[TabbedSearch] Molecule list is up to date:', currentMolecules);
     }
   }, [uiState.availableMolecules.length]);
 
@@ -964,7 +945,6 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                     return;
                   }
 
-                  console.log('Starting reaction animation...');
                   try {
                     await threeJSBridge.startReactionAnimation();
                     updateUIState({
@@ -1000,7 +980,6 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
             <button 
               className="btn btn-secondary" 
               onClick={() => {
-                console.log('🔄 Resetting scene and clearing all molecules...');
                 
                 // Clear any running reaction monitoring intervals
                 sn2ReactionSystem.clearAllIntervals();
@@ -1023,7 +1002,6 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                   // availableMolecules: [] // Don't clear this - keep demo molecules available
                 });
                 
-                console.log('✅ Reset completed - ready for new reaction');
               }}
               style={{ flex: 1 }}
             >
@@ -1056,13 +1034,7 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                   </div>
                   <button
                     onClick={() => {
-                      console.log('Scene bridge status:', {
-                        initialized: sceneBridge.isInitialized(),
-                        scene: !!sceneBridge.getScene(),
-                        moleculeManager: !!sceneBridge.getMoleculeManager(),
-                        globalScene: !!(window as any).threeScene,
-                        globalManager: !!(window as any).moleculeManager
-                      });
+                      // Debug button - no action needed
                     }}
                     style={{
                       padding: '8px 12px',

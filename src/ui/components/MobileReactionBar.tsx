@@ -26,7 +26,6 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
         return;
       }
 
-      console.log('🚀 Starting mobile reaction...');
       try {
         await threeJSBridge.startReactionAnimation();
         updateUIState({
@@ -55,8 +54,6 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
   };
 
   const handleReset = () => {
-    console.log('🔄 Mobile reset...');
-    
     // Clear any running reaction monitoring intervals
     const sn2ReactionSystem = (window as any).sn2ReactionSystem;
     if (sn2ReactionSystem && sn2ReactionSystem.clearAllIntervals) {
@@ -78,7 +75,6 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
       // nucleophileMolecule: ''
     });
     
-    console.log('✅ Mobile reset completed - ready for new reaction');
   };
 
   return (

@@ -11,6 +11,9 @@ import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from './c
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
+  // Simulation mode
+  simulationMode: 'single' | 'rate'; // Single collision vs reaction rate
+  
   // Time controls
   isPlaying: boolean;
   timeScale: number;
@@ -51,6 +54,12 @@ export interface UIState {
   timeToCollision: number;
   reactionProbability: number;
   autoplay: boolean;
+  
+  // Reaction rate metrics (for rate mode)
+  particleCount: number; // Number of molecules in rate simulation
+  reactionRate: number; // Successful reactions per second
+  remainingReactants: number; // Percentage of reactants remaining
+  productsFormed: number; // Count of products formed
 }
 
 // Helper function to determine if screen is large enough for expanded bottom bar
@@ -60,6 +69,7 @@ const getInitialBottomBarState = (): boolean => {
 };
 
 const initialState: UIState = {
+  simulationMode: 'single', // Start in single collision mode
   isPlaying: false,
   timeScale: 0.8,
   temperature: 298,
@@ -85,6 +95,10 @@ const initialState: UIState = {
   timeToCollision: 0,
   reactionProbability: 0,
   autoplay: false,
+  particleCount: 20, // Default particle count for rate mode
+  reactionRate: 0,
+  remainingReactants: 100,
+  productsFormed: 0,
 };
 
 export const App: React.FC = () => {
@@ -97,7 +111,6 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (sceneRef.current && !threeSceneRef.current) {
       // This will be handled by the SceneContainer component
-      console.log('Scene container ready for Three.js initialization');
     }
   }, []);
 
@@ -206,6 +219,24 @@ export const App: React.FC = () => {
     calculateProbability();
   }, [uiState.approachAngle, uiState.relativeVelocity, uiState.temperature, uiState.reactionType, uiState.substrateMolecule, uiState.nucleophileMolecule, updateUIState]);
 
+  // Poll rate metrics when in rate mode
+  useEffect(() => {
+    if (uiState.simulationMode !== 'rate' || !uiState.isPlaying) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const metrics = threeJSBridge.getRateMetrics();
+      updateUIState({
+        reactionRate: metrics.reactionRate,
+        remainingReactants: metrics.remainingReactants,
+        productsFormed: metrics.productsFormed
+      });
+    }, 500); // Update every 500ms
+
+    return () => clearInterval(interval);
+  }, [uiState.simulationMode, uiState.isPlaying, updateUIState]);
+
   // Map UIState to MainLayout props
   const mainLayoutProps = {
     currentReaction: uiState.reactionType,
@@ -221,7 +252,6 @@ export const App: React.FC = () => {
     onSubstrateChange: (substrate: string) => updateUIState({ substrateMolecule: substrate }),
     onNucleophileChange: (nucleophile: string) => updateUIState({ nucleophileMolecule: nucleophile }),
     onAttackAngleChange: (angle: number) => {
-      console.log('Attack angle changed:', angle);
       updateUIState({ approachAngle: angle });
     },
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
@@ -251,39 +281,76 @@ export const App: React.FC = () => {
       }
     },
     onPlay: async () => {
-      console.log('Play button clicked');
       try {
-        if (!uiState.reactionInProgress) {
-          await threeJSBridge.startReactionAnimation();
+        if (uiState.simulationMode === 'rate') {
+          // Rate simulation mode
+          const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
+            'demo_Methyl_bromide': { cid: '6323', name: 'Methyl bromide' },
+            'demo_Hydroxide_ion': { cid: '961', name: 'Hydroxide ion' },
+            'demo_Methanol': { cid: '887', name: 'Methanol' },
+            'demo_Water': { cid: '962', name: 'Water' }
+          };
+          
+          const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || { cid: '6323', name: 'Methyl bromide' };
+          const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || { cid: '961', name: 'Hydroxide ion' };
+          
+          await threeJSBridge.startRateSimulation(
+            uiState.particleCount,
+            uiState.temperature,
+            uiState.reactionType,
+            substrateMolecule,
+            nucleophileMolecule
+          );
           updateUIState({ isPlaying: true, reactionInProgress: true });
         } else {
-          // If paused with an existing reaction, clear and restart to avoid overlap
-          threeJSBridge.clear();
-          await threeJSBridge.startReactionAnimation();
-          updateUIState({ isPlaying: true, reactionInProgress: true });
+          // Single collision mode
+          if (!uiState.reactionInProgress) {
+            await threeJSBridge.startReactionAnimation();
+            updateUIState({ isPlaying: true, reactionInProgress: true });
+          } else {
+            // If paused with an existing reaction, clear and restart to avoid overlap
+            threeJSBridge.clear();
+            await threeJSBridge.startReactionAnimation();
+            updateUIState({ isPlaying: true, reactionInProgress: true });
+          }
         }
       } catch (e) {
         console.error('Error handling Play:', e);
       }
     },
     onPause: () => {
-      console.log('Pause button clicked');
       if (autoplayTimeoutRef.current) {
         clearTimeout(autoplayTimeoutRef.current);
         autoplayTimeoutRef.current = null;
       }
+      
+      if (uiState.simulationMode === 'rate') {
+        // Rate simulation doesn't need special pause handling
+        // Metrics polling will stop automatically when isPlaying = false
+      }
+      
       updateUIState({ isPlaying: false });
     },
     onReset: () => {
-      console.log('Reset button clicked');
-      // Call your existing reset logic
-      threeJSBridge.clear();
-      updateUIState({ 
-        isPlaying: false, 
-        reactionInProgress: false,
-        distance: 0,
-        timeToCollision: 0
-      });
+      
+      if (uiState.simulationMode === 'rate') {
+        threeJSBridge.stopRateSimulation();
+        updateUIState({ 
+          isPlaying: false, 
+          reactionInProgress: false,
+          reactionRate: 0,
+          remainingReactants: 100,
+          productsFormed: 0
+        });
+      } else {
+        threeJSBridge.clear();
+        updateUIState({ 
+          isPlaying: false, 
+          reactionInProgress: false,
+          distance: 0,
+          timeToCollision: 0
+        });
+      }
     },
   };
 

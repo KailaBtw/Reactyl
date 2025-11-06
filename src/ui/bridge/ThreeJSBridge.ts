@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ReactionOrchestrator } from '../../systems/ReactionOrchestrator';
 import { UnifiedSimulation } from '../../systems/UnifiedSimulation';
+import { ReactionRateSimulator } from '../../systems/ReactionRateSimulator';
 import { physicsEngine } from '../../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../../physics/collisionEventSystem';
 import { createMoleculeManager } from '../../services/moleculeManager';
@@ -21,9 +22,9 @@ export class ThreeJSBridge {
   // Unified system only - no legacy ReactionDemo
   private reactionOrchestrator: ReactionOrchestrator | null = null;
   private unifiedSimulation: UnifiedSimulation | null = null;
+  private reactionRateSimulator: ReactionRateSimulator | null = null;
 
   constructor() {
-    console.log('ThreeJSBridge initialized');
   }
 
   initializeScene(container: HTMLElement): THREE.Scene {
@@ -82,7 +83,6 @@ export class ThreeJSBridge {
       });
 
       this.renderer.domElement.addEventListener('webglcontextrestored', () => {
-        console.log('WebGL context restored');
         this.hideContextLostMessage();
         // Force reinitialize everything
         this.forceReinitialize(container);
@@ -143,10 +143,24 @@ export class ThreeJSBridge {
         
         // Expose to window for debugging and control
         (window as any).unifiedSimulation = this.unifiedSimulation;
-        
-        console.log('🎯 Unified reaction system initialized');
       } catch (error) {
-        console.warn('⚠️ Unified reaction system failed to initialize:', error);
+        console.warn('Unified reaction system failed to initialize:', error);
+      }
+    }
+
+    // Initialize reaction rate simulator
+    if (!this.reactionRateSimulator) {
+      try {
+        this.reactionRateSimulator = new ReactionRateSimulator(
+          this.scene,
+          physicsEngine,
+          this.moleculeManager
+        );
+        
+        // Expose to window for debugging
+        (window as any).reactionRateSimulator = this.reactionRateSimulator;
+      } catch (error) {
+        console.warn('Reaction rate simulator failed to initialize:', error);
       }
     }
 
@@ -180,8 +194,6 @@ export class ThreeJSBridge {
 
     // Unified system: no chemistry mode toggles
 
-    console.log('Three.js scene initialized with orbit controls');
-    console.log('🔧 Scene objects exposed globally for testing');
     
     // Log available test functions
     // (trimmed test function enumeration for production)
@@ -194,13 +206,13 @@ export class ThreeJSBridge {
 
     // Only update physics time scale if it actually changed
     if (!previousState || previousState.timeScale !== uiState.timeScale) {
-      console.log('🔄 Updating physics time scale:', uiState.timeScale);
+      console.log('Updating physics time scale:', uiState.timeScale);
       physicsEngine.setTimeScale(uiState.timeScale);
     }
 
     // Only handle play/pause if the playing state actually changed
     if (!previousState || previousState.isPlaying !== uiState.isPlaying) {
-      console.log('🔄 Updating play/pause state:', uiState.isPlaying);
+      console.log('Updating play/pause state:', uiState.isPlaying);
       if (uiState.isPlaying) {
         physicsEngine.resume();
       } else {
@@ -210,7 +222,7 @@ export class ThreeJSBridge {
 
     // Only update testing mode if it actually changed
     if (!previousState || previousState.testingMode !== uiState.testingMode) {
-      console.log('🔄 Updating testing mode:', uiState.testingMode);
+      console.log('Updating testing mode:', uiState.testingMode);
       collisionEventSystem.setTestingMode(uiState.testingMode);
     }
 
@@ -258,7 +270,17 @@ export class ThreeJSBridge {
       }
 
       // Step the physics engine
-      physicsEngine.step(1 / 60); // 60 FPS
+      const deltaTime = 1 / 60; // 60 FPS
+      physicsEngine.step(deltaTime);
+
+      // Update rate simulation if active (handles boundary collisions)
+      if (this.reactionRateSimulator) {
+        // Check if we're in rate mode by checking UI state
+        const uiState = (window as any).uiState;
+        if (uiState && uiState.simulationMode === 'rate' && uiState.isPlaying) {
+          this.updateRateSimulation(deltaTime);
+        }
+      }
 
       this.renderer.render(this.scene, this.camera);
     }
@@ -283,16 +305,10 @@ export class ThreeJSBridge {
   // Unified system handles molecule loading and collision setup internally
 
   async startReactionAnimation(): Promise<void> {
-    console.log('🚀 ThreeJSBridge.startReactionAnimation() CALLED');
-    
     if (!this.reactionOrchestrator || !this.moleculeManager) {
       console.error('Reaction orchestrator or molecule manager not initialized');
-      console.log('🚀 reactionOrchestrator:', this.reactionOrchestrator);
-      console.log('🚀 moleculeManager:', this.moleculeManager);
       return;
     }
-
-    console.log('Starting reaction animation with unified system...');
 
     // Get current UI state for reaction parameters
     const uiState = (window as any).uiState || {
@@ -336,8 +352,6 @@ export class ThreeJSBridge {
     }
 
     // Use unified reaction system
-    console.log('🚀 Running chemical reaction with unified system');
-    
     try {
       await this.reactionOrchestrator.runReaction(reactionParams);
       
@@ -345,22 +359,18 @@ export class ThreeJSBridge {
       if (this.unifiedSimulation) {
         this.unifiedSimulation.start();
       }
-      
-      console.log('🚀 COMPLETED unified reaction system');
     } catch (error) {
-      console.error('❌ Unified reaction failed:', error);
+      console.error('Unified reaction failed:', error);
     }
   }
 
   pauseReactionAnimation(): void {
-    console.log('⏸️ ThreeJSBridge.pauseReactionAnimation() CALLED');
     if (this.reactionOrchestrator) {
       this.reactionOrchestrator.stopReaction();
     }
   }
 
   async stopReaction(): Promise<void> {
-    console.log('Stopping reaction...');
     // Pause physics engine and orchestrator
     physicsEngine.pause();
     this.reactionOrchestrator?.stopReaction();
@@ -376,6 +386,67 @@ export class ThreeJSBridge {
 
   getUnifiedSimulation() {
     return this.unifiedSimulation;
+  }
+
+  getReactionRateSimulator() {
+    return this.reactionRateSimulator;
+  }
+
+  async startRateSimulation(
+    particleCount: number,
+    temperature: number,
+    reactionType: string,
+    substrateData: any,
+    nucleophileData: any
+  ): Promise<void> {
+    console.log(`Starting rate simulation: ${particleCount} pairs at ${temperature}K`);
+    
+    if (!this.reactionRateSimulator) {
+      console.error('Reaction rate simulator not initialized');
+      return;
+    }
+
+    try {
+      // Ensure physics engine is running
+      physicsEngine.resume();
+      
+      await this.reactionRateSimulator.initializeSimulation(
+        substrateData,
+        nucleophileData,
+        particleCount,
+        temperature,
+        reactionType
+      );
+      
+      console.log('Rate simulation started');
+    } catch (error) {
+      console.error('Failed to start rate simulation:', error);
+    }
+  }
+
+  updateRateSimulation(deltaTime: number): void {
+    if (this.reactionRateSimulator) {
+      this.reactionRateSimulator.update(deltaTime);
+    }
+  }
+
+  getRateMetrics(): any {
+    if (this.reactionRateSimulator) {
+      return this.reactionRateSimulator.getMetrics();
+    }
+    return {
+      reactionRate: 0,
+      remainingReactants: 100,
+      productsFormed: 0,
+      collisionCount: 0,
+      elapsedTime: 0
+    };
+  }
+
+  stopRateSimulation(): void {
+    if (this.reactionRateSimulator) {
+      this.reactionRateSimulator.clear();
+    }
   }
 
   isUsingUnifiedSystem(): boolean {
@@ -421,7 +492,6 @@ export class ThreeJSBridge {
   }
 
   private forceReinitialize(container: HTMLElement) {
-    console.log('Force reinitializing Three.js scene...');
 
     // Clean up everything
     this.dispose();
@@ -437,18 +507,14 @@ export class ThreeJSBridge {
    * Clear all molecules and reset the scene without disposing the entire bridge
    */
   clear(): void {
-    console.log('🧹 ThreeJSBridge.clear() - Clearing scene and molecules...');
-    
     // Clear all molecules from molecule manager
     if (this.moleculeManager) {
       this.moleculeManager.clearAllMolecules();
-      console.log('✅ Cleared all molecules from manager');
     }
     
     // Clear all physics bodies
     if (physicsEngine) {
       physicsEngine.clearAllBodies();
-      console.log('✅ Cleared all physics bodies');
     }
     
     // Clear scene of all objects (but keep lighting and camera)
@@ -479,14 +545,12 @@ export class ThreeJSBridge {
         }
       });
       
-      console.log(`✅ Removed ${childrenToRemove.length} objects from scene`);
     }
     
     // Ensure orchestrator flags are reset so a new run can start
     if (this.reactionOrchestrator) {
       try {
         this.reactionOrchestrator.stopReaction();
-        console.log('✅ Reaction orchestrator stopped and flags reset');
       } catch (_e) {
         // no-op, best-effort
       }
@@ -495,16 +559,12 @@ export class ThreeJSBridge {
     // Stop unified simulation
     if (this.unifiedSimulation) {
       this.unifiedSimulation.stop();
-      console.log('✅ Unified simulation stopped');
     }
     
     // Reset collision system state
     if (collisionEventSystem) {
       collisionEventSystem.resetReactionState();
-      console.log('✅ Collision system state reset');
     }
-    
-    console.log('✅ ThreeJSBridge clear completed');
   }
 
   dispose() {
@@ -530,7 +590,6 @@ export class ThreeJSBridge {
     // Clear camera
     this.camera = null;
 
-    console.log('ThreeJSBridge disposed and cleaned up');
   }
 
   setBackgroundColor(color: string): void {

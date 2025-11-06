@@ -6,6 +6,7 @@ import { ReactionSetup } from './sections/ReactionSetup';
 import { SimulationControls } from './sections/SimulationControls';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
 import { CompactLiveData } from './sections/CompactLiveData';
+import { ReactionRateMetrics } from './sections/ReactionRateMetrics';
 import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
 
@@ -199,22 +200,38 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             attackAngle={attackAngle}
             relativeVelocity={relativeVelocity}
             temperature={temperature}
+            simulationMode={uiState.simulationMode}
+            particleCount={uiState.particleCount}
             onReactionChange={onReactionChange}
             onSubstrateChange={onSubstrateChange}
             onNucleophileChange={onNucleophileChange}
             onAttackAngleChange={onAttackAngleChange}
             onRelativeVelocityChange={onRelativeVelocityChange}
             onTemperatureChange={onTemperatureChange}
+            onSimulationModeChange={(mode) => updateUIState({ simulationMode: mode })}
+            onParticleCountChange={(count) => updateUIState({ particleCount: count })}
             themeClasses={themeClasses}
           />
 
-          <CompactLiveData
-            relativeVelocity={relativeVelocity}
-            attackAngle={attackAngle}
-            reactionProbability={uiState.reactionProbability}
-            timeScale={timeScale}
-            themeClasses={themeClasses}
-          />
+          {/* Conditionally show metrics based on simulation mode */}
+          {uiState.simulationMode === 'single' ? (
+            <CompactLiveData
+              relativeVelocity={relativeVelocity}
+              attackAngle={attackAngle}
+              reactionProbability={uiState.reactionProbability}
+              timeScale={timeScale}
+              themeClasses={themeClasses}
+            />
+          ) : (
+            <ReactionRateMetrics
+              reactionRate={uiState.reactionRate}
+              remainingReactants={uiState.remainingReactants}
+              productsFormed={uiState.productsFormed}
+              collisionCount={0}
+              elapsedTime={0}
+              themeClasses={themeClasses}
+            />
+          )}
 
           <SimulationControls
             isPlaying={isPlaying}

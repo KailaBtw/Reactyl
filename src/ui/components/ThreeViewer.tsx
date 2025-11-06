@@ -57,10 +57,6 @@ export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({
     threeJSBridge.setBackgroundColor(backgroundColor);
   }, [backgroundColor]);
 
-  // Debug: Log when component mounts
-  useEffect(() => {
-    console.log('ThreeViewer mounted, threeJSBridge:', threeJSBridge);
-  }, []);
 
   // Handle UI state changes (your existing logic)
   useEffect(() => {

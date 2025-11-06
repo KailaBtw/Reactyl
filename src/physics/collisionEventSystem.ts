@@ -49,7 +49,7 @@ class CollisionEventSystem {
    */
   setReactionType(reactionType: ReactionType): void {
     this.currentReactionType = reactionType;
-    log(`✅ Reaction type set: ${reactionType.name} (${reactionType.id})`);
+    log(`Reaction type set: ${reactionType.name} (${reactionType.id})`);
   }
 
   /**
@@ -62,7 +62,7 @@ class CollisionEventSystem {
   setTestingMode(testingMode: boolean): void {
     this.testingMode = testingMode;
     log(
-      `🧪 Testing mode ${testingMode ? 'enabled' : 'disabled'} - reaction probability ${testingMode ? 'forced to 100%' : 'calculated normally'}`
+      `Testing mode ${testingMode ? 'enabled' : 'disabled'} - reaction probability ${testingMode ? 'forced to 100%' : 'calculated normally'}`
     );
   }
 
@@ -73,7 +73,6 @@ class CollisionEventSystem {
     this.reactionOccurred = false;
     this.hasShownDemoProduct = false;
     this.collisionHistory.clear();
-    log(`🔄 Reaction state reset - ready for new reaction`);
   }
 
   // No default scene; we always resolve via object ancestry
@@ -83,7 +82,7 @@ class CollisionEventSystem {
    */
   setDemoEasyMode(enabled: boolean): void {
     this.demoEasyMode = enabled;
-    log(`🎛️ Demo Easy Mode: ${enabled ? 'ON' : 'OFF'}`);
+    log(`Demo Easy Mode: ${enabled ? 'ON' : 'OFF'}`);
   }
 
   /**
@@ -124,7 +123,6 @@ class CollisionEventSystem {
    */
   clearAllHandlers(): void {
     this.eventHandlers = [];
-    log('🧹 Cleared all collision event handlers');
   }
 
   /**
@@ -181,17 +179,14 @@ class CollisionEventSystem {
    */
   private processReactionDetection(event: CollisionEvent): void {
     if (!this.currentReactionType) {
-      log('❌ No reaction type set - skipping reaction detection');
       return;
     }
 
     // Check if either molecule is already in a reaction to prevent race conditions
     if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
-      log('⚠️ Reaction already in progress for one or both molecules - skipping detection');
       return;
     }
 
-    log(`🔍 Processing reaction detection for ${this.currentReactionType.name}`);
 
     // Calculate collision data
     const collisionData: CollisionData = {
@@ -244,10 +239,10 @@ class CollisionEventSystem {
         (reactionResult as any).probability = realProbability;
         (reactionResult as any).occurs = Math.random() < realProbability;
         
-        log(`🎯 UI Override: Using calculated probability ${(realProbability * 100).toFixed(1)}% instead of forcing 100%`);
+        log(`UI Override: Using calculated probability ${(realProbability * 100).toFixed(1)}% instead of forcing 100%`);
       } else {
         // Fallback to original behavior if UI state not available
-        log(`🧪 Testing mode: forcing reaction probability to 100% for demo`);
+        log(`Testing mode: forcing reaction probability to 100% for demo`);
         (reactionResult as any).probability = 1.0;
         (reactionResult as any).occurs = true;
       }
@@ -258,14 +253,13 @@ class CollisionEventSystem {
       this.reactionOccurred = true;
       event.moleculeA.reactionInProgress = true;
       event.moleculeB.reactionInProgress = true;
-      log(`🎉 Reaction occurred! Setting flag to prevent duplicate processing`);
     }
     // If demo easy mode is enabled, boost probability to showcase reaction
     else if (this.demoEasyMode) {
       const boostedProbability = Math.max(reactionResult.probability, 0.95);
       const occurs = Math.random() < boostedProbability;
       log(
-        `🎚️ Demo Easy Mode active → Boosting probability to ${(boostedProbability * 100).toFixed(
+        `Demo Easy Mode active → Boosting probability to ${(boostedProbability * 100).toFixed(
           2
         )}% → ${occurs ? 'FORCING SUCCESS' : 'still failed stochastically'}`
       );
@@ -274,7 +268,7 @@ class CollisionEventSystem {
     }
 
     log(
-      `🧪 Reaction detection result: ${reactionResult.occurs ? 'SUCCESS' : 'FAILED'} (probability: ${(reactionResult.probability * 100).toFixed(2)}%)`
+      `Reaction detection result: ${reactionResult.occurs ? 'SUCCESS' : 'FAILED'} (probability: ${(reactionResult.probability * 100).toFixed(2)}%)`
     );
 
     // Emit collision detected event to unified system
@@ -290,7 +284,6 @@ class CollisionEventSystem {
 
     // Emit reaction event if reaction occurs
     if (reactionResult.occurs) {
-      log('🎉 Reaction occurred! Generating products...');
 
       // Set reaction flags to prevent race conditions
       event.moleculeA.reactionInProgress = true;
@@ -300,7 +293,6 @@ class CollisionEventSystem {
 
       // Skip if we already spawned products in this demo session
       if (this.hasShownDemoProduct) {
-        log('ℹ️ Products already generated for this demo session; skipping duplicate generation');
         return;
       }
 
@@ -315,7 +307,7 @@ class CollisionEventSystem {
         event.moleculeB.reactionInProgress = false;
       }
     } else {
-      log(`❌ No reaction: probability was ${(reactionResult.probability * 100).toFixed(2)}%`);
+      log(`No reaction: probability was ${(reactionResult.probability * 100).toFixed(2)}%`);
     }
   }
 
@@ -353,7 +345,6 @@ class CollisionEventSystem {
 
     try {
       // Reaction transformation handled by chemistry reaction system
-      log('✅ Reaction transformation handled by chemistry system');
     } catch (error) {
       console.error('Error transforming molecules for reaction:', error);
     } finally {

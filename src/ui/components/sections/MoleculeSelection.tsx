@@ -19,19 +19,11 @@ export const MoleculeSelection: React.FC = () => {
       !targetMolecules.every(mol => currentMolecules.includes(mol));
     
     if (needsUpdate) {
-      console.log(`Updating molecule list:`, {
-        current: currentMolecules,
-        target: targetMolecules,
-        currentLength: currentMolecules.length,
-        targetLength: targetMolecules.length
-      });
       updateUIState({
         availableMolecules: targetMolecules,
         substrateMolecule: uiState.substrateMolecule || DEFAULT_SUBSTRATE,
         nucleophileMolecule: uiState.nucleophileMolecule || DEFAULT_NUCLEOPHILE,
       });
-    } else {
-      console.log('Molecule list is up to date:', currentMolecules);
     }
   }, []);
 
@@ -41,7 +33,6 @@ export const MoleculeSelection: React.FC = () => {
       return;
     }
 
-    console.log('Starting reaction animation...');
     try {
       await threeJSBridge.startReactionAnimation();
       updateUIState({
