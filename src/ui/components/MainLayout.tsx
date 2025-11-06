@@ -5,6 +5,7 @@ import { SettingsModal } from './SettingsModal';
 import { ReactionSetup } from './sections/ReactionSetup';
 import { SimulationControls } from './sections/SimulationControls';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
+import { CompactLiveData } from './sections/CompactLiveData';
 import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
 
@@ -204,6 +205,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             onAttackAngleChange={onAttackAngleChange}
             onRelativeVelocityChange={onRelativeVelocityChange}
             onTemperatureChange={onTemperatureChange}
+            themeClasses={themeClasses}
+          />
+
+          <CompactLiveData
+            relativeVelocity={relativeVelocity}
+            attackAngle={attackAngle}
+            reactionProbability={uiState.reactionProbability}
+            timeScale={timeScale}
             themeClasses={themeClasses}
           />
 

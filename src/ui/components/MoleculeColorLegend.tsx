@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ATOM_CONFIGS } from '../../config/atomConfig';
+import { extractElementsFromMolecules } from '../utils/moleculeElementExtractor';
 
 interface MoleculeColorLegendProps {
   className?: string;
   theme?: string;
   themeClasses?: any;
+  selectedMolecules?: string[]; // Optional: molecules selected in dropdowns
 }
 
-export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ className = '', theme = 'blue', themeClasses }) => {
+export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ 
+  className = '', 
+  theme = 'blue', 
+  themeClasses,
+  selectedMolecules = []
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Get molecule colors from config
-  const getMoleculeColors = () => {
+  // Default elements to always show: H, C, O, N, Cl
+  const DEFAULT_ELEMENTS = ['H', 'C', 'O', 'N', 'Cl'];
+  
+  // Get all available element colors
+  const getAllMoleculeColors = () => {
     return [
       { element: 'H', color: `#${ATOM_CONFIGS.H.color.toString(16).padStart(6, '0')}`, name: 'Hydrogen' },
       { element: 'C', color: `#${ATOM_CONFIGS.C.color.toString(16).padStart(6, '0')}`, name: 'Carbon' },
@@ -34,7 +44,17 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ classN
     ];
   };
 
-  const moleculeColors = getMoleculeColors();
+  // Get elements from selected molecules
+  const selectedElements = selectedMolecules.length > 0 
+    ? extractElementsFromMolecules(selectedMolecules)
+    : [];
+  
+  // Combine default elements with selected elements
+  const elementsToShow = new Set([...DEFAULT_ELEMENTS, ...selectedElements]);
+  
+  // Filter molecule colors to only show relevant elements
+  const allColors = getAllMoleculeColors();
+  const moleculeColors = allColors.filter(({ element }) => elementsToShow.has(element));
 
   // Get theme-based background color (lighter version)
   const getThemeBackground = () => {

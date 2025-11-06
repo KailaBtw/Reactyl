@@ -535,7 +535,8 @@
 
 .stat-label {
   font-size: 11px;
-  color: #888;
+  /* Increased contrast for small text in dark mode */
+  color: #d1d5db;
   margin-bottom: 2px;
 }
 

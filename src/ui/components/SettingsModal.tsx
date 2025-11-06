@@ -43,6 +43,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Background color options
   const backgroundOptions = [
     { id: 'light', name: 'Light', color: '#f8fafc' },
+    { id: 'light-blue', name: 'Light Blue', color: '#e6f2ff' },
     { id: 'dark', name: 'Dark', color: '#1a1a1a' },
     { id: 'deep-blue', name: 'Blue', color: '#1e3a8a' },
   ];
@@ -140,16 +141,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <ColorSwatchSelector
                 title="3D Scene Background"
                 options={backgroundOptions}
-                selectedId={backgroundColor === '#f0f0f0' ? 'light' :
+                selectedId={backgroundColor === '#f0f0f0' || backgroundColor === '#f8fafc' ? 'light' :
+                          backgroundColor === '#e6f2ff' ? 'light-blue' :
                           backgroundColor === '#1a1a1a' ? 'dark' :
-                          backgroundColor === '#0f172a' ? 'deep-blue' : 'light'}
+                          backgroundColor === '#0f172a' || backgroundColor === '#1e3a8a' ? 'deep-blue' : 'light'}
                 onSelectionChange={(id) => {
                   const colorMap: { [key: string]: string } = {
-                    'light': '#f0f0f0',
+                    'light': '#f8fafc',
+                    'light-blue': '#e6f2ff',
                     'dark': '#1a1a1a',
-                    'deep-blue': '#0f172a'
+                    'deep-blue': '#1e3a8a'
                   };
-                  onBackgroundColorChange(colorMap[id] || '#f0f0f0');
+                  onBackgroundColorChange(colorMap[id] || '#f8fafc');
                 }}
                 themeColor="#3b82f6"
               />

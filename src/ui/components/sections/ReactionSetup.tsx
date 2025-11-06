@@ -1,6 +1,7 @@
 import React from 'react';
 import { AttackModeSelector } from './AttackModeSelector';
 import { IdealButton } from './IdealButton';
+import { AVAILABLE_MOLECULES } from '../../constants/availableMolecules';
 
 interface ReactionSetupProps {
   currentReaction: string;
@@ -33,6 +34,17 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
   onTemperatureChange,
   themeClasses
 }) => {
+  // Filter molecules into substrates and nucleophiles
+  const substrateOptions = AVAILABLE_MOLECULES.filter(mol => 
+    mol.includes('Methyl') || mol.includes('Ethyl') || mol.includes('Isopropyl') || 
+    mol.includes('Tert') || mol.includes('butyl')
+  );
+  
+  const nucleophileOptions = AVAILABLE_MOLECULES.filter(mol => 
+    mol.includes('Hydroxide') || mol.includes('Cyanide') || mol.includes('Methoxide') ||
+    mol.includes('Methanol') || mol.includes('Water')
+  );
+
   return (
     <section className="p-5 border-b border-gray-100">
       <h3 className={`text-sm font-semibold mb-4 flex items-center gap-2 ${themeClasses.text}`}>
@@ -67,8 +79,12 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               onChange={(e) => onSubstrateChange(e.target.value)}
               className={`w-full text-xs px-2 py-1.5 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
             >
-              <option value="demo_Methyl_bromide">Methyl bromide (CH₃Br)</option>
-              <option value="demo_Ethyl_iodide">Ethyl iodide (C₂H₅I)</option>
+              <option value="">Select substrate...</option>
+              {substrateOptions.map(mol => (
+                <option key={mol} value={mol}>
+                  {mol.replace('demo_', '').replace(/_/g, ' ')}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -80,8 +96,12 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               onChange={(e) => onNucleophileChange(e.target.value)}
               className={`w-full text-xs px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
             >
-              <option value="demo_Hydroxide_ion">Hydroxide ion (OH⁻)</option>
-              <option value="demo_Cyanide_ion">Cyanide ion (CN⁻)</option>
+              <option value="">Select nucleophile...</option>
+              {nucleophileOptions.map(mol => (
+                <option key={mol} value={mol}>
+                  {mol.replace('demo_', '').replace(/_/g, ' ')}
+                </option>
+              ))}
             </select>
           </div>
         </div>

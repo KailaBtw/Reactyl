@@ -115,7 +115,13 @@ export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({
       className="w-full h-full relative"
       style={{ background: backgroundColor }}
     >
-      <MoleculeColorLegend theme={theme} themeClasses={themeClasses} />
+      <MoleculeColorLegend 
+        theme={theme} 
+        themeClasses={themeClasses}
+        selectedMolecules={uiState.substrateMolecule && uiState.nucleophileMolecule 
+          ? [uiState.substrateMolecule, uiState.nucleophileMolecule]
+          : []}
+      />
       <MiniAxisOverlay />
       <ViewportMoveHint visible={showMoveHint} />
     </div>

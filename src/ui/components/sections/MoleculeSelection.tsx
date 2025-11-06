@@ -2,21 +2,38 @@ import type React from 'react';
 import { useEffect } from 'react';
 import { useUIState } from '../../context/UIStateContext';
 import { threeJSBridge } from '../../bridge/ThreeJSBridge';
+import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from '../../constants/availableMolecules';
 
 export const MoleculeSelection: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
 
-  // Auto-populate dropdowns on component mount
+  // Auto-populate dropdowns on component mount (centralized list)
   useEffect(() => {
-    if (uiState.availableMolecules.length === 0) {
-      console.log('Auto-populating molecule dropdowns...');
-      updateUIState({
-        availableMolecules: ['demo_Methyl_bromide', 'demo_Hydroxide_ion', 'demo_Methanol', 'demo_Water'],
-        substrateMolecule: 'demo_Methyl_bromide',
-        nucleophileMolecule: 'demo_Hydroxide_ion',
+    // Always update to the centralized list
+    const targetMolecules = [...AVAILABLE_MOLECULES];
+    const currentMolecules = uiState.availableMolecules;
+    
+    // Check if we need to update
+    const needsUpdate = 
+      currentMolecules.length !== targetMolecules.length ||
+      !targetMolecules.every(mol => currentMolecules.includes(mol));
+    
+    if (needsUpdate) {
+      console.log(`Updating molecule list:`, {
+        current: currentMolecules,
+        target: targetMolecules,
+        currentLength: currentMolecules.length,
+        targetLength: targetMolecules.length
       });
+      updateUIState({
+        availableMolecules: targetMolecules,
+        substrateMolecule: uiState.substrateMolecule || DEFAULT_SUBSTRATE,
+        nucleophileMolecule: uiState.nucleophileMolecule || DEFAULT_NUCLEOPHILE,
+      });
+    } else {
+      console.log('Molecule list is up to date:', currentMolecules);
     }
-  }, [uiState.availableMolecules.length, updateUIState]);
+  }, []);
 
   const handleStartReaction = async () => {
     if (!uiState.substrateMolecule || !uiState.nucleophileMolecule) {

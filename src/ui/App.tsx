@@ -5,6 +5,9 @@ import { MainLayout } from './components/MainLayout';
 import { UIStateProvider } from './context/UIStateContext';
 import { threeJSBridge } from './bridge/ThreeJSBridge';
 import { reactionEventBus } from '../events/ReactionEventBus';
+import { calculateAngleProbability } from './utils/angleProbability';
+import { calculateActivationEnergy } from './utils/thermodynamicCalculator';
+import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from './constants/availableMolecules';
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
@@ -58,14 +61,14 @@ const getInitialBottomBarState = (): boolean => {
 
 const initialState: UIState = {
   isPlaying: false,
-  timeScale: 1.0,
+  timeScale: 0.8,
   temperature: 298,
   approachAngle: 100,
   impactParameter: 0.0,
   relativeVelocity: 150.0,
-  substrateMolecule: '',
-  nucleophileMolecule: '',
-  availableMolecules: [],
+  substrateMolecule: DEFAULT_SUBSTRATE,
+  nucleophileMolecule: DEFAULT_NUCLEOPHILE,
+  availableMolecules: [...AVAILABLE_MOLECULES],
   reactionType: 'sn2',
   reactionInProgress: false,
   testingMode: true,
@@ -148,6 +151,60 @@ export const App: React.FC = () => {
     reactionEventBus.on('collision-detected', handler);
     return () => reactionEventBus.off('collision-detected', handler);
   }, [uiState.autoplay, uiState.isPlaying, updateUIState]);
+
+  // Continuously update reaction probability based on current parameters
+  useEffect(() => {
+    const calculateProbability = () => {
+      const { approachAngle, relativeVelocity, temperature, reactionType, substrateMolecule, nucleophileMolecule } = uiState;
+      
+      // Calculate kinetic energy from velocity
+      const velocityScale = relativeVelocity / 500;
+      const maxKineticEnergy = 40; // kJ/mol
+      const kineticEnergy = velocityScale * maxKineticEnergy;
+      
+      // Apply temperature factor
+      const temperatureFactor = Math.sqrt(temperature / 298);
+      const adjustedKineticEnergy = kineticEnergy * temperatureFactor;
+      
+      // Get angle probability
+      const angleResult = calculateAngleProbability(approachAngle, reactionType);
+      
+      // Get activation energy for this specific molecule combination
+      const activationEnergy = calculateActivationEnergy(
+        substrateMolecule || 'demo_Methyl_bromide',
+        nucleophileMolecule || 'demo_Hydroxide_ion',
+        reactionType
+      );
+      
+      const energyRatio = adjustedKineticEnergy / activationEnergy;
+      
+      // Smooth probability function that scales properly with energy
+      let energyProbability = 0;
+      if (energyRatio >= 1.0) {
+        // Sufficient energy: high probability (95-100%)
+        energyProbability = 0.95 + 0.05 * Math.min(1, (energyRatio - 1.0) / 0.5);
+      } else if (energyRatio > 0) {
+        // Arrhenius-like: probability increases exponentially with energy ratio
+        // Using exp(-Ea/E) form, but inverted and scaled for 0-95% range
+        // Lower energy = exponentially lower probability
+        const scaledRatio = energyRatio / 1.0; // Normalize to max at 1.0
+        // Use power curve: P ∝ (E/Ea)^n where n makes it steeper
+        energyProbability = 0.95 * Math.pow(scaledRatio, 2.5);
+        // Cap at reasonable minimum for very low energies
+        energyProbability = Math.max(0.001, energyProbability);
+      } else {
+        energyProbability = 0.001;
+      }
+      
+      const overallProbability = energyProbability * angleResult.probability;
+      const percentage = overallProbability * 100; // Convert to percentage
+      
+      // Always update to ensure it shows the calculated value
+      updateUIState({ reactionProbability: percentage });
+    };
+
+    calculateProbability();
+  }, [uiState.approachAngle, uiState.relativeVelocity, uiState.temperature, uiState.reactionType, uiState.substrateMolecule, uiState.nucleophileMolecule, updateUIState]);
 
   // Map UIState to MainLayout props
   const mainLayoutProps = {

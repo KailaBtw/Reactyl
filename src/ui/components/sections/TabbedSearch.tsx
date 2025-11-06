@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { ChemicalDataService } from '../../../chemistry/chemicalDataService';
 import { drawMolecule } from '../../../components/moleculeDrawer';
@@ -8,6 +7,8 @@ import { useUIState } from '../../context/UIStateContext';
 import { threeJSBridge } from '../../bridge/ThreeJSBridge';
 import { SmartInfoBubble } from '../common/SmartInfoBubble';
 import type { ReactionType } from '../common/InfoBubbleContent';
+import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from '../../constants/availableMolecules';
+import { MoleculeSelector } from './MoleculeSelector';
 import { SidebarCard } from './SidebarCard';
 import { DebugControls } from './DebugControls';
 import { LiveStats } from './LiveStats';
@@ -94,17 +95,44 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-populate dropdowns on component mount
+  // Auto-populate dropdowns on component mount (centralized list)
   useEffect(() => {
-    if (uiState.availableMolecules.length === 0) {
-      console.log('Auto-populating molecule dropdowns...');
-      updateUIState({
-        availableMolecules: ['demo_Methyl_bromide', 'demo_Hydroxide_ion', 'demo_Methanol', 'demo_Water'],
-        substrateMolecule: 'demo_Methyl_bromide',
-        nucleophileMolecule: 'demo_Hydroxide_ion',
+    console.log('[TabbedSearch] useEffect running - checking molecule list');
+    console.log('[TabbedSearch] AVAILABLE_MOLECULES:', AVAILABLE_MOLECULES);
+    console.log('[TabbedSearch] uiState.availableMolecules:', uiState.availableMolecules);
+    
+    // Always update to the centralized list
+    const targetMolecules = [...AVAILABLE_MOLECULES];
+    const currentMolecules = uiState.availableMolecules;
+    
+    // Check if we need to update
+    const needsUpdate = 
+      currentMolecules.length !== targetMolecules.length ||
+      !targetMolecules.every(mol => currentMolecules.includes(mol));
+    
+    console.log('[TabbedSearch] needsUpdate:', needsUpdate, {
+      currentLength: currentMolecules.length,
+      targetLength: targetMolecules.length,
+      missing: targetMolecules.filter(mol => !currentMolecules.includes(mol))
+    });
+    
+    if (needsUpdate) {
+      console.log(`[TabbedSearch] UPDATING molecule list:`, {
+        current: currentMolecules,
+        target: targetMolecules,
+        currentLength: currentMolecules.length,
+        targetLength: targetMolecules.length
       });
+      updateUIState({
+        availableMolecules: targetMolecules,
+        substrateMolecule: uiState.substrateMolecule || DEFAULT_SUBSTRATE,
+        nucleophileMolecule: uiState.nucleophileMolecule || DEFAULT_NUCLEOPHILE,
+      });
+      console.log('[TabbedSearch] updateUIState called with:', targetMolecules);
+    } else {
+      console.log('[TabbedSearch] Molecule list is up to date:', currentMolecules);
     }
-  }, [uiState.availableMolecules.length, updateUIState]);
+  }, [uiState.availableMolecules.length]);
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query || query.length < 2) {
@@ -625,54 +653,40 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
 
           {/* Molecule Selection Section */}
           <SidebarCard title="Molecule Selection">
+            {/* Filter molecules into substrates and nucleophiles */}
+            {(() => {
+              const substrateOptions = uiState.availableMolecules.filter(mol => 
+                mol.includes('Methyl') || mol.includes('Ethyl') || mol.includes('Isopropyl') || 
+                mol.includes('Tert') || mol.includes('butyl')
+              );
+              
+              const nucleophileOptions = uiState.availableMolecules.filter(mol => 
+                mol.includes('Hydroxide') || mol.includes('Cyanide') || mol.includes('Methoxide') ||
+                mol.includes('Methanol') || mol.includes('Water')
+              );
 
-            <div className="form-group" style={{ marginBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                <label className="form-label" style={{ margin: 0, fontSize: '12px' }}>Substrate</label>
-                <SmartInfoBubble 
-                  term="substrate"
-                  reactionType={uiState.reactionType as ReactionType}
-                  size="small"
-                />
-              </div>
-              <select
-                value={uiState.substrateMolecule}
-                onChange={e => updateUIState({ substrateMolecule: e.target.value })}
-                className="form-select"
-              >
-                <option value="">Select substrate...</option>
-                {uiState.availableMolecules.map(mol => (
-                  <option key={mol} value={mol}>
-                    {mol}
-                  </option>
-                ))}
-              </select>
-            </div>
+              return (
+                <>
+                  <MoleculeSelector
+                    label="Substrate"
+                    value={uiState.substrateMolecule}
+                    options={substrateOptions}
+                    onChange={(value) => updateUIState({ substrateMolecule: value })}
+                    reactionType={uiState.reactionType}
+                    term="substrate"
+                  />
 
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                <label className="form-label" style={{ margin: 0, fontSize: '12px' }}>
-                  {uiState.reactionType.startsWith('e') ? 'Base' : 'Nucleophile'}
-                </label>
-                <SmartInfoBubble 
-                  term={uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}
-                  reactionType={uiState.reactionType as ReactionType}
-                  size="small"
-                />
-              </div>
-              <select
-                value={uiState.nucleophileMolecule}
-                onChange={e => updateUIState({ nucleophileMolecule: e.target.value })}
-                className="form-select"
-              >
-                <option value="">Select {uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}...</option>
-                {uiState.availableMolecules.map(mol => (
-                  <option key={mol} value={mol}>
-                    {mol}
-                  </option>
-                ))}
-              </select>
-            </div>
+                  <MoleculeSelector
+                    label={uiState.reactionType.startsWith('e') ? 'Base' : 'Nucleophile'}
+                    value={uiState.nucleophileMolecule}
+                    options={nucleophileOptions}
+                    onChange={(value) => updateUIState({ nucleophileMolecule: value })}
+                    reactionType={uiState.reactionType}
+                    term={uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}
+                  />
+                </>
+              );
+            })()}
           </SidebarCard>
 
           {/* Reaction Parameters Section */}
