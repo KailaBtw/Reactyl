@@ -31,11 +31,12 @@ export type CollisionEventHandler = (event: CollisionEvent) => void;
 class CollisionEventSystem {
   private eventHandlers: CollisionEventHandler[] = [];
   private collisionHistory: Map<string, number> = new Map(); // Prevent duplicate events
-  private readonly collisionCooldown = 0.1; // 100ms cooldown between same molecule collisions
+  private readonly baseCollisionCooldown = 0.1; // 100ms base cooldown between same molecule collisions
   private reactionDetector: ReactionDetector;
   private currentReactionType: ReactionType | null = null;
   private testingMode: boolean = false;
   private temperature: number = 298; // Default room temperature
+  private pressure: number = 1.0; // Default pressure: 1 atm
   private demoEasyMode: boolean = false; // Forces high reaction probability for demos
   private hasShownDemoProduct: boolean = false; // Prevent duplicate product spawns in demos
   private reactionOccurred: boolean = false; // Prevent duplicate reaction processing
@@ -57,6 +58,21 @@ class CollisionEventSystem {
    */
   setTemperature(temperature: number): void {
     this.temperature = temperature;
+  }
+
+  /**
+   * Set the pressure for collision frequency calculations
+   * Pressure affects collision frequency: Rate ∝ P² for bimolecular reactions
+   */
+  setPressure(pressure: number): void {
+    this.pressure = pressure;
+  }
+
+  /**
+   * Get current pressure
+   */
+  getPressure(): number {
+    return this.pressure;
   }
 
   setTestingMode(testingMode: boolean): void {
@@ -141,12 +157,17 @@ class CollisionEventSystem {
     }
 
     // Check cooldown to prevent spam
+    // Pressure affects collision frequency: Rate ∝ P² for bimolecular reactions
+    // Higher pressure → shorter cooldown → more collisions per second
+    const pressureFactor = (this.pressure / 1.0) ** 2; // P² scaling for bimolecular
+    const effectiveCooldown = this.baseCollisionCooldown / pressureFactor;
+    
     const key = this.getCollisionKey(event.moleculeA, event.moleculeB);
     const now = performance.now() / 1000;
 
     if (this.collisionHistory.has(key)) {
       const lastCollision = this.collisionHistory.get(key);
-      if (lastCollision && now - lastCollision < this.collisionCooldown) {
+      if (lastCollision && now - lastCollision < effectiveCooldown) {
         return; // Still in cooldown
       }
     }

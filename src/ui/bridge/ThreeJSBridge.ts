@@ -314,7 +314,7 @@ export class ThreeJSBridge {
     }
 
     // Render the scene
-    this.renderer.render(this.scene, this.camera);
+      this.renderer.render(this.scene, this.camera);
   }
 
   getScene(): THREE.Scene | null {
@@ -438,7 +438,8 @@ export class ThreeJSBridge {
     temperature: number,
     reactionType: string,
     substrateData: any,
-    nucleophileData: any
+    nucleophileData: any,
+    pressure: number = 1.0
   ): Promise<void> {
     // Ensure scene is initialized first
     if (!this.scene || !this.moleculeManager) {
@@ -470,7 +471,8 @@ export class ThreeJSBridge {
         nucleophileData,
         particleCount,
         temperature,
-        reactionType
+        reactionType,
+        pressure
       );
       
     } catch (error) {
@@ -518,6 +520,19 @@ export class ThreeJSBridge {
   updateRateSimulationTemperature(temperature: number): void {
     if (this.reactionRateSimulator) {
       this.reactionRateSimulator.updateTemperature(temperature);
+    }
+  }
+
+  /**
+   * Update pressure for running rate simulation
+   * Pressure affects collision frequency: Rate ∝ P² for bimolecular reactions
+   */
+  updateRateSimulationPressure(pressure: number): void {
+    // collisionEventSystem is already imported at the top
+    collisionEventSystem.setPressure(pressure);
+    // Store pressure in simulator for future reference
+    if (this.reactionRateSimulator) {
+      (this.reactionRateSimulator as any).pressure = pressure;
     }
   }
 

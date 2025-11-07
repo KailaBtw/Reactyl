@@ -31,6 +31,7 @@ export class ReactionRateSimulator {
   private substrateData: any = null;
   private nucleophileData: any = null;
   private temperature: number = 298;
+  private pressure: number = 1.0; // Default pressure: 1 atm
   private nextPairIndex: number = 0;
   
   // Container visualization
@@ -56,13 +57,15 @@ export class ReactionRateSimulator {
     nucleophileData: any,
     particleCount: number,
     temperature: number,
-    reactionType: string
+    reactionType: string,
+    pressure: number = 1.0
   ): Promise<void> {
     
     // Store simulation parameters for dynamic adjustments
     this.substrateData = substrateData;
     this.nucleophileData = nucleophileData;
     this.temperature = temperature;
+    this.pressure = pressure;
     this.nextPairIndex = 0;
     
     // Clear existing molecules
@@ -86,8 +89,9 @@ export class ReactionRateSimulator {
       collisionEventSystem.setReactionType(REACTION_TYPES.sn2);
     }
     
-    // Set temperature for reaction calculations
+    // Set temperature and pressure for reaction calculations
     collisionEventSystem.setTemperature(temperature);
+    collisionEventSystem.setPressure(pressure);
     
     // Spawn molecule pairs
     for (let i = 0; i < particleCount; i++) {
@@ -183,14 +187,14 @@ export class ReactionRateSimulator {
       const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
       
       if (moleculeAId && moleculeBId) {
-        // Mark the pair as reacted
-        const pair = this.moleculePairs.find(
+      // Mark the pair as reacted
+      const pair = this.moleculePairs.find(
           p => (p.substrateId === moleculeAId && p.nucleophileId === moleculeBId) ||
                (p.substrateId === moleculeBId && p.nucleophileId === moleculeAId)
-        );
-        
+      );
+      
         if (pair && !pair.reacted) {
-          pair.reacted = true;
+        pair.reacted = true;
           this.reactionCount++;
           log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
         }
@@ -238,20 +242,23 @@ export class ReactionRateSimulator {
     const clampedPos = { ...position };
     
     // Check each axis and clamp if needed
+    // SCIENTIFIC CORRECTION: Perfectly elastic collisions (restitution = 1.0)
+    // According to collision theory, molecular collisions with container walls are elastic
+    // Energy is conserved - no energy loss on bounce
     if (Math.abs(position.x) > halfSize - margin) {
-      currentVelocity.x *= -0.9; // Slightly inelastic bounce
+      currentVelocity.x *= -1.0; // Perfectly elastic bounce - energy conserved
       clampedPos.x = Math.sign(position.x) * (halfSize - margin);
       bounced = true;
     }
     
     if (Math.abs(position.y) > halfSize - margin) {
-      currentVelocity.y *= -0.9;
+      currentVelocity.y *= -1.0; // Perfectly elastic bounce - energy conserved
       clampedPos.y = Math.sign(position.y) * (halfSize - margin);
       bounced = true;
     }
     
     if (Math.abs(position.z) > halfSize - margin) {
-      currentVelocity.z *= -0.9;
+      currentVelocity.z *= -1.0; // Perfectly elastic bounce - energy conserved
       clampedPos.z = Math.sign(position.z) * (halfSize - margin);
       bounced = true;
     }
@@ -276,22 +283,30 @@ export class ReactionRateSimulator {
 
   /**
    * Get current simulation metrics
+   * 
+   * SCIENTIFIC NOTES:
+   * - Reaction rate is tracked as "reactions per second" (discrete molecules)
+   * - True rate = change in concentration / time (mol dm⁻³ s⁻¹)
+   * - For discrete molecules, "reactions per second" is acceptable
+   * - As reactants are consumed, rate decreases (matches collision theory)
    */
   getMetrics(): {
-    reactionRate: number;
-    remainingReactants: number;
-    productsFormed: number;
-    collisionCount: number;
-    elapsedTime: number;
+    reactionRate: number; // reactions per second (average rate)
+    remainingReactants: number; // percentage
+    productsFormed: number; // count
+    collisionCount: number; // total collisions
+    elapsedTime: number; // seconds
   } {
     const elapsedTime = (performance.now() - this.startTime) / 1000; // seconds
+    // Average reaction rate: total reactions / elapsed time
+    // Note: This is average rate. Instantaneous rate would require tracking concentration changes over time intervals
     const reactionRate = elapsedTime > 0 ? this.reactionCount / elapsedTime : 0;
     const remainingPairs = this.moleculePairs.filter(p => !p.reacted).length;
     const remainingReactants = (remainingPairs / this.moleculePairs.length) * 100;
     
     return {
-      reactionRate,
-      remainingReactants,
+      reactionRate, // reactions per second
+      remainingReactants, // percentage of unreacted pairs
       productsFormed: this.reactionCount,
       collisionCount: this.collisionCount,
       elapsedTime

@@ -69,6 +69,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const temperatureUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingTemperatureRef = useRef<number | null>(null);
   
+  // Resizable sidebar state
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    // Load from localStorage or default to 256px (w-64)
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarWidth');
+      return saved ? parseInt(saved, 10) : 256;
+    }
+    return 256;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartXRef = useRef<number>(0);
+  const resizeStartWidthRef = useRef<number>(256);
+  
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -77,6 +90,45 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       }
     };
   }, []);
+
+  // Sidebar resize handlers
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = sidebarWidth;
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    let currentWidth = resizeStartWidthRef.current;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = resizeStartXRef.current - e.clientX; // Inverted: drag left = wider
+      currentWidth = Math.max(200, Math.min(500, resizeStartWidthRef.current + deltaX));
+      setSidebarWidth(currentWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      // Save final width to localStorage
+      localStorage.setItem('sidebarWidth', currentWidth.toString());
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    // Custom resize cursor - double arrow pointing left/right
+    document.body.style.cursor = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23007bff\' stroke=\'%23fff\' stroke-width=\'1.5\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize';
+    document.body.style.userSelect = 'none';
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
 
   // Get theme-based CSS classes
   const getThemeClasses = () => {
@@ -207,8 +259,37 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         />
         </div>
 
-        {/* Right Control Panel */}
-        <aside className={`w-64 border-l overflow-y-auto flex flex-col ${themeClasses.card} flex-shrink-0`}>
+        {/* Right Control Panel - Resizable */}
+        <aside 
+          className={`border-l overflow-y-auto flex flex-col ${themeClasses.card} flex-shrink-0 relative`}
+          style={{ width: `${sidebarWidth}px` }}
+        >
+          {/* Resize Handle */}
+          <div
+            onMouseDown={handleResizeStart}
+            className={`absolute left-0 top-0 bottom-0 w-1 transition-colors ${
+              isResizing 
+                ? 'bg-blue-500' 
+                : 'bg-transparent hover:bg-blue-400/50'
+            }`}
+            style={{ 
+              zIndex: 10,
+              cursor: isResizing 
+                ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23007bff\' stroke=\'%23fff\' stroke-width=\'1.5\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize'
+                : 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23666\' stroke=\'%23fff\' stroke-width=\'1\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize'
+            }}
+            title="Drag to resize sidebar"
+          />
+          {/* Wider invisible hit area for easier grabbing */}
+          <div
+            onMouseDown={handleResizeStart}
+            className="absolute left-0 top-0 bottom-0 w-2"
+            style={{ 
+              zIndex: 10,
+              cursor: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23666\' stroke=\'%23fff\' stroke-width=\'1\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize'
+            }}
+          />
+          <div className="flex-1 overflow-y-auto">
           <ReactionSetup
             currentReaction={currentReaction}
             substrate={substrate}
@@ -269,7 +350,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     uiState.temperature,
                     uiState.reactionType,
                     substrateMolecule,
-                    nucleophileMolecule
+                    nucleophileMolecule,
+                    uiState.pressure || 1.0
                   );
                   updateUIState({ isPlaying: true, reactionInProgress: true });
                 } catch (error) {
@@ -301,14 +383,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             themeClasses={themeClasses}
           />
 
-          {/* Pressure Control Card */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <PressureControl
-              pressure={uiState.pressure || 1.0}
-              onPressureChange={(pressure) => updateUIState({ pressure })}
-              themeClasses={themeClasses}
-            />
-          </div>
+          {/* Pressure Control Card - Only show in rate mode */}
+          {uiState.simulationMode === 'rate' && (
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <PressureControl
+                pressure={uiState.pressure || 1.0}
+                onPressureChange={(pressure) => {
+                  updateUIState({ pressure });
+                  // Update collision frequency in running simulation
+                  if (uiState.isPlaying) {
+                    threeJSBridge.updateRateSimulationPressure(pressure);
+                  }
+                }}
+                themeClasses={themeClasses}
+              />
+            </div>
+          )}
 
           {/* Conditionally show metrics based on simulation mode */}
           {uiState.simulationMode === 'single' ? (
@@ -346,7 +436,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           onAutoplayChange={onAutoplayChange}
             themeClasses={themeClasses}
           />
-
+          </div>
         </aside>
       </div>
 

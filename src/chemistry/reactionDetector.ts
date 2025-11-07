@@ -25,7 +25,20 @@ export class ReactionDetector {
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup
   ): ReactionResult {
-    // 1. Check energy threshold
+    // CRITICAL: Hard threshold - if collision energy < activation energy, NO reaction ever
+    // Molecules just bounce apart if insufficient energy
+    if (collision.collisionEnergy < reaction.activationEnergy) {
+      return {
+        occurs: false,
+        probability: 0,
+        reactionType: reaction,
+        collisionData: collision,
+        substrate,
+        nucleophile,
+      };
+    }
+
+    // 1. Check energy factor (only calculated if energy >= activation energy)
     const energyFactor = this.calculateEnergyFactor(
       collision.collisionEnergy,
       reaction.activationEnergy
@@ -43,10 +56,10 @@ export class ReactionDetector {
     // 4. Check molecular compatibility
     const compatibilityFactor = this.calculateCompatibilityFactor(substrate, nucleophile, reaction);
 
-    // 5. Combined probability
+    // 5. Combined probability (only factors matter if energy >= activation energy)
     const probability = energyFactor * orientationFactor * tempFactor * compatibilityFactor;
 
-    // 6. Stochastic determination
+    // 6. Stochastic determination (only if energy threshold passed)
     const occurs = Math.random() < probability;
 
     const result: ReactionResult = {
@@ -85,11 +98,27 @@ export class ReactionDetector {
 
   /**
    * Calculate orientation factor based on approach angle
+   * 
+   * COLLISION THEORY: Molecules must collide in correct orientation
+   * - SN2 reactions require backside attack (180° optimal)
+   * - E2 reactions require anti-periplanar (180° optimal)
+   * - SN1/E1 have no orientation requirement (optimal = 0, factor = 1.0)
+   * 
+   * Uses Gaussian distribution: factor decreases as deviation from optimal increases
+   * @param actual - Actual approach angle in degrees
+   * @param optimal - Optimal angle for reaction (e.g., 180° for SN2)
+   * @returns Orientation factor (0-1), where 1 = perfect orientation
    */
   private calculateOrientationFactor(actual: number, optimal: number): number {
+    // If no optimal angle specified (optimal = 0), orientation doesn't matter
+    if (optimal === 0) {
+      return 1.0;
+    }
+    
     // Gaussian distribution around optimal angle
     const deviation = Math.abs(actual - optimal);
-    const sigma = 30; // degrees tolerance
+    const sigma = 30; // degrees tolerance (standard deviation)
+    // Gaussian: exp(-(x-μ)²/(2σ²)) where μ = optimal, σ = tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
 
     return orientationFactor;
@@ -150,16 +179,36 @@ export class ReactionDetector {
 
   /**
    * Calculate collision energy from molecular masses and relative velocity
+   * 
+   * SCIENTIFIC CORRECTION:
+   * - Masses are in AMU (atomic mass units), NOT kg/mol
+   * - Must convert AMU → kg before calculating kinetic energy
+   * - Formula: E_collision = 0.5 * μ * v² where μ = reduced mass in kg
+   * - Then convert to kJ/mol: E (kJ/mol) = E (J) * N_A / 1000
+   * 
+   * @param mass1 - Mass of molecule 1 in AMU
+   * @param mass2 - Mass of molecule 2 in AMU  
+   * @param relativeVelocity - Relative velocity magnitude in m/s
+   * @returns Collision energy in kJ/mol
    */
   calculateCollisionEnergy(mass1: number, mass2: number, relativeVelocity: number): number {
-    // Convert kinetic energy to kJ/mol
-    const reducedMass = (mass1 * mass2) / (mass1 + mass2);
-    const kineticEnergy = 0.5 * reducedMass * relativeVelocity ** 2;
-    const energyInJoules = kineticEnergy * this.N_A; // Convert to J/mol
-    const energyInKJ = energyInJoules / 1000; // Convert to kJ/mol
-
-
-    return energyInKJ;
+    // Constants
+    const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
+    
+    // Convert masses from AMU to kg
+    const mass1_kg = mass1 * AMU_TO_KG;
+    const mass2_kg = mass2 * AMU_TO_KG;
+    
+    // Calculate reduced mass in kg: μ = (m1 * m2) / (m1 + m2)
+    const reducedMass_kg = (mass1_kg * mass2_kg) / (mass1_kg + mass2_kg);
+    
+    // Calculate kinetic energy in Joules: E = 0.5 * μ * v²
+    const kineticEnergy_J = 0.5 * reducedMass_kg * relativeVelocity ** 2;
+    
+    // Convert to kJ/mol: multiply by Avogadro's number and divide by 1000
+    const energy_kJ_per_mol = (kineticEnergy_J * this.N_A) / 1000;
+    
+    return energy_kJ_per_mol;
   }
 
   /**

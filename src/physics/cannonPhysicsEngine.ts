@@ -54,10 +54,14 @@ export class CannonPhysicsEngine {
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
 
     // Create default material for molecular collisions
+    // SCIENTIFIC CORRECTION:
+    // - Molecular collisions are ELASTIC (restitution = 1.0) unless reacting
+    // - No friction between molecules (friction = 0.0)
+    // - Energy is conserved in non-reactive collisions
     this.defaultMaterial = new CANNON.Material('molecule');
     this.contactMaterial = new CANNON.ContactMaterial(this.defaultMaterial, this.defaultMaterial, {
-      friction: 0.05,
-      restitution: 0.6,
+      friction: 0.0, // No friction - molecules don't rub against each other
+      restitution: 1.0, // Perfectly elastic - energy conserved in non-reactive collisions
       contactEquationStiffness: 5e6,
       contactEquationRelaxation: 4,
     });
@@ -126,7 +130,7 @@ export class CannonPhysicsEngine {
         moleculeId: molecule.id,
         lastSync: performance.now()
       };
-      
+
       // Add to world
       this.world.addBody(body);
 
@@ -246,7 +250,7 @@ export class CannonPhysicsEngine {
       
       if (body.sleepState === 0) {
         awakeCount++;
-      }
+    }
       
       // Direct sync: physics body → visual group (stored together!)
       this.syncBodyToVisual(body, molecule);
@@ -358,7 +362,7 @@ export class CannonPhysicsEngine {
    */
   private syncBodyToVisual(body: CANNON.Body, molecule: MoleculeGroup): void {
     const bodyWithData = body as CannonBodyWithUserData;
-    
+
     // Update Three.js position and rotation directly from physics body
     molecule.group.position.set(body.position.x, body.position.y, body.position.z);
     molecule.group.quaternion.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);

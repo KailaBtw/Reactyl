@@ -145,16 +145,16 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         {/* Play/Pause and Reset Buttons */}
         <div className="flex gap-2">
           {simulationMode === 'single' && (
-            <button 
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 ${
-                isPlaying 
-                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white border-red-500 shadow-red-200 shadow-md' 
-                  : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-500 shadow-blue-200 shadow-md'
-              }`}
-              onClick={isPlaying ? onPause : onPlay}
-            >
-              {isPlaying ? 'Pause' : 'Play'}
-            </button>
+          <button 
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 ${
+              isPlaying 
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white border-red-500 shadow-red-200 shadow-md' 
+                : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-500 shadow-blue-200 shadow-md'
+            }`}
+            onClick={isPlaying ? onPause : onPlay}
+          >
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
           )}
           {simulationMode === 'rate' && isPlaying && (
             <button 
