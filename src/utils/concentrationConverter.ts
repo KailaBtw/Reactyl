@@ -4,40 +4,51 @@
  */
 
 // Container dimensions (cubic volume in arbitrary units)
-// Container is 50 units per side, treating 1 unit = 1 cm for volume calculation
-const CONTAINER_SIZE = 50; // cm
-const CONTAINER_VOLUME_LITERS = Math.pow(CONTAINER_SIZE / 100, 3); // Convert cm³ to liters
+// The visualization container is 50 units per side (arbitrary visualization units)
+// But we represent a tiny realistic cube sample from a larger solution
+// Volume chosen to give max ~500 molecules at 10 mol/L for performance
+// Lower concentrations will have fewer molecules (with a minimum floor)
+// Using mantissa/exponent representation to avoid floating point precision errors
+const VOLUME_MANTISSA = 8.305; // Mantissa part
+const VOLUME_EXPONENT = -23;   // Exponent part (8.305e-23 L)
+const CONTAINER_VOLUME_LITERS = VOLUME_MANTISSA * Math.pow(10, VOLUME_EXPONENT);
+const MIN_PAIRS = 5; // Minimum pairs to show at very low concentrations
 
-// Scale factor for visualization (1 molecule per 1e20 real molecules)
-const VISUALIZATION_SCALE = 1e-20;
+// No visualization scale - showing actual molecules in this tiny volume
 const AVOGADRO_NUMBER = 6.022e23;
 
 /**
  * Convert concentration (mol/L) to number of molecule pairs
+ * Uses high-precision calculation to avoid floating point errors
  * @param concentration - Concentration in mol/L (0.001 - 10)
- * @returns Number of molecule pairs to spawn (1 - 100)
+ * @returns Number of molecule pairs to spawn
  */
 export function concentrationToParticleCount(concentration: number): number {
-  // Calculate number of moles in container
-  const moles = concentration * CONTAINER_VOLUME_LITERS;
+  // High-precision calculation using mantissa/exponent to avoid floating point errors
+  // Calculate as: concentration × (mantissa × 10^exponent) × Avogadro
+  // Group constants: (mantissa × Avogadro) × concentration × 10^exponent
   
-  // Convert to number of pairs (each pair = 1 substrate + 1 nucleophile)
-  // Apply visualization scale factor
-  const actualPairs = moles * AVOGADRO_NUMBER * VISUALIZATION_SCALE;
+  // Pre-compute mantissa × Avogadro for precision
+  const mantissaTimesAvogadro = VOLUME_MANTISSA * AVOGADRO_NUMBER;
   
-  // Round to nearest integer, with minimum of 1 and maximum of 100
-  return Math.max(1, Math.min(100, Math.round(actualPairs)));
+  // Calculate: concentration × mantissa × Avogadro × 10^exponent
+  // This avoids very small intermediate values
+  const molecules = concentration * mantissaTimesAvogadro * Math.pow(10, VOLUME_EXPONENT);
+  
+  // Round to nearest integer, with minimum floor for visibility
+  const pairs = Math.max(MIN_PAIRS, Math.round(molecules));
+  
+  return pairs;
 }
 
 /**
  * Convert number of molecule pairs to concentration (mol/L)
- * @param particleCount - Number of molecule pairs (1 - 100)
- * @returns Concentration in mol/L (0.001 - 10)
+ * @param particleCount - Number of molecule pairs
+ * @returns Concentration in mol/L
  */
 export function particleCountToConcentration(particleCount: number): number {
   // Reverse the calculation
-  const actualPairs = particleCount / VISUALIZATION_SCALE;
-  const moles = actualPairs / AVOGADRO_NUMBER;
+  const moles = particleCount / AVOGADRO_NUMBER;
   const concentration = moles / CONTAINER_VOLUME_LITERS;
   
   return Math.max(0.001, Math.min(10, concentration));

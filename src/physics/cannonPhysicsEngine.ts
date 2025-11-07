@@ -121,8 +121,9 @@ export class CannonPhysicsEngine {
         lastSync: performance.now(),
       });
       
-      // Also store body reference directly on molecule for faster access
-      (molecule as any).physicsBody = body;
+      // Store body reference directly on molecule for faster access
+      molecule.physicsBody = body;
+      molecule.hasPhysics = true;
       
       log(`Added ${molecule.name} to physics world with mass ${mass.toFixed(2)}`);
       log(`Physics world now has ${this.world.bodies.length} bodies`);
@@ -139,10 +140,15 @@ export class CannonPhysicsEngine {
    * Remove a molecule from the physics world
    */
   removeMolecule(molecule: MoleculeGroup): void {
-    const bodyData = this.moleculeBodies.get(molecule.id);
-    if (bodyData) {
-      this.world.removeBody(bodyData.body);
+    // Use physicsBody directly from molecule if available, otherwise fall back to map lookup
+    const body = molecule.physicsBody || this.moleculeBodies.get(molecule.id)?.body;
+    
+    if (body) {
+      this.world.removeBody(body);
       this.moleculeBodies.delete(molecule.id);
+      // Clear the physicsBody reference
+      molecule.physicsBody = undefined;
+      molecule.hasPhysics = false;
       log(`Removed ${molecule.name} from physics world`);
     }
   }
@@ -521,12 +527,12 @@ export class CannonPhysicsEngine {
       body.position.set(position.x, position.y, position.z);
       // Reduced logging frequency - only log occasionally
       if (Math.random() < 0.01) { // Log ~1% of the time
-        log(`✅ Set position for ${molecule.name}: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+      log(`✅ Set position for ${molecule.name}: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
       }
     } else {
       // Only log errors occasionally
       if (Math.random() < 0.1) { // Log ~10% of errors
-        log(`⚠️ No physics body found for ${molecule.name}`);
+      log(`⚠️ No physics body found for ${molecule.name}`);
       }
     }
   }

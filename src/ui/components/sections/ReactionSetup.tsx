@@ -1,8 +1,9 @@
 import React from 'react';
 import { AttackModeSelector } from './AttackModeSelector';
 import { IdealButton } from './IdealButton';
+import { InfoBubble } from '../common/InfoBubble';
 import { AVAILABLE_MOLECULES } from '../../constants/availableMolecules';
-import { concentrationToParticleCount, particleCountToConcentration } from '../../../utils/concentrationConverter';
+import { concentrationToParticleCount } from '../../../utils/concentrationConverter';
 
 interface ReactionSetupProps {
   currentReaction: string;
@@ -13,7 +14,6 @@ interface ReactionSetupProps {
   temperature?: number;
   simulationMode?: 'single' | 'rate';
   concentration?: number;
-  particleCount?: number;
   onReactionChange: (reaction: string) => void;
   onSubstrateChange: (substrate: string) => void;
   onNucleophileChange: (nucleophile: string) => void;
@@ -34,7 +34,6 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
   temperature = 298,
   simulationMode = 'single',
   concentration = 0.1,
-  particleCount = 20,
   onReactionChange,
   onSubstrateChange,
   onNucleophileChange,
@@ -63,27 +62,53 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
       {/* Tab Header */}
       <div className="flex mb-5 border-b-2 border-gray-200 dark:border-gray-700">
         <button
-          onClick={() => onSimulationModeChange?.('single')}
-          className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all relative ${
+          onClick={(e) => {
+            // Don't switch tabs if clicking on InfoBubble
+            if ((e.target as HTMLElement).closest('[data-infobubble]')) {
+              return;
+            }
+            onSimulationModeChange?.('single');
+          }}
+          className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all relative flex items-center justify-center gap-2 ${
             simulationMode === 'single'
               ? `${themeClasses.text}`
               : `${themeClasses.textSecondary} hover:${themeClasses.text}`
           }`}
         >
           Single Collision
+          <span data-infobubble>
+            <InfoBubble
+              term="Single Collision"
+              explanation="Simulate a single collision between two molecules. Control the approach angle, collision velocity, and temperature to see how these factors affect reaction probability. Perfect for understanding the fundamentals of reaction mechanisms."
+              size="small"
+            />
+          </span>
           {simulationMode === 'single' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t"></div>
           )}
         </button>
         <button
-          onClick={() => onSimulationModeChange?.('rate')}
-          className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all relative ${
+          onClick={(e) => {
+            // Don't switch tabs if clicking on InfoBubble
+            if ((e.target as HTMLElement).closest('[data-infobubble]')) {
+              return;
+            }
+            onSimulationModeChange?.('rate');
+          }}
+          className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-all relative flex items-center justify-center gap-2 ${
             simulationMode === 'rate'
               ? `${themeClasses.text}`
               : `${themeClasses.textSecondary} hover:${themeClasses.text}`
           }`}
         >
           Reaction Rate
+          <span data-infobubble>
+            <InfoBubble
+              term="Reaction Rate"
+              explanation="Simulate multiple molecule pairs colliding randomly in a container. Adjust concentration and temperature to observe how these factors affect the overall reaction rate. This mode demonstrates real-world reaction kinetics and the Arrhenius equation."
+              size="small"
+            />
+          </span>
           {simulationMode === 'rate' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t"></div>
           )}
@@ -184,32 +209,27 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             </div>
           </div>
           
-          {/* Temperature Slider */}
+          {/* Temperature Slider - Lab Realistic */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <label className={`text-xs font-medium ${themeClasses.textSecondary}`}>
-                Temperature: {temperature}K
+                Temperature: {Math.round(temperature - 273.15)}°C ({temperature} K)
               </label>
-              <IdealButton
-                isActive={temperature >= 298 && temperature <= 350} // Consider "ideal" when temperature is 298-350K
-                onClick={() => onTemperatureChange?.(298)} // 298K (room temperature) is ideal
-                activeText="Ideal"
-                inactiveText="Ideal"
-                themeClasses={themeClasses}
-              />
             </div>
             <input 
               type="range"
-              min="100"
-              max="600"
-              step="10"
+              min="273"
+              max="473"
+              step="1"
               value={temperature}
               onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
               className="slider w-full"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>100K</span>
-              <span>600K</span>
+              <span>0°C</span>
+              <span>25°C</span>
+              <span>100°C</span>
+              <span>200°C</span>
             </div>
           </div>
         </div>
@@ -286,6 +306,9 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
               {concentration.toFixed(3)} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">mol/L</span>
             </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 italic">
+              Realistic: showing actual molecules in tiny sample volume
+            </div>
             <input 
               type="range"
               min="0.001"
@@ -303,53 +326,93 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             </div>
           </div>
           
-          {/* Temperature Slider */}
+          {/* Temperature Slider - Lab Realistic */}
           <div className={`p-4 rounded-lg ${themeClasses.card} border border-orange-500/20 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10`}>
-            <div className="flex items-center justify-between mb-3">
+            <div className="mb-3">
               <label className={`text-sm font-semibold ${themeClasses.text}`}>
                 Temperature
               </label>
-              <IdealButton
-                isActive={temperature >= 298 && temperature <= 350}
-                onClick={() => onTemperatureChange?.(298)}
-                activeText="Ideal"
-                inactiveText="Ideal"
-                themeClasses={themeClasses}
-              />
             </div>
-            <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
-              {temperature} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">K</span>
+            
+            {/* Temperature Display - Dual Units */}
+            <div className="flex items-baseline gap-2 mb-3">
+              <div className={`text-3xl font-bold ${themeClasses.text}`}>
+                {Math.round(temperature - 273.15)}
+              </div>
+              <div className={`text-lg font-medium text-gray-600 dark:text-gray-400`}>
+                °C
+              </div>
+              <div className={`text-lg font-medium text-gray-500 dark:text-gray-500 ml-2`}>
+                ({temperature} K)
+              </div>
             </div>
+
+            {/* Kinetic Energy Indicator */}
+            {(() => {
+              // Calculate relative kinetic energy (Maxwell-Boltzmann)
+              const tempFactor = Math.sqrt(temperature / 298);
+              const kineticEnergy = tempFactor * 2.5; // Base kinetic energy at room temp (~2.5 kJ/mol)
+              const activationEnergy = 30; // kJ/mol for SN2
+              const energyRatio = kineticEnergy / activationEnergy;
+              
+              return (
+                <div className="mb-3 text-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`${themeClasses.textSecondary}`}>Molecular Kinetic Energy</span>
+                    <span className={`font-medium ${energyRatio >= 0.1 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500'}`}>
+                      {kineticEnergy.toFixed(1)} kJ/mol
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                    <div 
+                      className={`h-1.5 rounded-full transition-all ${
+                        temperature < 298 ? 'bg-blue-500' :
+                        temperature < 373 ? 'bg-orange-500' :
+                        'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (tempFactor / 1.5) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+            
+            {/* Temperature Slider */}
             <input 
               type="range"
-              min="100"
-              max="600"
-              step="10"
+              min="273"
+              max="473"
+              step="1"
               value={temperature}
               onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
               className="slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, 
+                  #3b82f6 0%, 
+                  #3b82f6 ${((298 - 273) / (473 - 273)) * 100}%,
+                  #f97316 ${((298 - 273) / (473 - 273)) * 100}%,
+                  #f97316 ${((373 - 273) / (473 - 273)) * 100}%,
+                  #ef4444 ${((373 - 273) / (473 - 273)) * 100}%,
+                  #ef4444 100%)`
+              }}
             />
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <span>100K</span>
-              <span className="font-medium">Room Temp</span>
-              <span className="font-medium">High</span>
-              <span>600K</span>
+            
+            {/* Lab Temperature Markers */}
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2 relative">
+              <span className="text-blue-600 dark:text-blue-400">Ice Bath<br/>0°C</span>
+              <span className="absolute left-1/4 text-green-600 dark:text-green-400 -translate-x-1/2">Room<br/>25°C</span>
+              <span className="absolute left-1/2 text-orange-600 dark:text-orange-400 -translate-x-1/2">Boiling<br/>100°C</span>
+              <span className="text-red-600 dark:text-red-400">Hot Plate<br/>200°C</span>
             </div>
-          </div>
-          
-          {/* Info Card */}
-          <div className={`p-3 rounded-lg ${themeClasses.card} border border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/20`}>
-            <div className="flex items-start gap-2">
-              <div className="text-blue-500 mt-0.5">ℹ️</div>
-              <div className="flex-1">
-                <p className={`text-xs font-medium mb-1 ${themeClasses.text}`}>
-                  Reaction Rate Simulation
-                </p>
-                <p className={`text-xs leading-relaxed ${themeClasses.textSecondary}`}>
-                  Multiple molecule pairs collide randomly in a bounded container. 
-                  Higher concentration and temperature increase collision frequency and reaction rate.
-                </p>
-              </div>
+            
+            {/* Scientific Info */}
+            <div className="mt-3 text-xs italic text-gray-500 dark:text-gray-400">
+              {temperature < 273 ? 'Below freezing' :
+               temperature < 298 ? 'Cold - slow reactions' :
+               temperature < 310 ? 'Room temperature - typical lab conditions' :
+               temperature < 373 ? 'Warm - increased reaction rate' :
+               temperature < 423 ? 'Hot - fast reactions' :
+               'Very hot - rapid reactions'}
             </div>
           </div>
         </div>

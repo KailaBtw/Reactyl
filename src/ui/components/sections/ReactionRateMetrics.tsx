@@ -56,14 +56,14 @@ export const ReactionRateMetrics: React.FC<ReactionRateMetricsProps> = ({
             </div>
             <div className={`text-xl font-bold text-blue-600 dark:text-blue-400 mb-1`}>
               {remainingReactants.toFixed(0)}%
-            </div>
-            <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300"
-                style={{ width: `${remainingReactants}%` }}
-              />
-            </div>
           </div>
+            <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300"
+              style={{ width: `${remainingReactants}%` }}
+            />
+          </div>
+        </div>
 
           {/* Products Formed */}
           <div className={`p-3 rounded-lg ${themeClasses.card} border border-green-500/20`}>

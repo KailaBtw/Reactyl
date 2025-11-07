@@ -8,6 +8,7 @@ import { reactionEventBus } from '../events/ReactionEventBus';
 import { calculateAngleProbability } from './utils/angleProbability';
 import { calculateActivationEnergy } from './utils/thermodynamicCalculator';
 import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from './constants/availableMolecules';
+import { concentrationToParticleCount } from '../utils/concentrationConverter';
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
@@ -297,7 +298,6 @@ export const App: React.FC = () => {
           const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || { cid: '961', name: 'Hydroxide ion' };
           
           // Calculate particle count from concentration
-          const { concentrationToParticleCount } = await import('../utils/concentrationConverter');
           const particleCount = concentrationToParticleCount(uiState.concentration);
           await threeJSBridge.startRateSimulation(
             particleCount,

@@ -200,6 +200,13 @@ class CollisionEventSystem {
       },
     };
 
+    // Calculate compatibility factor separately to include in event
+    const compatibilityFactor = this.reactionDetector.calculateCompatibilityFactor(
+      event.moleculeA,
+      event.moleculeB,
+      this.currentReactionType
+    );
+
     // Detect reaction
     const reactionResult = this.reactionDetector.detectReaction(
       collisionData,
@@ -239,7 +246,7 @@ class CollisionEventSystem {
         (reactionResult as any).probability = realProbability;
         (reactionResult as any).occurs = Math.random() < realProbability;
         
-        log(`UI Override: Using calculated probability ${(realProbability * 100).toFixed(1)}% instead of forcing 100%`);
+        // UI override applied silently
       } else {
         // Fallback to original behavior if UI state not available
         log(`Testing mode: forcing reaction probability to 100% for demo`);
@@ -267,15 +274,17 @@ class CollisionEventSystem {
       (reactionResult as any).occurs = occurs;
     }
 
-    log(
-      `Reaction detection result: ${reactionResult.occurs ? 'SUCCESS' : 'FAILED'} (probability: ${(reactionResult.probability * 100).toFixed(2)}%)`
-    );
+    // Only log significant reactions
+    if (reactionResult.occurs || reactionResult.probability > 0.01) {
+      log(`Collision: ${reactionResult.occurs ? 'REACTION' : 'bounce'} (${(reactionResult.probability * 100).toFixed(1)}%)`);
+    }
 
     // Emit collision detected event to unified system
     reactionEventBus.emitCollisionDetected(
       collisionData.collisionEnergy,
       collisionData.approachAngle,
-      reactionResult.probability
+      reactionResult.probability,
+      compatibilityFactor
     );
 
     // Add collision data and reaction result to event
@@ -307,7 +316,6 @@ class CollisionEventSystem {
         event.moleculeB.reactionInProgress = false;
       }
     } else {
-      log(`No reaction: probability was ${(reactionResult.probability * 100).toFixed(2)}%`);
     }
   }
 

@@ -9,6 +9,8 @@ import { CompactLiveData } from './sections/CompactLiveData';
 import { ReactionRateMetrics } from './sections/ReactionRateMetrics';
 import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
+import { concentrationToParticleCount } from '../../utils/concentrationConverter';
+import { threeJSBridge } from '../bridge/ThreeJSBridge';
 
 interface MainLayoutProps {
   currentReaction: string;
@@ -202,18 +204,33 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             temperature={temperature}
             simulationMode={uiState.simulationMode}
             concentration={uiState.concentration}
-            particleCount={uiState.particleCount}
             onReactionChange={onReactionChange}
             onSubstrateChange={onSubstrateChange}
             onNucleophileChange={onNucleophileChange}
             onAttackAngleChange={onAttackAngleChange}
             onRelativeVelocityChange={onRelativeVelocityChange}
             onTemperatureChange={onTemperatureChange}
-            onSimulationModeChange={(mode) => updateUIState({ simulationMode: mode })}
-            onConcentrationChange={(conc) => {
-              const { concentrationToParticleCount } = require('../../utils/concentrationConverter');
+            onSimulationModeChange={(mode) => {
+              updateUIState({ simulationMode: mode });
+              // Animate camera when switching modes
+              if (mode === 'rate') {
+                threeJSBridge.animateCameraToRateView();
+              } else {
+                threeJSBridge.animateCameraToSingleView();
+              }
+            }}
+            onConcentrationChange={async (conc) => {
               const particleCount = concentrationToParticleCount(conc);
               updateUIState({ concentration: conc, particleCount });
+              
+              // If rate simulation is running, adjust concentration dynamically
+              if (uiState.simulationMode === 'rate' && uiState.isPlaying) {
+                try {
+                  await threeJSBridge.adjustRateSimulationConcentration(particleCount);
+                } catch (error) {
+                  console.error('Failed to adjust concentration:', error);
+                }
+              }
             }}
             themeClasses={themeClasses}
           />

@@ -53,6 +53,7 @@ export interface CollisionDetectedEvent {
     collisionEnergy: number;
     approachAngle: number;
     reactionProbability: number;
+    compatibilityFactor: number;
   };
 }
 
@@ -206,7 +207,7 @@ export class ReactionEventBus {
     
     // Log event in debug mode
     if (this.isDebugMode) {
-      log(`📡 Emitting ${event.type}:`, event.data);
+      // log(`📡 Emitting ${event.type}:`, event.data); // Hidden for now
     }
     
     // Call all handlers
@@ -344,10 +345,10 @@ export class ReactionEventBus {
   /**
    * Emit a collision detected event
    */
-  emitCollisionDetected(collisionEnergy: number, approachAngle: number, reactionProbability: number): void {
+  emitCollisionDetected(collisionEnergy: number, approachAngle: number, reactionProbability: number, compatibilityFactor: number): void {
     this.emit({
       type: 'collision-detected',
-      data: { collisionEnergy, approachAngle, reactionProbability }
+      data: { collisionEnergy, approachAngle, reactionProbability, compatibilityFactor }
     });
   }
   

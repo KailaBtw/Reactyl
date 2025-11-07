@@ -25,8 +25,6 @@ export class ReactionDetector {
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup
   ): ReactionResult {
-    log(`Detecting reaction: ${reaction.name} at ${temperature}K`);
-
     // 1. Check energy threshold
     const energyFactor = this.calculateEnergyFactor(
       collision.collisionEnergy,
@@ -48,11 +46,6 @@ export class ReactionDetector {
     // 5. Combined probability
     const probability = energyFactor * orientationFactor * tempFactor * compatibilityFactor;
 
-    log(
-      `📊 Reaction factors: Energy=${(energyFactor * 100).toFixed(1)}%, Orientation=${(orientationFactor * 100).toFixed(1)}%, Temp=${(tempFactor * 100).toFixed(1)}%, Compatibility=${(compatibilityFactor * 100).toFixed(1)}%`
-    );
-    log(`📊 Combined probability: ${(probability * 100).toFixed(2)}%`);
-
     // 6. Stochastic determination
     const occurs = Math.random() < probability;
 
@@ -65,9 +58,12 @@ export class ReactionDetector {
       nucleophile,
     };
 
-    log(
-      `Reaction detection result: ${occurs ? 'SUCCESS' : 'FAILED'} (probability: ${(probability * 100).toFixed(2)}%)`
-    );
+    if(occurs) { // hide non-rxns
+      // Only log if reaction occurs or probability is significant
+      if (occurs || probability > 0.01) {
+        log(`Reaction: ${occurs ? '✓' : '✗'} ${(probability * 100).toFixed(1)}%`);
+      }
+    }
 
     return result;
   }
@@ -84,10 +80,6 @@ export class ReactionDetector {
     const excess = collisionE - activationE;
     const energyFactor = Math.min(1, 1 - Math.exp(-excess / activationE));
 
-    log(
-      `Energy factor: ${energyFactor.toFixed(3)} (collision: ${collisionE.toFixed(1)} kJ/mol, activation: ${activationE} kJ/mol)`
-    );
-
     return energyFactor;
   }
 
@@ -100,17 +92,13 @@ export class ReactionDetector {
     const sigma = 30; // degrees tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
 
-    log(
-      `Orientation factor: ${orientationFactor.toFixed(3)} (actual: ${actual.toFixed(1)}°, optimal: ${optimal}°)`
-    );
-
     return orientationFactor;
   }
 
   /**
    * Calculate molecular compatibility factor
    */
-  private calculateCompatibilityFactor(
+  calculateCompatibilityFactor(
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup,
     reaction: ReactionType
@@ -134,8 +122,6 @@ export class ReactionDetector {
       );
       compatibility *= nucleophileCompatible;
     }
-
-    log(`Compatibility factor: ${compatibility.toFixed(3)}`);
 
     return compatibility;
   }
@@ -172,9 +158,6 @@ export class ReactionDetector {
     const energyInJoules = kineticEnergy * this.N_A; // Convert to J/mol
     const energyInKJ = energyInJoules / 1000; // Convert to kJ/mol
 
-    log(
-      `Collision energy: ${energyInKJ.toFixed(2)} kJ/mol (reduced mass: ${reducedMass.toFixed(3)} kg, velocity: ${relativeVelocity.toFixed(2)} m/s)`
-    );
 
     return energyInKJ;
   }
@@ -194,7 +177,6 @@ export class ReactionDetector {
     // For now, return a random angle for demonstration
     const angle = Math.random() * 360;
 
-    log(`Approach angle: ${angle.toFixed(1)}°`);
 
     return angle;
   }

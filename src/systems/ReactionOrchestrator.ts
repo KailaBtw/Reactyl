@@ -212,7 +212,7 @@ export class ReactionOrchestrator {
     // Reset physics (but don't pause if rate simulation is running)
     const uiState = (window as any).uiState;
     if (!uiState || uiState.simulationMode !== 'rate' || !uiState.isPlaying) {
-      this.physicsEngine.pause();
+    this.physicsEngine.pause();
     }
     
     // Reset state

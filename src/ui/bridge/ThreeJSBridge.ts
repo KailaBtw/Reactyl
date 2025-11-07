@@ -8,6 +8,7 @@ import { createMoleculeManager } from '../../services/moleculeManager';
 import { sceneBridge } from '../../services/SceneBridge';
 import { applyLighting } from '../../components/lightingControls';
 import { addObjectDebug, DEBUG_MODE, initFpsDebug } from '../../utils/debug';
+import { CameraAnimator } from '../../utils/CameraAnimator';
 import type { UIState } from '../App';
 
 // Demo functions are now handled by the chemistry reaction system
@@ -21,6 +22,8 @@ export class ThreeJSBridge {
   // Reaction systems
   private reactionOrchestrator: ReactionOrchestrator | null = null;
   private reactionRateSimulator: ReactionRateSimulator | null = null;
+  // Camera animation
+  private cameraAnimator: CameraAnimator | null = null;
 
   constructor() {
   }
@@ -116,11 +119,16 @@ export class ThreeJSBridge {
       this.controls.autoRotate = false;
       this.controls.autoRotateSpeed = 0.604; // 5% faster (0.575 * 1.05)
       this.controls.minDistance = 2;
-      this.controls.maxDistance = 50;
+      this.controls.maxDistance = 100; // Increased to allow zooming out for rate simulation
       this.controls.maxPolarAngle = Math.PI;
       this.controls.rotateSpeed = 1.0; // Faster rotation
       this.controls.zoomSpeed = 1.0; // Faster zoom
       this.controls.panSpeed = 1.0; // Faster pan
+    }
+
+    // Initialize camera animator
+    if (!this.cameraAnimator && this.camera && this.controls) {
+      this.cameraAnimator = new CameraAnimator(this.camera, this.controls);
     }
 
     // Initialize molecule manager
@@ -132,7 +140,7 @@ export class ThreeJSBridge {
     if (!this.reactionOrchestrator) {
       try {
         if (this.scene && this.moleculeManager) {
-          this.reactionOrchestrator = new ReactionOrchestrator(this.scene, this.moleculeManager);
+        this.reactionOrchestrator = new ReactionOrchestrator(this.scene, this.moleculeManager);
           (window as any).reactionOrchestrator = this.reactionOrchestrator;
         }
       } catch (error) {
@@ -144,12 +152,12 @@ export class ThreeJSBridge {
     if (!this.reactionRateSimulator) {
       try {
         if (this.scene && this.moleculeManager) {
-          this.reactionRateSimulator = new ReactionRateSimulator(
-            this.scene,
-            physicsEngine,
-            this.moleculeManager
-          );
-          (window as any).reactionRateSimulator = this.reactionRateSimulator;
+        this.reactionRateSimulator = new ReactionRateSimulator(
+          this.scene,
+          physicsEngine,
+          this.moleculeManager
+        );
+        (window as any).reactionRateSimulator = this.reactionRateSimulator;
         }
       } catch (error) {
         console.error('❌ Reaction rate simulator failed to initialize:', error);
@@ -266,10 +274,16 @@ export class ThreeJSBridge {
       return; // Early exit if not ready
     }
 
-    // Update controls if they exist (only if needed)
-    if (this.controls) {
-      this.controls.update();
+    // Update camera animation if active
+    if (this.cameraAnimator) {
+      const deltaTime = 1 / 60; // 60 FPS
+      this.cameraAnimator.update(deltaTime);
     }
+
+    // Update controls if they exist (only if needed)
+      if (this.controls) {
+        this.controls.update();
+      }
 
     // Step the physics engine (only if not paused)
     const isPaused = physicsEngine.isSimulationPaused();
@@ -312,7 +326,7 @@ export class ThreeJSBridge {
   async startReactionAnimation(): Promise<void> {
     // Ensure scene is initialized first
     if (!this.scene || !this.moleculeManager) {
-      console.error('Scene or molecule manager not initialized. Scene:', !!this.scene, 'MoleculeManager:', !!this.moleculeManager);
+      console.warn('Scene or molecule manager not initialized yet. Please wait for initialization.');
       return;
     }
     
@@ -416,7 +430,7 @@ export class ThreeJSBridge {
   ): Promise<void> {
     // Ensure scene is initialized first
     if (!this.scene || !this.moleculeManager) {
-      console.error('Scene or molecule manager not initialized. Scene:', !!this.scene, 'MoleculeManager:', !!this.moleculeManager);
+      console.warn('Scene or molecule manager not initialized yet. Please wait for initialization.');
       return;
     }
     
@@ -431,7 +445,7 @@ export class ThreeJSBridge {
         (window as any).reactionRateSimulator = this.reactionRateSimulator;
       } catch (error) {
         console.error('Failed to initialize reaction rate simulator:', error);
-        return;
+      return;
       }
     }
 
@@ -475,6 +489,78 @@ export class ThreeJSBridge {
     if (this.reactionRateSimulator) {
       this.reactionRateSimulator.clear();
     }
+  }
+
+  /**
+   * Adjust concentration of running rate simulation
+   */
+  async adjustRateSimulationConcentration(targetParticleCount: number): Promise<void> {
+    if (this.reactionRateSimulator) {
+      await this.reactionRateSimulator.adjustConcentration(targetParticleCount);
+    }
+  }
+
+  /**
+   * Smoothly animate camera to show the full container (for rate simulation mode)
+   */
+  animateCameraToRateView(): void {
+    // Ensure camera animator is initialized
+    if (!this.cameraAnimator && this.camera && this.controls) {
+      this.cameraAnimator = new CameraAnimator(this.camera, this.controls);
+    }
+    if (!this.cameraAnimator) {
+      console.warn('Camera animator not available');
+      return;
+    }
+
+    // Show container visualization immediately when switching to rate mode
+    if (this.reactionRateSimulator) {
+      this.reactionRateSimulator.showContainer();
+    }
+
+    // Target position: far enough to see the 50-unit container
+    // Position camera at ~57 units distance
+    // Rotated 90 degrees left and 15 degrees up
+    const targetDistance = 57;
+    const azimuth = Math.PI / 2; // 90 degrees (left)
+    const elevation = 15 * Math.PI / 180; // +15 degrees (up)
+    
+    // Use CameraAnimator's spherical coordinate method
+    console.log('Animating camera to rate view:', { targetDistance, azimuth, elevation });
+    this.cameraAnimator.animateToSpherical(
+      targetDistance,
+      azimuth,
+      elevation,
+      new THREE.Vector3(0, 0, 0), // Look at center
+      1.5 // 1.5 seconds duration
+    );
+  }
+
+  /**
+   * Smoothly animate camera back to close-up view (for single collision mode)
+   */
+  animateCameraToSingleView(): void {
+    // Ensure camera animator is initialized
+    if (!this.cameraAnimator && this.camera && this.controls) {
+      this.cameraAnimator = new CameraAnimator(this.camera, this.controls);
+    }
+    if (!this.cameraAnimator) {
+      console.warn('Camera animator not available');
+      return;
+    }
+
+    // Hide container visualization when switching away from rate mode
+    if (this.reactionRateSimulator) {
+      this.reactionRateSimulator.hideContainer();
+    }
+
+    // Target position: closer view for single collision
+    const targetPos = new THREE.Vector3(15, 10, 20);
+    const targetTarget = new THREE.Vector3(0, 0, 0);
+
+    // Use CameraAnimator's direct position method
+    console.log('Animating camera to single view:', { targetPos, targetTarget });
+    this.cameraAnimator.animateTo(targetPos, targetTarget, 1.5);
   }
 
   isUsingUnifiedSystem(): boolean {
