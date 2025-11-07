@@ -5,6 +5,15 @@ import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
 import { collisionEventSystem, createCollisionEvent } from './collisionEventSystem';
 
+// Extend Cannon.js Body type to include userData
+interface CannonBodyWithUserData extends CANNON.Body {
+  userData?: {
+    molecule?: MoleculeGroup;
+    moleculeId?: string;
+    lastSync?: number;
+  };
+}
+
 export interface PhysicsBodyData {
   body: CANNON.Body;
   molecule: MoleculeGroup;
@@ -101,20 +110,27 @@ export class CannonPhysicsEngine {
       // Set initial angular velocity to zero
       body.angularVelocity.set(0, 0, 0);
 
-      // Add damping for stability (reduced to allow more movement)
-      body.linearDamping = 0.01; // Reduced from 0.03 to allow more movement
-      body.angularDamping = 0.01; // Reduced from 0.03
+      // NO DAMPING - Newton's laws: objects in motion stay in motion
+      // In a vacuum (molecular simulation), there's no air resistance or friction
+      body.linearDamping = 0.0; // No linear damping
+      body.angularDamping = 0.0; // No angular damping
       body.sleepSpeedLimit = 0.0001; // Very low threshold - bodies stay awake longer
       body.sleepTimeLimit = 10.0; // Long time before sleeping
-      // Don't disable sleep here - let MoleculeSpawner disable it for molecules with velocity
-      
+
       // Ensure body starts awake
       body.wakeUp();
 
+      // Store molecule reference directly on physics body for direct sync
+      (body as CannonBodyWithUserData).userData = {
+        molecule: molecule,
+        moleculeId: molecule.id,
+        lastSync: performance.now()
+      };
+      
       // Add to world
       this.world.addBody(body);
 
-      // Store mapping using molecule ID
+      // Store mapping using molecule ID (for backward compatibility)
       this.moleculeBodies.set(molecule.id, {
         body,
         molecule,
@@ -144,8 +160,16 @@ export class CannonPhysicsEngine {
     const body = molecule.physicsBody || this.moleculeBodies.get(molecule.id)?.body;
     
     if (body) {
+      const bodyWithData = body as CannonBodyWithUserData;
+      // Clear userData reference (physics and visual stored together!)
+      if (bodyWithData.userData) {
+        bodyWithData.userData.molecule = undefined;
+        bodyWithData.userData.moleculeId = undefined;
+      }
+      
       this.world.removeBody(body);
       this.moleculeBodies.delete(molecule.id);
+      
       // Clear the physicsBody reference
       molecule.physicsBody = undefined;
       molecule.hasPhysics = false;
@@ -179,16 +203,26 @@ export class CannonPhysicsEngine {
     }
 
     // Sync Three.js objects with physics bodies
+    // Iterate directly through physics world bodies for better sync
     // Note: We sync every frame for smooth visuals, but logging is throttled
     let awakeCount = 0;
     let movingCount = 0;
     let totalVelMag = 0;
-    for (const [, bodyData] of this.moleculeBodies.entries()) {
+    
+    for (const body of this.world.bodies) {
+      const bodyWithData = body as CannonBodyWithUserData;
+      // Skip if not a molecule body (no userData)
+      if (!bodyWithData.userData || !bodyWithData.userData.molecule) {
+        continue;
+      }
+      
+      const molecule = bodyWithData.userData.molecule as MoleculeGroup;
+      
       // Wake up bodies that have velocity but are sleeping
       // Cannon.js: sleepState 0 = AWAKE, 1 = SLEEPY, 2 = SLEEPING
-      const velSq = bodyData.body.velocity.x * bodyData.body.velocity.x + 
-                    bodyData.body.velocity.y * bodyData.body.velocity.y + 
-                    bodyData.body.velocity.z * bodyData.body.velocity.z;
+      const velSq = body.velocity.x * body.velocity.x + 
+                    body.velocity.y * body.velocity.y + 
+                    body.velocity.z * body.velocity.z;
       const velMag = Math.sqrt(velSq);
       
       if (velSq > 0.0001) {
@@ -196,20 +230,26 @@ export class CannonPhysicsEngine {
         totalVelMag += velMag;
         
         // CRITICAL: Keep bodies awake if they have velocity
-        if (bodyData.body.sleepState !== 0) {
-          bodyData.body.wakeUp();
+        if (body.sleepState !== 0) {
+          body.wakeUp();
         }
         // Force awake settings every frame for moving bodies
-        bodyData.body.sleepSpeedLimit = 0.0001;
-        bodyData.body.sleepTimeLimit = 10.0;
-        bodyData.body.allowSleep = false; // Disable sleep for moving bodies
+        body.sleepSpeedLimit = 0.0001;
+        body.sleepTimeLimit = 10.0;
+        body.allowSleep = false; // Disable sleep for moving bodies
+        
+        // NO DAMPING - Newton's laws: objects in motion stay in motion
+        // Ensure damping stays at 0 every frame for moving bodies
+        body.linearDamping = 0.0;
+        body.angularDamping = 0.0;
       }
       
-      if (bodyData.body.sleepState === 0) {
+      if (body.sleepState === 0) {
         awakeCount++;
       }
       
-      this.syncMoleculeWithPhysics(bodyData.molecule, bodyData);
+      // Direct sync: physics body → visual group (stored together!)
+      this.syncBodyToVisual(body, molecule);
     }
     
 
@@ -313,22 +353,33 @@ export class CannonPhysicsEngine {
   }
 
   /**
-   * Synchronize Three.js molecule with physics body
+   * Synchronize physics body directly to visual group
+   * Both are stored together on body.userData for perfect sync
    */
-  private syncMoleculeWithPhysics(molecule: MoleculeGroup, bodyData: PhysicsBodyData): void {
-    const { body } = bodyData;
-
-    // Update Three.js position and rotation from physics
+  private syncBodyToVisual(body: CANNON.Body, molecule: MoleculeGroup): void {
+    const bodyWithData = body as CannonBodyWithUserData;
+    
+    // Update Three.js position and rotation directly from physics body
     molecule.group.position.set(body.position.x, body.position.y, body.position.z);
     molecule.group.quaternion.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
 
     // Update molecule velocity for compatibility with existing systems
-    molecule.velocity.copy(body.velocity as any);
+    molecule.velocity.set(body.velocity.x, body.velocity.y, body.velocity.z);
 
     // Update matrix to ensure Three.js renders the new position
     molecule.group.updateMatrixWorld(true);
 
-    bodyData.lastSync = performance.now();
+    // Update lastSync timestamp
+    if (bodyWithData.userData) {
+      bodyWithData.userData.lastSync = performance.now();
+    }
+  }
+  
+  /**
+   * Synchronize Three.js molecule with physics body (backward compatibility)
+   */
+  private syncMoleculeWithPhysics(molecule: MoleculeGroup, bodyData: PhysicsBodyData): void {
+    this.syncBodyToVisual(bodyData.body, molecule);
   }
 
   /**
@@ -338,14 +389,11 @@ export class CannonPhysicsEngine {
     this.world.addEventListener('beginContact', (event: any) => {
       const { bodyA, bodyB } = event;
 
-      // Find corresponding molecules
-      let molA: MoleculeGroup | undefined;
-      let molB: MoleculeGroup | undefined;
-
-      for (const [, bodyData] of this.moleculeBodies.entries()) {
-        if (bodyData.body === bodyA) molA = bodyData.molecule;
-        if (bodyData.body === bodyB) molB = bodyData.molecule;
-      }
+      // Get molecules directly from body userData (stored together!)
+      const bodyAWithData = bodyA as CannonBodyWithUserData;
+      const bodyBWithData = bodyB as CannonBodyWithUserData;
+      const molA = bodyAWithData.userData?.molecule as MoleculeGroup | undefined;
+      const molB = bodyBWithData.userData?.molecule as MoleculeGroup | undefined;
 
       if (molA && molB) {
         // Guard against reactions already in progress
@@ -494,6 +542,10 @@ export class CannonPhysicsEngine {
     if (body) {
       // Set velocity directly on Cannon.js body
       body.velocity.set(velocity.x, velocity.y, velocity.z);
+      
+      // NO DAMPING - Newton's laws: objects in motion stay in motion
+      body.linearDamping = 0.0;
+      body.angularDamping = 0.0;
       
       // Wake up the body so Cannon.js processes its movement
       body.wakeUp();

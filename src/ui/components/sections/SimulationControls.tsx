@@ -8,6 +8,7 @@ interface SimulationControlsProps {
   attackAngle: number;
   relativeVelocity: number;
   temperature: number;
+  simulationMode?: 'single' | 'rate';
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -24,6 +25,7 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   attackAngle,
   relativeVelocity,
   temperature,
+  simulationMode = 'single',
   onPlay,
   onPause,
   onReset,
@@ -142,16 +144,26 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         
         {/* Play/Pause and Reset Buttons */}
         <div className="flex gap-2">
-          <button 
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 ${
-              isPlaying 
-                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white border-red-500 shadow-red-200 shadow-md' 
-                : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-500 shadow-blue-200 shadow-md'
-            }`}
-            onClick={isPlaying ? onPause : onPlay}
-          >
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
+          {simulationMode === 'single' && (
+            <button 
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 ${
+                isPlaying 
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white border-red-500 shadow-red-200 shadow-md' 
+                  : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-500 shadow-blue-200 shadow-md'
+              }`}
+              onClick={isPlaying ? onPause : onPlay}
+            >
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+          )}
+          {simulationMode === 'rate' && isPlaying && (
+            <button 
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 bg-gradient-to-r from-red-500 to-red-600 text-white border-red-500 shadow-red-200 shadow-md`}
+              onClick={onPause}
+            >
+              Pause
+            </button>
+          )}
           <button 
             className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 bg-gradient-to-r from-red-400 to-orange-500 text-white border-red-400 shadow-red-200 shadow-md`}
             onClick={onReset}

@@ -71,24 +71,7 @@ export class MoleculeSpawner {
       const position = options.position || { x: 0, y: 0, z: 0 };
       const applyRandomRotation = options.applyRandomRotation ?? true;
 
-      // Calculate velocity BEFORE drawing (so we can set it immediately after)
-      let velocity: THREE.Vector3;
-      if (options.velocity) {
-        velocity = new THREE.Vector3(
-          options.velocity.x,
-          options.velocity.y,
-          options.velocity.z
-        );
-      } else if (options.temperature !== undefined) {
-        velocity = this.calculateTemperatureVelocity(
-          options.temperature,
-          options.baseSpeed
-        );
-      } else {
-        velocity = new THREE.Vector3(0, 0, 0);
-      }
-
-      // Draw the molecule (creates molecule and physics body)
+      // Draw the molecule first (creates molecule and physics body with molecular properties)
       drawMolecule(
         molecularData.mol3d,
         this.moleculeManager,
@@ -104,6 +87,27 @@ export class MoleculeSpawner {
         throw new Error(`Failed to load molecule ${name} (CID: ${cid})`);
       }
 
+      // Get molecular mass from properties (if available)
+      const molecularMassAmu = (molecule as any).molecularProperties?.totalMass;
+
+      // Calculate velocity AFTER drawing so we can use molecular mass
+      let velocity: THREE.Vector3;
+      if (options.velocity) {
+        velocity = new THREE.Vector3(
+          options.velocity.x,
+          options.velocity.y,
+          options.velocity.z
+        );
+      } else if (options.temperature !== undefined) {
+        velocity = this.calculateTemperatureVelocity(
+          options.temperature,
+          molecularMassAmu,
+          options.baseSpeed
+        );
+      } else {
+        velocity = new THREE.Vector3(0, 0, 0);
+      }
+
       // Set velocity on molecule object (source of truth)
       molecule.velocity.copy(velocity);
       
@@ -117,6 +121,10 @@ export class MoleculeSpawner {
           // Set velocity directly on Cannon.js body
           body.velocity.set(velocity.x, velocity.y, velocity.z);
           
+          // NO DAMPING - Newton's laws: objects in motion stay in motion
+          body.linearDamping = 0.0;
+          body.angularDamping = 0.0;
+          
           // CRITICAL: Force body to stay awake and moving
           body.wakeUp();
           body.sleepSpeedLimit = 0.0001; // Very low threshold
@@ -129,6 +137,11 @@ export class MoleculeSpawner {
           if (body) {
             (molecule as any).physicsBody = body;
             body.velocity.set(velocity.x, velocity.y, velocity.z);
+            
+            // NO DAMPING - Newton's laws: objects in motion stay in motion
+            body.linearDamping = 0.0;
+            body.angularDamping = 0.0;
+            
             body.wakeUp();
             body.sleepSpeedLimit = 0.001;
             body.sleepTimeLimit = 2.0;
@@ -275,20 +288,54 @@ export class MoleculeSpawner {
   }
 
   /**
-   * Calculate velocity based on temperature (Maxwell-Boltzmann distribution)
+   * Calculate velocity based on temperature using REAL Maxwell-Boltzmann distribution
+   * v_rms = sqrt(3kT/m)
+   * Where:
+   * - k = Boltzmann constant = 1.380649 × 10^-23 J/K
+   * - T = temperature in Kelvin
+   * - m = molecular mass in kg (converted from atomic mass units)
+   * 
+   * For visualization, we scale the result to reasonable speeds while maintaining
+   * the correct temperature dependence
    */
   private calculateTemperatureVelocity(
     temperature: number,
-    baseSpeed: number = 2.0
+    molecularMassAmu?: number, // Molecular mass in atomic mass units
+    baseSpeed?: number // Optional override for base speed
   ): THREE.Vector3 {
-    const temperatureFactor = Math.sqrt(temperature / 298); // Normalize to room temp
+    // Constants
+    const BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
+    const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
+    
+    // Use provided mass or default (average molecular mass ~50 amu for organic molecules)
+    const massAmu = molecularMassAmu || 50.0;
+    const massKg = massAmu * AMU_TO_KG;
+    
+    // REAL Maxwell-Boltzmann: v_rms = sqrt(3kT/m)
+    // This gives velocity in m/s (typically 100-1000 m/s for molecules)
+    const v_rms = Math.sqrt((3 * BOLTZMANN_CONSTANT * temperature) / massKg);
+    
+    // Reference values for scaling
+    const referenceTemp = 298; // Room temperature
+    const referenceVrms = Math.sqrt((3 * BOLTZMANN_CONSTANT * referenceTemp) / massKg);
+    
+    // Use baseSpeed as the reference visualization speed at room temperature
+    // Then scale proportionally based on the ratio of v_rms values
+    const referenceBaseSpeed = baseSpeed || 3.0; // Default 3 m/s at room temp
+    const speedRatio = v_rms / referenceVrms; // How much faster/slower than room temp
+    
+    // Final speed: scale baseSpeed by the temperature ratio
+    // This ensures: higher T → higher v_rms → higher speed (CORRECT!)
+    const finalSpeed = referenceBaseSpeed * speedRatio;
+    
+    // Random direction for realistic molecular motion
     const direction = new THREE.Vector3(
       (Math.random() - 0.5),
       (Math.random() - 0.5),
       (Math.random() - 0.5)
     ).normalize();
     
-    return direction.multiplyScalar(baseSpeed * temperatureFactor);
+    return direction.multiplyScalar(finalSpeed);
   }
 
   /**

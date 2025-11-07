@@ -86,7 +86,6 @@ let fpsAccumulatedTimeMs = 0;
  * Initializes a simple FPS overlay in the top-left corner when DEBUG_MODE is on.
  */
 export function initFpsDebug(): void {
-  if (!DEBUG_MODE) return;
   if (typeof document === 'undefined') return;
   if (fpsContainer) return; // already initialized
 
@@ -102,6 +101,7 @@ export function initFpsDebug(): void {
   div.style.fontSize = '12px';
   div.style.lineHeight = '14px';
   div.style.zIndex = '10000';
+  div.style.borderRadius = '4px';
   div.textContent = 'FPS: -- | ms: --';
   document.body.appendChild(div);
   fpsContainer = div;
@@ -111,7 +111,12 @@ export function initFpsDebug(): void {
  * Updates the FPS overlay. Call once per frame with delta time in seconds.
  */
 export function updateFpsDebug(deltaSeconds: number): void {
-  if (!DEBUG_MODE || !fpsContainer) return;
+  if (!fpsContainer) return;
+
+  // Ensure deltaSeconds is valid
+  if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) {
+    deltaSeconds = 1 / 60; // Default to 60 FPS if invalid
+  }
 
   fpsFramesSinceUpdate += 1;
   fpsAccumulatedTimeMs += deltaSeconds * 1000;
@@ -123,8 +128,8 @@ export function updateFpsDebug(deltaSeconds: number): void {
     const ms = fpsAccumulatedTimeMs / fpsFramesSinceUpdate;
 
     // Add some validation to prevent NaN or infinite values
-    const validFps = Number.isFinite(fps) ? fps : 0;
-    const validMs = Number.isFinite(ms) ? ms : 0;
+    const validFps = Number.isFinite(fps) && fps > 0 ? fps : 0;
+    const validMs = Number.isFinite(ms) && ms > 0 ? ms : 0;
 
     fpsContainer.textContent = `FPS: ${validFps.toFixed(1)} | ms: ${validMs.toFixed(1)}`;
     fpsFramesSinceUpdate = 0;

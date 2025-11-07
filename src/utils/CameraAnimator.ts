@@ -88,15 +88,6 @@ export class CameraAnimator {
     }
 
     this.animation.progress += deltaTime / this.animation.duration;
-    
-    // Debug log every 10 frames
-    if (Math.floor(this.animation.progress * 60) % 10 === 0) {
-      console.log('CameraAnimator.update:', {
-        progress: this.animation.progress,
-        deltaTime,
-        cameraPos: this.camera.position.toArray()
-      });
-    }
 
     if (this.animation.progress >= 1.0) {
       // Animation complete

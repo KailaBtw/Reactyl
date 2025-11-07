@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ControlsHelp } from './ControlsHelp';
 import { ThreeViewer } from './ThreeViewer';
 import { SettingsModal } from './SettingsModal';
@@ -7,6 +7,7 @@ import { SimulationControls } from './sections/SimulationControls';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
 import { CompactLiveData } from './sections/CompactLiveData';
 import { ReactionRateMetrics } from './sections/ReactionRateMetrics';
+import { PressureControl } from './sections/PressureControl';
 import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
 import { concentrationToParticleCount } from '../../utils/concentrationConverter';
@@ -63,6 +64,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [uiTheme, setUITheme] = useState('blue');
   const sceneRef = useRef<HTMLDivElement>(null);
+  
+  // Debounce temperature updates to prevent lag
+  const temperatureUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingTemperatureRef = useRef<number | null>(null);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (temperatureUpdateTimeoutRef.current) {
+        clearTimeout(temperatureUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Get theme-based CSS classes
   const getThemeClasses = () => {
@@ -194,7 +208,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
 
         {/* Right Control Panel */}
-        <aside className={`w-80 border-l overflow-y-auto flex flex-col ${themeClasses.card} flex-shrink-0`}>
+        <aside className={`w-64 border-l overflow-y-auto flex flex-col ${themeClasses.card} flex-shrink-0`}>
           <ReactionSetup
             currentReaction={currentReaction}
             substrate={substrate}
@@ -209,14 +223,65 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             onNucleophileChange={onNucleophileChange}
             onAttackAngleChange={onAttackAngleChange}
             onRelativeVelocityChange={onRelativeVelocityChange}
-            onTemperatureChange={onTemperatureChange}
-            onSimulationModeChange={(mode) => {
+            onTemperatureChange={(temp) => {
+              // Update UI state immediately for responsive slider
+              onTemperatureChange(temp);
+              
+              // Debounce expensive physics updates (update velocities for all molecules)
+              pendingTemperatureRef.current = temp;
+              
+              // Clear existing timeout
+              if (temperatureUpdateTimeoutRef.current) {
+                clearTimeout(temperatureUpdateTimeoutRef.current);
+              }
+              
+              // Only update physics after user stops dragging (300ms delay)
+              temperatureUpdateTimeoutRef.current = setTimeout(() => {
+                const finalTemp = pendingTemperatureRef.current;
+                if (finalTemp !== null && uiState.simulationMode === 'rate' && uiState.isPlaying) {
+                  threeJSBridge.updateRateSimulationTemperature(finalTemp);
+                }
+                pendingTemperatureRef.current = null;
+              }, 300);
+            }}
+            onSimulationModeChange={async (mode) => {
+              const previousMode = uiState.simulationMode;
               updateUIState({ simulationMode: mode });
               // Animate camera when switching modes
               if (mode === 'rate') {
                 threeJSBridge.animateCameraToRateView();
+                // Auto-start rate simulation
+                try {
+                  const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
+                    'demo_Methyl_bromide': { cid: '6323', name: 'Methyl bromide' },
+                    'demo_Hydroxide_ion': { cid: '961', name: 'Hydroxide ion' },
+                    'demo_Methanol': { cid: '887', name: 'Methanol' },
+                    'demo_Water': { cid: '962', name: 'Water' }
+                  };
+                  
+                  const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || { cid: '6323', name: 'Methyl bromide' };
+                  const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || { cid: '961', name: 'Hydroxide ion' };
+                  
+                  // Calculate particle count from concentration
+                  const particleCount = concentrationToParticleCount(uiState.concentration);
+                  await threeJSBridge.startRateSimulation(
+                    particleCount,
+                    uiState.temperature,
+                    uiState.reactionType,
+                    substrateMolecule,
+                    nucleophileMolecule
+                  );
+                  updateUIState({ isPlaying: true, reactionInProgress: true });
+                } catch (error) {
+                  console.error('Failed to auto-start rate simulation:', error);
+                }
               } else {
                 threeJSBridge.animateCameraToSingleView();
+                // Stop rate simulation when switching away from rate mode
+                if (previousMode === 'rate' && uiState.isPlaying) {
+                  threeJSBridge.stopRateSimulation();
+                  updateUIState({ isPlaying: false, reactionInProgress: false });
+                }
               }
             }}
             onConcentrationChange={async (conc) => {
@@ -224,9 +289,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               updateUIState({ concentration: conc, particleCount });
               
               // If rate simulation is running, adjust concentration dynamically
+              // Pass current temperature to ensure new molecules respect it
               if (uiState.simulationMode === 'rate' && uiState.isPlaying) {
                 try {
-                  await threeJSBridge.adjustRateSimulationConcentration(particleCount);
+                  await threeJSBridge.adjustRateSimulationConcentration(particleCount, uiState.temperature);
                 } catch (error) {
                   console.error('Failed to adjust concentration:', error);
                 }
@@ -234,6 +300,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             }}
             themeClasses={themeClasses}
           />
+
+          {/* Pressure Control Card */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <PressureControl
+              pressure={uiState.pressure || 1.0}
+              onPressureChange={(pressure) => updateUIState({ pressure })}
+              themeClasses={themeClasses}
+            />
+          </div>
 
           {/* Conditionally show metrics based on simulation mode */}
           {uiState.simulationMode === 'single' ? (
@@ -262,6 +337,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             attackAngle={attackAngle}
             relativeVelocity={relativeVelocity}
             temperature={temperature}
+            simulationMode={uiState.simulationMode}
             onPlay={onPlay}
             onPause={onPause}
             onReset={onReset}

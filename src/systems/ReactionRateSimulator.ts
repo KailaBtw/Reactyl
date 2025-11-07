@@ -58,7 +58,6 @@ export class ReactionRateSimulator {
     temperature: number,
     reactionType: string
   ): Promise<void> {
-    console.log(`Initializing rate simulation with ${particleCount} pairs at ${temperature}K`);
     
     // Store simulation parameters for dynamic adjustments
     this.substrateData = substrateData;
@@ -132,7 +131,7 @@ export class ReactionRateSimulator {
         {
           applyRandomRotation: true,
           temperature,
-          baseSpeed: 2.0
+          baseSpeed: 3.0 // Match updated baseSpeed
         }
       );
       
@@ -151,7 +150,7 @@ export class ReactionRateSimulator {
           position: nucleophilePosition,
           applyRandomRotation: true,
           temperature,
-          baseSpeed: 2.0
+          baseSpeed: 3.0 // Match updated baseSpeed
         }
       );
       
@@ -176,22 +175,23 @@ export class ReactionRateSimulator {
     
     // Check if this collision resulted in a reaction
     // Event structure: { moleculeA, moleculeB, reactionResult: { occurs, ... } }
-    if (event.reactionResult?.occurs) {
-      this.reactionCount++;
-      
+    const reactionOccurred = event.reactionResult?.occurs === true;
+    
+    if (reactionOccurred) {
       // Get molecule IDs from the event
       const moleculeAId = event.moleculeA?.name || event.moleculeA?.id;
       const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
       
       if (moleculeAId && moleculeBId) {
-      // Mark the pair as reacted
-      const pair = this.moleculePairs.find(
+        // Mark the pair as reacted
+        const pair = this.moleculePairs.find(
           p => (p.substrateId === moleculeAId && p.nucleophileId === moleculeBId) ||
                (p.substrateId === moleculeBId && p.nucleophileId === moleculeAId)
-      );
-      
+        );
+        
         if (pair && !pair.reacted) {
-        pair.reacted = true;
+          pair.reacted = true;
+          this.reactionCount++;
           log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
         }
       }
@@ -391,12 +391,113 @@ export class ReactionRateSimulator {
   }
 
   /**
+   * Calculate velocity using REAL Maxwell-Boltzmann distribution
+   * v_rms = sqrt(3kT/m)
+   * This is the same calculation used in MoleculeSpawner
+   */
+  private calculateMaxwellBoltzmannVelocity(
+    temperature: number,
+    molecularMassAmu: number,
+    baseSpeed?: number
+  ): number {
+    // Constants (same as MoleculeSpawner)
+    const BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
+    const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
+    
+    const massKg = molecularMassAmu * AMU_TO_KG;
+    
+    // REAL Maxwell-Boltzmann: v_rms = sqrt(3kT/m)
+    const v_rms = Math.sqrt((3 * BOLTZMANN_CONSTANT * temperature) / massKg);
+    
+    // Reference values for scaling
+    const referenceTemp = 298; // Room temperature
+    const referenceVrms = Math.sqrt((3 * BOLTZMANN_CONSTANT * referenceTemp) / massKg);
+    
+    // Use baseSpeed as the reference visualization speed at room temperature
+    // Then scale proportionally based on the ratio of v_rms values
+    const referenceBaseSpeed = baseSpeed || 3.0; // Default 3 m/s at room temp
+    const speedRatio = v_rms / referenceVrms; // How much faster/slower than room temp
+    
+    // Final speed: scale baseSpeed by the temperature ratio
+    // This ensures: higher T → higher v_rms → higher speed (CORRECT!)
+    return referenceBaseSpeed * speedRatio;
+  }
+
+  /**
+   * Update velocities of all molecules based on new temperature
+   * Uses REAL Maxwell-Boltzmann distribution: v_rms = sqrt(3kT/m)
+   * 
+   * OPTIMIZED: Instead of recalculating from scratch, scale existing velocities
+   * proportionally using the temperature ratio. This is physically accurate and MUCH faster.
+   * 
+   * From Maxwell-Boltzmann: v_rms ∝ sqrt(T)
+   * So: v_new = v_old * sqrt(T_new / T_old)
+   */
+  updateTemperature(newTemperature: number): void {
+    const oldTemperature = this.temperature;
+    
+    // Skip if temperature hasn't changed significantly
+    if (Math.abs(newTemperature - oldTemperature) < 0.1) {
+      return;
+    }
+    
+    this.temperature = newTemperature;
+    
+    // Update collision event system temperature
+    collisionEventSystem.setTemperature(newTemperature);
+    
+    // Calculate velocity scaling factor using REAL Maxwell-Boltzmann physics
+    // v_rms = sqrt(3kT/m), so v_new / v_old = sqrt(T_new / T_old)
+    const temperatureRatio = newTemperature / oldTemperature;
+    const velocityScaleFactor = Math.sqrt(temperatureRatio);
+    
+    // Update all molecules by scaling their existing velocities
+    // This is MUCH faster than recalculating from scratch and physically accurate
+    for (const pair of this.moleculePairs) {
+      const substrate = this.moleculeManager.getMolecule(pair.substrateId);
+      const nucleophile = this.moleculeManager.getMolecule(pair.nucleophileId);
+      
+      if (substrate && substrate.hasPhysics && substrate.physicsBody) {
+        // Scale existing velocity directly (preserves direction, scales magnitude)
+        const currentVel = substrate.velocity;
+        const newVelocity = new THREE.Vector3(
+          currentVel.x * velocityScaleFactor,
+          currentVel.y * velocityScaleFactor,
+          currentVel.z * velocityScaleFactor
+        );
+        this.physicsEngine.setVelocity(substrate, newVelocity);
+      }
+      
+      if (nucleophile && nucleophile.hasPhysics && nucleophile.physicsBody) {
+        // Scale existing velocity directly (preserves direction, scales magnitude)
+        const currentVel = nucleophile.velocity;
+        const newVelocity = new THREE.Vector3(
+          currentVel.x * velocityScaleFactor,
+          currentVel.y * velocityScaleFactor,
+          currentVel.z * velocityScaleFactor
+        );
+        this.physicsEngine.setVelocity(nucleophile, newVelocity);
+      }
+    }
+  }
+
+  /**
    * Adjust concentration by adding or removing molecule pairs dynamically
    * @param targetParticleCount Target number of molecule pairs
+   * @param temperature Optional temperature - if not provided, uses current stored temperature
    */
-  async adjustConcentration(targetParticleCount: number): Promise<void> {
+  async adjustConcentration(targetParticleCount: number, temperature?: number): Promise<void> {
     if (!this.substrateData || !this.nucleophileData) {
       return;
+    }
+
+    // Use provided temperature or fall back to stored temperature
+    const spawnTemperature = temperature !== undefined ? temperature : this.temperature;
+    
+    // Update stored temperature if provided
+    if (temperature !== undefined) {
+      this.temperature = temperature;
+      collisionEventSystem.setTemperature(temperature);
     }
 
     const currentCount = this.moleculePairs.length;
@@ -410,7 +511,7 @@ export class ReactionRateSimulator {
       for (let i = 0; i < difference; i++) {
         const index = this.nextPairIndex++;
         spawnPromises.push(
-          this.spawnMoleculePair(this.substrateData, this.nucleophileData, index, this.temperature)
+          this.spawnMoleculePair(this.substrateData, this.nucleophileData, index, spawnTemperature)
         );
       }
       await Promise.all(spawnPromises);

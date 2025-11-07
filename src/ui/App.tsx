@@ -21,6 +21,7 @@ export interface UIState {
 
   // Environment
   temperature: number;
+  pressure: number; // Pressure in atm (0.1 - 10 atm)
 
   // Collision parameters
   approachAngle: number;
@@ -75,6 +76,7 @@ const initialState: UIState = {
   isPlaying: false,
   timeScale: 0.8,
   temperature: 298,
+  pressure: 1.0, // Standard pressure: 1 atm
   approachAngle: 100,
   impactParameter: 0.0,
   relativeVelocity: 150.0,

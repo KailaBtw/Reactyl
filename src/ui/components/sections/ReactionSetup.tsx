@@ -218,18 +218,18 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             </div>
             <input 
               type="range"
-              min="273"
-              max="473"
+              min="200"
+              max="600"
               step="1"
               value={temperature}
               onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
               className="slider w-full"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>0°C</span>
+              <span>-73°C</span>
               <span>25°C</span>
-              <span>100°C</span>
               <span>200°C</span>
+              <span>327°C</span>
             </div>
           </div>
         </div>
@@ -328,10 +328,40 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
           
           {/* Temperature Slider - Lab Realistic */}
           <div className={`p-4 rounded-lg ${themeClasses.card} border border-orange-500/20 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10`}>
-            <div className="mb-3">
+            <div className="mb-3 flex items-center gap-2">
               <label className={`text-sm font-semibold ${themeClasses.text}`}>
                 Temperature
               </label>
+              <InfoBubble
+                term="Temperature & Molecular Velocity"
+                explanation={`Temperature controls molecular motion through the Maxwell-Boltzmann distribution. 
+
+Theoretical Relationship:
+v_rms = √(3kT/m)
+
+Where:
+• v_rms = root mean square velocity
+• k = Boltzmann constant (1.38 × 10⁻²³ J/K)
+• T = temperature in Kelvin
+• m = molecular mass
+
+In this simulation, all molecules use:
+v = baseSpeed × √(T/T_ref)
+
+Where baseSpeed = 3.0 m/s and T_ref = 298K (room temperature).
+
+Examples:
+• 200K (cryogenic): v = 3.0 × √(200/298) ≈ 2.45 m/s
+• 298K (room temp): v = 3.0 × √(298/298) = 3.0 m/s
+• 600K (high temp): v = 3.0 × √(600/298) ≈ 4.24 m/s
+
+Doubling temperature increases velocity by √2 ≈ 1.41×. At higher temperatures, molecules move faster and collide more frequently, increasing reaction rates according to the Arrhenius equation:
+
+k = A·e^(-Ea/RT)
+
+Where reaction rate k increases exponentially with temperature T.`}
+                size="small"
+              />
             </div>
             
             {/* Temperature Display - Dual Units */}
@@ -380,39 +410,60 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             {/* Temperature Slider */}
             <input 
               type="range"
-              min="273"
-              max="473"
+              min="200"
+              max="600"
               step="1"
               value={temperature}
               onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
               className="slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, 
-                  #3b82f6 0%, 
-                  #3b82f6 ${((298 - 273) / (473 - 273)) * 100}%,
-                  #f97316 ${((298 - 273) / (473 - 273)) * 100}%,
-                  #f97316 ${((373 - 273) / (473 - 273)) * 100}%,
-                  #ef4444 ${((373 - 273) / (473 - 273)) * 100}%,
-                  #ef4444 100%)`
+                  #1e40af 0%, 
+                  #1e40af ${((273 - 200) / (600 - 200)) * 100}%,
+                  #3b82f6 ${((273 - 200) / (600 - 200)) * 100}%,
+                  #3b82f6 ${((298 - 200) / (600 - 200)) * 100}%,
+                  #f97316 ${((298 - 200) / (600 - 200)) * 100}%,
+                  #f97316 ${((373 - 200) / (600 - 200)) * 100}%,
+                  #ef4444 ${((373 - 200) / (600 - 200)) * 100}%,
+                  #dc2626 ${((473 - 200) / (600 - 200)) * 100}%,
+                  #dc2626 100%)`
               }}
             />
             
             {/* Lab Temperature Markers */}
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2 relative">
-              <span className="text-blue-600 dark:text-blue-400">Ice Bath<br/>0°C</span>
-              <span className="absolute left-1/4 text-green-600 dark:text-green-400 -translate-x-1/2">Room<br/>25°C</span>
-              <span className="absolute left-1/2 text-orange-600 dark:text-orange-400 -translate-x-1/2">Boiling<br/>100°C</span>
-              <span className="text-red-600 dark:text-red-400">Hot Plate<br/>200°C</span>
+            <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-2`}>
+              <div className="text-center">
+                <div className="text-blue-800 font-medium">Cryogenic</div>
+                <div className="text-blue-700">-73°C</div>
+              </div>
+              <div className="text-center">
+                <div className="text-blue-700 font-medium">Ice Bath</div>
+                <div className="text-blue-600">0°C</div>
+              </div>
+              <div className="text-center">
+                <div className="text-green-700 font-medium">Room</div>
+                <div className="text-green-600">25°C</div>
+              </div>
+              <div className="text-center">
+                <div className="text-orange-600 font-medium">Boiling</div>
+                <div className="text-orange-500">100°C</div>
+              </div>
+              <div className="text-center">
+                <div className="text-red-600 font-medium">High Temp</div>
+                <div className="text-red-500">327°C</div>
+              </div>
             </div>
             
             {/* Scientific Info */}
-            <div className="mt-3 text-xs italic text-gray-500 dark:text-gray-400">
-              {temperature < 273 ? 'Below freezing' :
+            <div className={`mt-3 text-xs italic ${themeClasses.textSecondary}`}>
+              {temperature < 200 ? 'Cryogenic - extremely slow' :
+               temperature < 273 ? 'Very cold - very slow reactions' :
                temperature < 298 ? 'Cold - slow reactions' :
                temperature < 310 ? 'Room temperature - typical lab conditions' :
                temperature < 373 ? 'Warm - increased reaction rate' :
-               temperature < 423 ? 'Hot - fast reactions' :
-               'Very hot - rapid reactions'}
+               temperature < 473 ? 'Hot - fast reactions' :
+               temperature < 573 ? 'Very hot - very fast reactions' :
+               'Extreme - explosive reaction rates'}
             </div>
           </div>
         </div>

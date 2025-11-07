@@ -7,7 +7,7 @@ import { collisionEventSystem } from '../../physics/collisionEventSystem';
 import { createMoleculeManager } from '../../services/moleculeManager';
 import { sceneBridge } from '../../services/SceneBridge';
 import { applyLighting } from '../../components/lightingControls';
-import { addObjectDebug, DEBUG_MODE, initFpsDebug } from '../../utils/debug';
+import { addObjectDebug, DEBUG_MODE, initFpsDebug, updateFpsDebug } from '../../utils/debug';
 import { CameraAnimator } from '../../utils/CameraAnimator';
 import type { UIState } from '../App';
 
@@ -24,6 +24,8 @@ export class ThreeJSBridge {
   private reactionRateSimulator: ReactionRateSimulator | null = null;
   // Camera animation
   private cameraAnimator: CameraAnimator | null = null;
+  // FPS tracking
+  private lastFrameTime: number = 0;
 
   constructor() {
   }
@@ -274,9 +276,21 @@ export class ThreeJSBridge {
       return; // Early exit if not ready
     }
 
+    // Calculate actual deltaTime for this frame
+    const currentTime = performance.now();
+    const deltaTime = this.lastFrameTime > 0 
+      ? (currentTime - this.lastFrameTime) / 1000 
+      : 1 / 60; // Default to 60 FPS on first frame
+    this.lastFrameTime = currentTime;
+
+    // Update FPS meter if showStats is enabled
+    const uiState = (window as any).uiState;
+    if (uiState?.showStats) {
+      updateFpsDebug(deltaTime);
+    }
+
     // Update camera animation if active
     if (this.cameraAnimator) {
-      const deltaTime = 1 / 60; // 60 FPS
       this.cameraAnimator.update(deltaTime);
     }
 
@@ -288,15 +302,13 @@ export class ThreeJSBridge {
     // Step the physics engine (only if not paused)
     const isPaused = physicsEngine.isSimulationPaused();
     if (!isPaused) {
-      const deltaTime = 1 / 60; // 60 FPS fixed timestep
-      physicsEngine.step(deltaTime);
+      const physicsDeltaTime = 1 / 60; // Fixed timestep for physics stability
+      physicsEngine.step(physicsDeltaTime);
 
       // Update rate simulation if active (handles boundary collisions)
-      // Only check UI state once per frame
       if (this.reactionRateSimulator) {
-        const uiState = (window as any).uiState;
         if (uiState?.simulationMode === 'rate' && uiState?.isPlaying) {
-          this.updateRateSimulation(deltaTime);
+          this.updateRateSimulation(physicsDeltaTime);
         }
       }
     }
@@ -494,9 +506,18 @@ export class ThreeJSBridge {
   /**
    * Adjust concentration of running rate simulation
    */
-  async adjustRateSimulationConcentration(targetParticleCount: number): Promise<void> {
+  async adjustRateSimulationConcentration(targetParticleCount: number, temperature?: number): Promise<void> {
     if (this.reactionRateSimulator) {
-      await this.reactionRateSimulator.adjustConcentration(targetParticleCount);
+      await this.reactionRateSimulator.adjustConcentration(targetParticleCount, temperature);
+    }
+  }
+
+  /**
+   * Update temperature for running rate simulation
+   */
+  updateRateSimulationTemperature(temperature: number): void {
+    if (this.reactionRateSimulator) {
+      this.reactionRateSimulator.updateTemperature(temperature);
     }
   }
 
@@ -526,7 +547,6 @@ export class ThreeJSBridge {
     const elevation = 15 * Math.PI / 180; // +15 degrees (up)
     
     // Use CameraAnimator's spherical coordinate method
-    console.log('Animating camera to rate view:', { targetDistance, azimuth, elevation });
     this.cameraAnimator.animateToSpherical(
       targetDistance,
       azimuth,
@@ -559,7 +579,6 @@ export class ThreeJSBridge {
     const targetTarget = new THREE.Vector3(0, 0, 0);
 
     // Use CameraAnimator's direct position method
-    console.log('Animating camera to single view:', { targetPos, targetTarget });
     this.cameraAnimator.animateTo(targetPos, targetTarget, 1.5);
   }
 
