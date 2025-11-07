@@ -1,16 +1,14 @@
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import { UnifiedSimulation } from '../../src/systems/UnifiedSimulation';
 import { reactionEventBus } from '../../src/events/ReactionEventBus';
 import { getReactionConfig } from '../../src/config/reactionSettings';
 import { log } from '../../src/utils/debug';
 
 /**
- * Test the unified system architecture
+ * Test the reaction system architecture
  * This verifies that all components work together properly
  */
 export class UnifiedSystemTest {
   private orchestrator: ReactionOrchestrator | null = null;
-  private simulation: UnifiedSimulation | null = null;
   private testResults: { [key: string]: boolean } = {};
 
   constructor() {

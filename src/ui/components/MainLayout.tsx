@@ -201,6 +201,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             relativeVelocity={relativeVelocity}
             temperature={temperature}
             simulationMode={uiState.simulationMode}
+            concentration={uiState.concentration}
             particleCount={uiState.particleCount}
             onReactionChange={onReactionChange}
             onSubstrateChange={onSubstrateChange}
@@ -209,7 +210,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             onRelativeVelocityChange={onRelativeVelocityChange}
             onTemperatureChange={onTemperatureChange}
             onSimulationModeChange={(mode) => updateUIState({ simulationMode: mode })}
-            onParticleCountChange={(count) => updateUIState({ particleCount: count })}
+            onConcentrationChange={(conc) => {
+              const { concentrationToParticleCount } = require('../../utils/concentrationConverter');
+              const particleCount = concentrationToParticleCount(conc);
+              updateUIState({ concentration: conc, particleCount });
+            }}
             themeClasses={themeClasses}
           />
 

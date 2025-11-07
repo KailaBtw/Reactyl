@@ -39,7 +39,7 @@ export class CannonPhysicsEngine {
     solver.iterations = 7; // fewer iterations for speed
     solver.tolerance = 0.003; // looser tolerance for speed
     this.world.solver = solver;
-    this.world.allowSleep = true; // enable body sleeping
+    this.world.allowSleep = true; // enable body sleeping (but individual bodies can disable it)
 
     // Use SAP broadphase for better performance with many objects
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
@@ -101,11 +101,15 @@ export class CannonPhysicsEngine {
       // Set initial angular velocity to zero
       body.angularVelocity.set(0, 0, 0);
 
-      // Add damping for stability
-      body.linearDamping = 0.03;
-      body.angularDamping = 0.03;
-      body.sleepSpeedLimit = 0.05; // below this speed, can sleep
-      body.sleepTimeLimit = 0.5; // after this time, will sleep
+      // Add damping for stability (reduced to allow more movement)
+      body.linearDamping = 0.01; // Reduced from 0.03 to allow more movement
+      body.angularDamping = 0.01; // Reduced from 0.03
+      body.sleepSpeedLimit = 0.0001; // Very low threshold - bodies stay awake longer
+      body.sleepTimeLimit = 10.0; // Long time before sleeping
+      // Don't disable sleep here - let MoleculeSpawner disable it for molecules with velocity
+      
+      // Ensure body starts awake
+      body.wakeUp();
 
       // Add to world
       this.world.addBody(body);
@@ -116,6 +120,9 @@ export class CannonPhysicsEngine {
         molecule,
         lastSync: performance.now(),
       });
+      
+      // Also store body reference directly on molecule for faster access
+      (molecule as any).physicsBody = body;
       
       log(`Added ${molecule.name} to physics world with mass ${mass.toFixed(2)}`);
       log(`Physics world now has ${this.world.bodies.length} bodies`);
@@ -166,9 +173,39 @@ export class CannonPhysicsEngine {
     }
 
     // Sync Three.js objects with physics bodies
+    // Note: We sync every frame for smooth visuals, but logging is throttled
+    let awakeCount = 0;
+    let movingCount = 0;
+    let totalVelMag = 0;
     for (const [, bodyData] of this.moleculeBodies.entries()) {
+      // Wake up bodies that have velocity but are sleeping
+      // Cannon.js: sleepState 0 = AWAKE, 1 = SLEEPY, 2 = SLEEPING
+      const velSq = bodyData.body.velocity.x * bodyData.body.velocity.x + 
+                    bodyData.body.velocity.y * bodyData.body.velocity.y + 
+                    bodyData.body.velocity.z * bodyData.body.velocity.z;
+      const velMag = Math.sqrt(velSq);
+      
+      if (velSq > 0.0001) {
+        movingCount++;
+        totalVelMag += velMag;
+        
+        // CRITICAL: Keep bodies awake if they have velocity
+        if (bodyData.body.sleepState !== 0) {
+          bodyData.body.wakeUp();
+        }
+        // Force awake settings every frame for moving bodies
+        bodyData.body.sleepSpeedLimit = 0.0001;
+        bodyData.body.sleepTimeLimit = 10.0;
+        bodyData.body.allowSleep = false; // Disable sleep for moving bodies
+      }
+      
+      if (bodyData.body.sleepState === 0) {
+        awakeCount++;
+      }
+      
       this.syncMoleculeWithPhysics(bodyData.molecule, bodyData);
     }
+    
 
     // Emit queued collision events AFTER stepping to avoid removing bodies during
     // Cannon's narrowphase, which can cause bi undefined errors
@@ -276,13 +313,14 @@ export class CannonPhysicsEngine {
     const { body } = bodyData;
 
     // Update Three.js position and rotation from physics
-    molecule.group.position.copy(body.position as any);
-    molecule.group.quaternion.copy(body.quaternion as any);
+    molecule.group.position.set(body.position.x, body.position.y, body.position.z);
+    molecule.group.quaternion.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
 
     // Update molecule velocity for compatibility with existing systems
     molecule.velocity.copy(body.velocity as any);
 
-    // RotationController removed - using physics engine for rotation
+    // Update matrix to ensure Three.js renders the new position
+    molecule.group.updateMatrixWorld(true);
 
     bodyData.lastSync = performance.now();
   }
@@ -443,14 +481,23 @@ export class CannonPhysicsEngine {
 
   /**
    * Set velocity for a molecule (unified state management)
+   * Ensures Cannon.js body is awake and moving
    */
   setVelocity(molecule: MoleculeGroup, velocity: THREE.Vector3): void {
     const body = this.getPhysicsBody(molecule);
     if (body) {
+      // Set velocity directly on Cannon.js body
       body.velocity.set(velocity.x, velocity.y, velocity.z);
-      log(`✅ Set velocity for ${molecule.name}: (${velocity.x.toFixed(2)}, ${velocity.y.toFixed(2)}, ${velocity.z.toFixed(2)})`);
-    } else {
-      log(`⚠️ No physics body found for ${molecule.name}`);
+      
+      // Wake up the body so Cannon.js processes its movement
+      body.wakeUp();
+      
+      // Prevent body from sleeping immediately
+      body.sleepSpeedLimit = 0.001;
+      body.sleepTimeLimit = 2.0;
+      
+      // Update the molecule's velocity property for consistency
+      molecule.velocity.copy(velocity);
     }
   }
 
@@ -472,9 +519,15 @@ export class CannonPhysicsEngine {
     const body = this.getPhysicsBody(molecule);
     if (body) {
       body.position.set(position.x, position.y, position.z);
-      log(`✅ Set position for ${molecule.name}: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+      // Reduced logging frequency - only log occasionally
+      if (Math.random() < 0.01) { // Log ~1% of the time
+        log(`✅ Set position for ${molecule.name}: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+      }
     } else {
-      log(`⚠️ No physics body found for ${molecule.name}`);
+      // Only log errors occasionally
+      if (Math.random() < 0.1) { // Log ~10% of errors
+        log(`⚠️ No physics body found for ${molecule.name}`);
+      }
     }
   }
 

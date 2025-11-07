@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ReactionOrchestrator } from '../../systems/ReactionOrchestrator';
-import { UnifiedSimulation } from '../../systems/UnifiedSimulation';
 import { ReactionRateSimulator } from '../../systems/ReactionRateSimulator';
 import { physicsEngine } from '../../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../../physics/collisionEventSystem';
@@ -19,9 +18,8 @@ export class ThreeJSBridge {
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: OrbitControls | null = null;
   private moleculeManager: ReturnType<typeof createMoleculeManager> | null = null;
-  // Unified system only - no legacy ReactionDemo
+  // Reaction systems
   private reactionOrchestrator: ReactionOrchestrator | null = null;
-  private unifiedSimulation: UnifiedSimulation | null = null;
   private reactionRateSimulator: ReactionRateSimulator | null = null;
 
   constructor() {
@@ -130,37 +128,31 @@ export class ThreeJSBridge {
       this.moleculeManager = createMoleculeManager();
     }
 
-    // Initialize unified reaction system
+    // Initialize reaction orchestrator
     if (!this.reactionOrchestrator) {
       try {
-        this.reactionOrchestrator = new ReactionOrchestrator(this.scene, this.moleculeManager);
-        this.unifiedSimulation = new UnifiedSimulation(
-          this.reactionOrchestrator,
-          this.scene,
-          this.camera,
-          this.renderer
-        );
-        
-        // Expose to window for debugging and control
-        (window as any).unifiedSimulation = this.unifiedSimulation;
+        if (this.scene && this.moleculeManager) {
+          this.reactionOrchestrator = new ReactionOrchestrator(this.scene, this.moleculeManager);
+          (window as any).reactionOrchestrator = this.reactionOrchestrator;
+        }
       } catch (error) {
-        console.warn('Unified reaction system failed to initialize:', error);
+        console.error('❌ Reaction orchestrator failed to initialize:', error);
       }
     }
 
     // Initialize reaction rate simulator
     if (!this.reactionRateSimulator) {
       try {
-        this.reactionRateSimulator = new ReactionRateSimulator(
-          this.scene,
-          physicsEngine,
-          this.moleculeManager
-        );
-        
-        // Expose to window for debugging
-        (window as any).reactionRateSimulator = this.reactionRateSimulator;
+        if (this.scene && this.moleculeManager) {
+          this.reactionRateSimulator = new ReactionRateSimulator(
+            this.scene,
+            physicsEngine,
+            this.moleculeManager
+          );
+          (window as any).reactionRateSimulator = this.reactionRateSimulator;
+        }
       } catch (error) {
-        console.warn('Reaction rate simulator failed to initialize:', error);
+        console.error('❌ Reaction rate simulator failed to initialize:', error);
       }
     }
 
@@ -206,23 +198,30 @@ export class ThreeJSBridge {
 
     // Only update physics time scale if it actually changed
     if (!previousState || previousState.timeScale !== uiState.timeScale) {
-      console.log('Updating physics time scale:', uiState.timeScale);
       physicsEngine.setTimeScale(uiState.timeScale);
     }
 
     // Only handle play/pause if the playing state actually changed
+    // Don't pause if a reaction is in progress
     if (!previousState || previousState.isPlaying !== uiState.isPlaying) {
-      console.log('Updating play/pause state:', uiState.isPlaying);
+      const reactionOrchestrator = this.reactionOrchestrator;
+      const isReactionInProgress = (reactionOrchestrator && reactionOrchestrator.isReactionInProgress()) || uiState.reactionInProgress;
+      
       if (uiState.isPlaying) {
         physicsEngine.resume();
-      } else {
+      } else if (!isReactionInProgress) {
         physicsEngine.pause();
+      } else {
+        // Reaction in progress - keep physics running
+        physicsEngine.resume();
+        if (typeof (window as any).updateUIState === 'function') {
+          (window as any).updateUIState({ isPlaying: true });
+        }
       }
     }
 
     // Only update testing mode if it actually changed
     if (!previousState || previousState.testingMode !== uiState.testingMode) {
-      console.log('Updating testing mode:', uiState.testingMode);
       collisionEventSystem.setTestingMode(uiState.testingMode);
     }
 
@@ -263,27 +262,33 @@ export class ThreeJSBridge {
   }
 
   render() {
-    if (this.scene && this.camera && this.renderer) {
-      // Update controls if they exist
-      if (this.controls) {
-        this.controls.update();
-      }
+    if (!this.scene || !this.camera || !this.renderer) {
+      return; // Early exit if not ready
+    }
 
-      // Step the physics engine
-      const deltaTime = 1 / 60; // 60 FPS
+    // Update controls if they exist (only if needed)
+    if (this.controls) {
+      this.controls.update();
+    }
+
+    // Step the physics engine (only if not paused)
+    const isPaused = physicsEngine.isSimulationPaused();
+    if (!isPaused) {
+      const deltaTime = 1 / 60; // 60 FPS fixed timestep
       physicsEngine.step(deltaTime);
 
       // Update rate simulation if active (handles boundary collisions)
+      // Only check UI state once per frame
       if (this.reactionRateSimulator) {
-        // Check if we're in rate mode by checking UI state
         const uiState = (window as any).uiState;
-        if (uiState && uiState.simulationMode === 'rate' && uiState.isPlaying) {
+        if (uiState?.simulationMode === 'rate' && uiState?.isPlaying) {
           this.updateRateSimulation(deltaTime);
         }
       }
-
-      this.renderer.render(this.scene, this.camera);
     }
+
+    // Render the scene
+    this.renderer.render(this.scene, this.camera);
   }
 
   getScene(): THREE.Scene | null {
@@ -305,13 +310,31 @@ export class ThreeJSBridge {
   // Unified system handles molecule loading and collision setup internally
 
   async startReactionAnimation(): Promise<void> {
-    if (!this.reactionOrchestrator || !this.moleculeManager) {
-      console.error('Reaction orchestrator or molecule manager not initialized');
+    // Ensure scene is initialized first
+    if (!this.scene || !this.moleculeManager) {
+      console.error('Scene or molecule manager not initialized. Scene:', !!this.scene, 'MoleculeManager:', !!this.moleculeManager);
       return;
+    }
+    
+    // Check if rate simulation is active - if so, don't start single reaction
+    const currentUIState = (window as any).uiState;
+    if (currentUIState?.simulationMode === 'rate' && currentUIState?.isPlaying) {
+      return;
+    }
+    
+    // Ensure reaction orchestrator is initialized
+    if (!this.reactionOrchestrator) {
+      try {
+        this.reactionOrchestrator = new ReactionOrchestrator(this.scene, this.moleculeManager);
+        (window as any).reactionOrchestrator = this.reactionOrchestrator;
+      } catch (error) {
+        console.error('Failed to initialize reaction orchestrator:', error);
+        return;
+      }
     }
 
     // Get current UI state for reaction parameters
-    const uiState = (window as any).uiState || {
+    const uiState = currentUIState || {
       approachAngle: 180,
       impactParameter: 0.0,
       relativeVelocity: 15.0,
@@ -351,16 +374,12 @@ export class ThreeJSBridge {
       return;
     }
 
-    // Use unified reaction system
+    // Use reaction orchestrator
     try {
       await this.reactionOrchestrator.runReaction(reactionParams);
-      
-      // Start unified simulation
-      if (this.unifiedSimulation) {
-        this.unifiedSimulation.start();
-      }
+      // Physics is automatically resumed by ReactionOrchestrator
     } catch (error) {
-      console.error('Unified reaction failed:', error);
+      console.error('Reaction failed:', error);
     }
   }
 
@@ -384,10 +403,6 @@ export class ThreeJSBridge {
     return this.reactionOrchestrator;
   }
 
-  getUnifiedSimulation() {
-    return this.unifiedSimulation;
-  }
-
   getReactionRateSimulator() {
     return this.reactionRateSimulator;
   }
@@ -399,11 +414,25 @@ export class ThreeJSBridge {
     substrateData: any,
     nucleophileData: any
   ): Promise<void> {
-    console.log(`Starting rate simulation: ${particleCount} pairs at ${temperature}K`);
-    
-    if (!this.reactionRateSimulator) {
-      console.error('Reaction rate simulator not initialized');
+    // Ensure scene is initialized first
+    if (!this.scene || !this.moleculeManager) {
+      console.error('Scene or molecule manager not initialized. Scene:', !!this.scene, 'MoleculeManager:', !!this.moleculeManager);
       return;
+    }
+    
+    // Ensure reaction rate simulator is initialized
+    if (!this.reactionRateSimulator) {
+      try {
+        this.reactionRateSimulator = new ReactionRateSimulator(
+          this.scene,
+          physicsEngine,
+          this.moleculeManager
+        );
+        (window as any).reactionRateSimulator = this.reactionRateSimulator;
+      } catch (error) {
+        console.error('Failed to initialize reaction rate simulator:', error);
+        return;
+      }
     }
 
     try {
@@ -418,7 +447,6 @@ export class ThreeJSBridge {
         reactionType
       );
       
-      console.log('Rate simulation started');
     } catch (error) {
       console.error('Failed to start rate simulation:', error);
     }
@@ -450,7 +478,7 @@ export class ThreeJSBridge {
   }
 
   isUsingUnifiedSystem(): boolean {
-    return this.reactionOrchestrator !== null && this.unifiedSimulation !== null;
+    return this.reactionOrchestrator !== null;
   }
 
   // No enhanced demo toggles in unified system
@@ -554,11 +582,6 @@ export class ThreeJSBridge {
       } catch (_e) {
         // no-op, best-effort
       }
-    }
-    
-    // Stop unified simulation
-    if (this.unifiedSimulation) {
-      this.unifiedSimulation.stop();
     }
     
     // Reset collision system state

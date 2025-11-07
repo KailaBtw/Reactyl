@@ -2,8 +2,7 @@ import * as THREE from 'three';
 import type { CannonPhysicsEngine } from '../physics/cannonPhysicsEngine';
 import type { MoleculeManager } from '../types';
 import { collisionEventSystem } from '../physics/collisionEventSystem';
-import { ChemicalDataService } from '../chemistry/chemicalDataService';
-import { drawMolecule } from '../components/moleculeDrawer';
+import { MoleculeSpawner, ContainerBounds } from '../services/MoleculeSpawner';
 
 /**
  * Manages multi-molecule reaction rate simulations
@@ -13,7 +12,7 @@ export class ReactionRateSimulator {
   private scene: THREE.Scene;
   private physicsEngine: CannonPhysicsEngine;
   private moleculeManager: MoleculeManager;
-  private chemicalDataService: ChemicalDataService;
+  private moleculeSpawner: MoleculeSpawner;
   private moleculePairs: Array<{
     substrateId: string;
     nucleophileId: string;
@@ -33,7 +32,7 @@ export class ReactionRateSimulator {
     this.scene = scene;
     this.physicsEngine = physicsEngine;
     this.moleculeManager = moleculeManager;
-    this.chemicalDataService = new ChemicalDataService();
+    this.moleculeSpawner = new MoleculeSpawner(scene, moleculeManager);
   }
 
   /**
@@ -74,6 +73,7 @@ export class ReactionRateSimulator {
 
   /**
    * Spawn a single molecule pair at random position with temperature-based velocities
+   * Now uses MoleculeSpawner for consistent spawning logic
    */
   private async spawnMoleculePair(
     substrateData: any,
@@ -81,114 +81,47 @@ export class ReactionRateSimulator {
     index: number,
     temperature: number
   ): Promise<void> {
-    // Random position within bounded volume
-    const x = (Math.random() - 0.5) * this.boundarySize * 0.8;
-    const y = (Math.random() - 0.5) * this.boundarySize * 0.8;
-    const z = (Math.random() - 0.5) * this.boundarySize * 0.8;
-    
-    // Create substrate using actual molecule drawer
     const substrateId = `substrate_${index}`;
-    const substratePosition = { x: x - 1.5, y, z };
+    const nucleophileId = `nucleophile_${index}`;
     
     try {
-      // Fetch molecule data
-      const substrateMolecularData = await this.chemicalDataService.fetchMoleculeByCID(substrateData.cid);
+      // Define container bounds
+      const bounds: ContainerBounds = {
+        size: this.boundarySize,
+        center: { x: 0, y: 0, z: 0 },
+        padding: 0.1
+      };
       
-      if (!substrateMolecularData || !substrateMolecularData.mol3d) {
-        console.warn(`No 3D data for substrate ${substrateData.name}, skipping pair ${index}`);
-        return;
-      }
-      
-      // Draw substrate molecule
-      drawMolecule(
-        substrateMolecularData.mol3d,
-        this.moleculeManager,
-        this.scene,
-        substratePosition,
+      // Spawn substrate at random position
+      const substrateMolecule = await this.moleculeSpawner.spawnMoleculeInContainer(
+        substrateData.cid,
         substrateId,
-        true // Apply random rotation
+        bounds,
+        {
+          applyRandomRotation: true,
+          temperature,
+          baseSpeed: 2.0
+        }
       );
       
-      // Get the created molecule
-      const substrateMolecule = this.moleculeManager.getMolecule(substrateId);
-      if (!substrateMolecule) {
-        console.warn(`Failed to create substrate ${substrateId}`);
-        return;
-      }
+      // Spawn nucleophile near substrate (offset by 1.5 units)
+      const substratePos = substrateMolecule.group.position;
+      const nucleophilePosition = {
+        x: substratePos.x + 1.5,
+        y: substratePos.y,
+        z: substratePos.z
+      };
       
-      // Create nucleophile
-      const nucleophileId = `nucleophile_${index}`;
-      const nucleophilePosition = { x: x + 1.5, y, z };
-      
-      const nucleophileMolecularData = await this.chemicalDataService.fetchMoleculeByCID(nucleophileData.cid);
-      
-      if (!nucleophileMolecularData || !nucleophileMolecularData.mol3d) {
-        console.warn(`No 3D data for nucleophile ${nucleophileData.name}, cleaning up substrate`);
-        this.moleculeManager.removeMolecule(substrateId);
-        return;
-      }
-      
-      // Draw nucleophile molecule
-      drawMolecule(
-        nucleophileMolecularData.mol3d,
-        this.moleculeManager,
-        this.scene,
-        nucleophilePosition,
+      const nucleophileMolecule = await this.moleculeSpawner.spawnMolecule(
+        nucleophileData.cid,
         nucleophileId,
-        true // Apply random rotation
+        {
+          position: nucleophilePosition,
+          applyRandomRotation: true,
+          temperature,
+          baseSpeed: 2.0
+        }
       );
-      
-      const nucleophileMolecule = this.moleculeManager.getMolecule(nucleophileId);
-      if (!nucleophileMolecule) {
-        console.warn(`Failed to create nucleophile ${nucleophileId}`);
-        this.moleculeManager.removeMolecule(substrateId);
-        return;
-      }
-      
-      // Add to physics with temperature-scaled velocities
-      const temperatureFactor = Math.sqrt(temperature / 298); // Maxwell-Boltzmann
-      const baseSpeed = 2.0; // Increased from 0.5 for more visible movement
-      
-      // Random velocities (normalized direction, then scaled)
-      const substrateDirection = new THREE.Vector3(
-        (Math.random() - 0.5),
-        (Math.random() - 0.5),
-        (Math.random() - 0.5)
-      ).normalize();
-      
-      const nucleophileDirection = new THREE.Vector3(
-        (Math.random() - 0.5),
-        (Math.random() - 0.5),
-        (Math.random() - 0.5)
-      ).normalize();
-      
-      const substrateVelocity = substrateDirection.multiplyScalar(baseSpeed * temperatureFactor);
-      const nucleophileVelocity = nucleophileDirection.multiplyScalar(baseSpeed * temperatureFactor);
-      
-      // drawMolecule should have already added physics bodies, but give it a moment to complete
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      // Update molecule velocity property
-      substrateMolecule.velocity.copy(substrateVelocity);
-      nucleophileMolecule.velocity.copy(nucleophileVelocity);
-      
-      // Set velocities using physics engine - pass molecule object (matches applyEncounter pattern)
-      // This is the same way ReactionOrchestrator does it in configurePhysics -> applyEncounter
-      if (substrateMolecule.hasPhysics) {
-        this.physicsEngine.setVelocity(substrateMolecule as any, substrateVelocity);
-        console.log(`Set substrate velocity: ${substrateVelocity.length.toFixed(2)} m/s`);
-      } else {
-        console.warn(`Substrate ${substrateId} has no physics body, using molecule manager`);
-        this.moleculeManager.setMoleculeVelocity(substrateId, substrateVelocity, 0);
-      }
-      
-      if (nucleophileMolecule.hasPhysics) {
-        this.physicsEngine.setVelocity(nucleophileMolecule as any, nucleophileVelocity);
-        console.log(`Set nucleophile velocity: ${nucleophileVelocity.length.toFixed(2)} m/s`);
-      } else {
-        console.warn(`Nucleophile ${nucleophileId} has no physics body, using molecule manager`);
-        this.moleculeManager.setMoleculeVelocity(nucleophileId, nucleophileVelocity, 0);
-      }
       
       // Track pair
       this.moleculePairs.push({
@@ -300,6 +233,138 @@ export class ReactionRateSimulator {
       collisionCount: this.collisionCount,
       elapsedTime
     };
+  }
+
+  /**
+   * Get container bounds for spawning
+   */
+  getContainerBounds(): ContainerBounds {
+    return {
+      size: this.boundarySize,
+      center: { x: 0, y: 0, z: 0 },
+      padding: 0.1
+    };
+  }
+
+  /**
+   * Spawn molecules to match a target concentration
+   * Useful for adjusting concentration dynamically
+   */
+  async spawnForConcentration(
+    substrateData: any,
+    nucleophileData: any,
+    substrateConcentration: number,
+    nucleophileConcentration: number,
+    temperature: number
+  ): Promise<void> {
+    const bounds = this.getContainerBounds();
+    
+    // Spawn substrate molecules
+    const substrateMolecules = await this.moleculeSpawner.spawnForConcentration(
+      substrateData.cid,
+      'substrate',
+      substrateConcentration,
+      bounds,
+      {
+        applyRandomRotation: true,
+        temperature,
+        baseSpeed: 2.0
+      }
+    );
+    
+    // Spawn nucleophile molecules
+    const nucleophileMolecules = await this.moleculeSpawner.spawnForConcentration(
+      nucleophileData.cid,
+      'nucleophile',
+      nucleophileConcentration,
+      bounds,
+      {
+        applyRandomRotation: true,
+        temperature,
+        baseSpeed: 2.0
+      }
+    );
+    
+    // Create pairs (match substrates with nucleophiles)
+    this.moleculePairs = [];
+    const minPairs = Math.min(substrateMolecules.length, nucleophileMolecules.length);
+    for (let i = 0; i < minPairs; i++) {
+      this.moleculePairs.push({
+        substrateId: substrateMolecules[i].name,
+        nucleophileId: nucleophileMolecules[i].name,
+        reacted: false
+      });
+    }
+    
+    console.log(`Spawned ${substrateMolecules.length} substrates and ${nucleophileMolecules.length} nucleophiles`);
+    this.startTime = performance.now();
+  }
+
+  /**
+   * Adjust concentration by adding or removing molecules
+   */
+  async adjustConcentration(
+    substrateData: any,
+    nucleophileData: any,
+    currentSubstrateConc: number,
+    targetSubstrateConc: number,
+    currentNucleophileConc: number,
+    targetNucleophileConc: number,
+    temperature: number
+  ): Promise<void> {
+    const bounds = this.getContainerBounds();
+    
+    // Adjust substrate concentration
+    await this.moleculeSpawner.adjustConcentration(
+      substrateData.cid,
+      'substrate',
+      currentSubstrateConc,
+      targetSubstrateConc,
+      bounds,
+      {
+        applyRandomRotation: true,
+        temperature,
+        baseSpeed: 2.0
+      }
+    );
+    
+    // Adjust nucleophile concentration
+    await this.moleculeSpawner.adjustConcentration(
+      nucleophileData.cid,
+      'nucleophile',
+      currentNucleophileConc,
+      targetNucleophileConc,
+      bounds,
+      {
+        applyRandomRotation: true,
+        temperature,
+        baseSpeed: 2.0
+      }
+    );
+    
+    // Rebuild pairs from current molecules
+    const allMolecules = this.moleculeManager.getAllMolecules();
+    const substrates = allMolecules.filter(m => m.name.startsWith('substrate_'));
+    const nucleophiles = allMolecules.filter(m => m.name.startsWith('nucleophile_'));
+    
+    this.moleculePairs = [];
+    const minPairs = Math.min(substrates.length, nucleophiles.length);
+    for (let i = 0; i < minPairs; i++) {
+      this.moleculePairs.push({
+        substrateId: substrates[i].name,
+        nucleophileId: nucleophiles[i].name,
+        reacted: false
+      });
+    }
+    
+    console.log(`Adjusted concentration: ${substrates.length} substrates, ${nucleophiles.length} nucleophiles`);
+  }
+
+  /**
+   * Get the molecule spawner instance (for external access)
+   */
+  getMoleculeSpawner(): MoleculeSpawner {
+    return this.moleculeSpawner;
   }
 
   /**

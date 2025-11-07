@@ -2,7 +2,6 @@ import * as THREE from 'three';
 // Removed old ChemistryReactionSystem import - using unified approach
 import { CannonPhysicsEngine, physicsEngine } from '../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../physics/collisionEventSystem';
-import { drawMolecule } from '../components/moleculeDrawer';
 import { ChemicalDataService } from '../chemistry/chemicalDataService';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
 // Orientation handled simplistically (identity rotations); detailed strategies not needed
@@ -10,6 +9,7 @@ import { computeEncounter, applyEncounter } from '../physics/encounterPlanner';
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
 import { reactionAnimationManager } from '../animations/ReactionAnimationManager';
+import { MoleculeSpawner } from '../services/MoleculeSpawner';
 
 /**
  * Reaction State Interface
@@ -78,6 +78,7 @@ export class ReactionOrchestrator {
   private moleculeManager: MoleculeManager;
   private scene: THREE.Scene;
   private chemicalDataService: ChemicalDataService;
+  private moleculeSpawner: MoleculeSpawner;
   
   // Unified state management
   private state: ReactionState;
@@ -90,6 +91,7 @@ export class ReactionOrchestrator {
     // this.physicsEngine is already set to the global physics engine
     this.collisionSystem = collisionEventSystem;
     this.chemicalDataService = new ChemicalDataService();
+    this.moleculeSpawner = new MoleculeSpawner(scene, moleculeManager);
     
     // Initialize unified state
     this.state = {
@@ -162,13 +164,13 @@ export class ReactionOrchestrator {
       await this.loadMoleculesWithOrientation(params);
       
       // 3. Set up physics with correct velocities
-      this.configurePhysics(params);
+      await this.configurePhysics(params);
       
       // 4. Configure collision detection
       this.configureCollisionDetection(params);
       
-      // 5. Start unified simulation
-      this.startUnifiedSimulation();
+      // 5. Start simulation
+      this.startSimulation();
     } catch (error) {
       log(`Unified reaction failed: ${error}`);
       this.state.reaction.isInProgress = false;
@@ -178,16 +180,40 @@ export class ReactionOrchestrator {
   
   /**
    * Clear all existing state and molecules
+   * Only clears single-reaction molecules, not rate simulation molecules
    */
   private async clearExistingState(): Promise<void> {
-    // Clear all physics bodies
-    this.physicsEngine.clearAllBodies();
+    // Only clear single-reaction molecules (not rate simulation molecules)
+    // Rate simulation molecules have names like "substrate_X" or "nucleophile_X"
+    const allMolecules = this.moleculeManager.getAllMolecules();
+    const moleculesToRemove: string[] = [];
     
-    // Clear molecules from scene
-    this.moleculeManager.clearAllMolecules();
+    for (const molecule of allMolecules) {
+      const name = molecule.name;
+      // Only remove single-reaction molecules (not rate simulation molecules)
+      if (!name.includes('substrate_') && !name.includes('nucleophile_')) {
+        moleculesToRemove.push(name);
+      }
+    }
     
-    // Reset physics
-    this.physicsEngine.pause();
+    // Remove single-reaction molecules
+    for (const name of moleculesToRemove) {
+      try {
+        const molecule = this.moleculeManager.getMolecule(name);
+        if (molecule && molecule.hasPhysics) {
+          this.physicsEngine.removeMolecule(molecule);
+        }
+        this.moleculeManager.removeMolecule(name);
+      } catch (error) {
+        console.warn(`Failed to remove molecule ${name}:`, error);
+      }
+    }
+    
+    // Reset physics (but don't pause if rate simulation is running)
+    const uiState = (window as any).uiState;
+    if (!uiState || uiState.simulationMode !== 'rate' || !uiState.isPlaying) {
+      this.physicsEngine.pause();
+    }
     
     // Reset state
     this.state.molecules.substrate = null;
@@ -259,35 +285,15 @@ export class ReactionOrchestrator {
   
   /**
    * Load a single molecule with error handling
+   * Now uses MoleculeSpawner for consistent spawning logic
    */
   private async loadMolecule(cid: string, name: string, position: { x: number; y: number; z: number }, applyRandomRotation: boolean): Promise<any> {
     try {
-      // First, fetch the molecule data using ChemicalDataService
-      const molecularData = await this.chemicalDataService.fetchMoleculeByCID(cid);
-      
-      if (!molecularData || !molecularData.mol3d) {
-        throw new Error(`No MOL data available for ${name} (CID: ${cid})`);
-      }
-      
-      // Now draw the molecule with the actual MOL data
-      drawMolecule(
-        molecularData.mol3d,
-        this.moleculeManager,
-        this.scene,
+      return await this.moleculeSpawner.spawnMolecule(cid, name, {
         position,
-        name,
-        applyRandomRotation
-      );
-      
-      
-      // Get the molecule from the molecule manager
-      const molecule = this.moleculeManager.getMolecule(name);
-      
-      if (!molecule) {
-        throw new Error(`Failed to load molecule ${name} (CID: ${cid})`);
-      }
-      
-      return molecule;
+        applyRandomRotation,
+        velocity: { x: 0, y: 0, z: 0 } // Initial velocity set to zero, will be configured later
+      });
     } catch (error) {
       log(`Failed to load molecule ${name}: ${error}`);
       log(`Error details:`, error);
@@ -367,13 +373,18 @@ export class ReactionOrchestrator {
   /**
    * Configure physics with correct velocities and parameters
    */
-  private configurePhysics(params: ReactionParams): void {
+  private async configurePhysics(params: ReactionParams): Promise<void> {
     if (!this.state.molecules.substrate || !this.state.molecules.nucleophile) {
       throw new Error('Molecules not loaded for physics configuration');
     }
     
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
+
+    // Ensure physics is running before setting velocities
+    if (this.physicsEngine.isSimulationPaused()) {
+      this.physicsEngine.resume();
+    }
 
     // Plan a deterministic encounter (perpendicular or inline) and apply positions + velocities
     const mode = Math.abs(params.approachAngle % 180) === 90 ? 'perpendicular' : 'inline';
@@ -421,14 +432,52 @@ export class ReactionOrchestrator {
   // (removed unused name mapping helper)
   
   /**
-   * Start the unified simulation
+   * Start the simulation
    */
-  private startUnifiedSimulation(): void {
+  private startSimulation(): void {
     this.state.physics.isSimulationActive = true;
     this.state.reaction.isInProgress = true;
     this.state.visual.needsUpdate = true;
     
+    // Wake up all physics bodies to ensure movement
+    const substrate = this.state.molecules.substrate;
+    const nucleophile = this.state.molecules.nucleophile;
+    
+    if (substrate) {
+      const substrateMolecule = this.moleculeManager.getMolecule(substrate.name);
+      if (substrateMolecule && substrateMolecule.hasPhysics) {
+        const body = this.physicsEngine.getPhysicsBody(substrateMolecule);
+        if (body) {
+          body.wakeUp();
+          // Force body to stay awake
+          body.sleepSpeedLimit = 0.001;
+        }
+      }
+    }
+    
+    if (nucleophile) {
+      const nucleophileMolecule = this.moleculeManager.getMolecule(nucleophile.name);
+      if (nucleophileMolecule && nucleophileMolecule.hasPhysics) {
+        const body = this.physicsEngine.getPhysicsBody(nucleophileMolecule);
+        if (body) {
+          body.wakeUp();
+          // Force body to stay awake
+          body.sleepSpeedLimit = 0.001;
+        }
+      }
+    }
+    
+    // Resume physics engine (must be after setting velocities)
     this.physicsEngine.resume();
+    
+    // Update UI state to ensure isPlaying and reactionInProgress are true
+    const uiState = (window as any).uiState;
+    if (uiState && typeof (window as any).updateUIState === 'function') {
+      (window as any).updateUIState({ 
+        isPlaying: true,
+        reactionInProgress: true 
+      });
+    }
   }
   
   /**
@@ -449,12 +498,7 @@ export class ReactionOrchestrator {
       this.physicsEngine.pause();
       this.state.physics.isSimulationActive = false;
       
-      // Also stop the unified simulation loop
-      if ((window as any).unifiedSimulation) {
-        (window as any).unifiedSimulation.pause('Reaction in progress');
-      }
-      
-      // Process the collision through unified system
+      // Process the reaction
       this.executeUnifiedReaction();
       
       // Update reaction progress

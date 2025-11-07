@@ -306,9 +306,11 @@ export function drawMolecule(
   // moleculeManager.setMoleculeVelocity(name, targetPosition, 4); // REMOVED - interferes with physics config
   
   // Initialize with zero velocity - physics configuration will set proper velocities
+  // IMPORTANT: Don't overwrite if velocity is already set (e.g., by MoleculeSpawner)
+  // But since molecule is just created, velocity will be zero, so set it
   molecule.velocity.set(0, 0, 0);
 
-  // Ensure physics body exists and gets the initial velocity
+  // Ensure physics body exists
   try {
     const props = (molecule as any).molecularProperties;
     
@@ -320,6 +322,8 @@ export function drawMolecule(
       }
     }
     
+    // Set velocity on physics body to current molecule velocity (zero for now)
+    // MoleculeSpawner will set proper velocity after this function returns
     if (molecule.hasPhysics) {
       physicsEngine.setVelocity(molecule, molecule.velocity.clone());
     }

@@ -209,10 +209,16 @@ export function applyEncounter(
     if (substrateObj) {
       physicsEngine.setVelocity(substrateObj as any, substrateVelocity);
       console.log(`FAST OVERRIDE substrate velocity:`, substrateVelocity);
+      // Ensure physics body is awake for movement
+      const body = physicsEngine.getPhysicsBody(substrateObj);
+      if (body) body.wakeUp();
     }
     if (nucleophileObj) {
       physicsEngine.setVelocity(nucleophileObj as any, nucleophileVelocity);
       console.log(`FAST OVERRIDE nucleophile velocity:`, nucleophileVelocity);
+      // Ensure physics body is awake for movement
+      const body = physicsEngine.getPhysicsBody(nucleophileObj);
+      if (body) body.wakeUp();
     }
   } else {
     // Fallback to original plan

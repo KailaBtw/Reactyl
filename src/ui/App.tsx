@@ -56,7 +56,8 @@ export interface UIState {
   autoplay: boolean;
   
   // Reaction rate metrics (for rate mode)
-  particleCount: number; // Number of molecules in rate simulation
+  concentration: number; // Concentration in mol/L (0.001 - 10 mol/L)
+  particleCount: number; // Number of molecules in rate simulation (calculated from concentration)
   reactionRate: number; // Successful reactions per second
   remainingReactants: number; // Percentage of reactants remaining
   productsFormed: number; // Count of products formed
@@ -95,7 +96,8 @@ const initialState: UIState = {
   timeToCollision: 0,
   reactionProbability: 0,
   autoplay: false,
-  particleCount: 20, // Default particle count for rate mode
+  concentration: 0.1, // Default concentration: 0.1 mol/L
+  particleCount: 20, // Will be calculated from concentration when needed
   reactionRate: 0,
   remainingReactants: 100,
   productsFormed: 0,
@@ -294,8 +296,11 @@ export const App: React.FC = () => {
           const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || { cid: '6323', name: 'Methyl bromide' };
           const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || { cid: '961', name: 'Hydroxide ion' };
           
+          // Calculate particle count from concentration
+          const { concentrationToParticleCount } = await import('../utils/concentrationConverter');
+          const particleCount = concentrationToParticleCount(uiState.concentration);
           await threeJSBridge.startRateSimulation(
-            uiState.particleCount,
+            particleCount,
             uiState.temperature,
             uiState.reactionType,
             substrateMolecule,
