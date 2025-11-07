@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import type { MoleculeManager } from '../types';
 import { drawMolecule } from '../components/moleculeDrawer';
 import { ChemicalDataService } from '../chemistry/chemicalDataService';
@@ -121,6 +122,25 @@ export class MoleculeSpawner {
           // Set velocity directly on Cannon.js body
           body.velocity.set(velocity.x, velocity.y, velocity.z);
           
+          // Set realistic angular velocity for molecular rotation
+          const linearSpeed = Math.sqrt(
+            velocity.x * velocity.x +
+            velocity.y * velocity.y +
+            velocity.z * velocity.z
+          );
+          // Angular velocity in rad/s - molecules rotate as they move
+          const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
+          const angularDirection = new CANNON.Vec3(
+            (Math.random() - 0.5),
+            (Math.random() - 0.5),
+            (Math.random() - 0.5)
+          ).unit();
+          body.angularVelocity.set(
+            angularDirection.x * angularSpeed,
+            angularDirection.y * angularSpeed,
+            angularDirection.z * angularSpeed
+          );
+          
           // NO DAMPING - Newton's laws: objects in motion stay in motion
           body.linearDamping = 0.0;
           body.angularDamping = 0.0;
@@ -137,6 +157,24 @@ export class MoleculeSpawner {
           if (body) {
             (molecule as any).physicsBody = body;
             body.velocity.set(velocity.x, velocity.y, velocity.z);
+            
+            // Set realistic angular velocity for molecular rotation
+            const linearSpeed = Math.sqrt(
+              velocity.x * velocity.x +
+              velocity.y * velocity.y +
+              velocity.z * velocity.z
+            );
+            const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
+            const angularDirection = new CANNON.Vec3(
+              (Math.random() - 0.5),
+              (Math.random() - 0.5),
+              (Math.random() - 0.5)
+            ).unit();
+            body.angularVelocity.set(
+              angularDirection.x * angularSpeed,
+              angularDirection.y * angularSpeed,
+              angularDirection.z * angularSpeed
+            );
             
             // NO DAMPING - Newton's laws: objects in motion stay in motion
             body.linearDamping = 0.0;
@@ -321,7 +359,9 @@ export class MoleculeSpawner {
     
     // Use baseSpeed as the reference visualization speed at room temperature
     // Then scale proportionally based on the ratio of v_rms values
-    const referenceBaseSpeed = baseSpeed || 3.0; // Default 3 m/s at room temp
+    // Increased base speed for better visibility (was 3.0 m/s, now 12.0 m/s)
+    // This makes temperature differences much more noticeable
+    const referenceBaseSpeed = baseSpeed || 12.0; // Default 12 m/s at room temp for better visibility
     const speedRatio = v_rms / referenceVrms; // How much faster/slower than room temp
     
     // Final speed: scale baseSpeed by the temperature ratio

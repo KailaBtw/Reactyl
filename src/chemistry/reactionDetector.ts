@@ -207,7 +207,7 @@ export class ReactionDetector {
     
     // Convert to kJ/mol: multiply by Avogadro's number and divide by 1000
     const energy_kJ_per_mol = (kineticEnergy_J * this.N_A) / 1000;
-    
+
     return energy_kJ_per_mol;
   }
 

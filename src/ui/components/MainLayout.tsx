@@ -5,8 +5,8 @@ import { SettingsModal } from './SettingsModal';
 import { ReactionSetup } from './sections/ReactionSetup';
 import { SimulationControls } from './sections/SimulationControls';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
+import { RateMetricsCard } from './sections/RateMetricsCard';
 import { CompactLiveData } from './sections/CompactLiveData';
-import { ReactionRateMetrics } from './sections/ReactionRateMetrics';
 import { PressureControl } from './sections/PressureControl';
 import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
@@ -226,37 +226,48 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Content Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* 3D Viewport */}
           <div 
-            className="flex-1 relative transition-colors duration-300" 
+            className="flex-1 relative transition-colors duration-300 min-h-0" 
             style={{ backgroundColor }}
           >
             <ThreeViewer ref={sceneRef} backgroundColor={backgroundColor} theme={uiTheme} themeClasses={themeClasses} />
           </div>
 
-          {/* Bottom Energy Panel - Only spans left area */}
-        <BottomEnergyPanel 
-          thermodynamicData={{
-            activationEnergy: thermodynamicData.activationEnergy,
-            enthalpyOfFormation: thermodynamicData.enthalpyChange,
-            reactantEnergy: thermodynamicData.reactantEnergy,
-            productEnergy: thermodynamicData.productEnergy,
-            transitionStateEnergy: thermodynamicData.transitionStateEnergy
-          }}
-          isPlaying={isPlaying}
-          themeClasses={themeClasses}
-          reactionType={currentReaction}
-          reactionProgress={0}
-          currentVelocity={relativeVelocity}
-          substrate={substrate}
-          nucleophile={nucleophile}
-          substrateMass={thermodynamicData.substrateMass}
-          nucleophileMass={thermodynamicData.nucleophileMass}
-          attackAngle={attackAngle}
-          timeScale={timeScale}
-          reactionProbability={uiState.reactionProbability}
-        />
+          {/* Bottom Panel - Show different cards based on simulation mode */}
+          {uiState.simulationMode === 'single' ? (
+            <BottomEnergyPanel 
+              thermodynamicData={{
+                activationEnergy: thermodynamicData.activationEnergy,
+                enthalpyOfFormation: thermodynamicData.enthalpyChange,
+                reactantEnergy: thermodynamicData.reactantEnergy,
+                productEnergy: thermodynamicData.productEnergy,
+                transitionStateEnergy: thermodynamicData.transitionStateEnergy
+              }}
+              isPlaying={isPlaying}
+              themeClasses={themeClasses}
+              reactionType={currentReaction}
+              reactionProgress={0}
+              currentVelocity={relativeVelocity}
+              substrate={substrate}
+              nucleophile={nucleophile}
+              substrateMass={thermodynamicData.substrateMass}
+              nucleophileMass={thermodynamicData.nucleophileMass}
+              attackAngle={attackAngle}
+              timeScale={timeScale}
+              reactionProbability={uiState.reactionProbability}
+            />
+          ) : (
+            <RateMetricsCard
+              reactionRate={uiState.reactionRate}
+              remainingReactants={uiState.remainingReactants}
+              productsFormed={uiState.productsFormed || 0}
+              collisionCount={(uiState as any).collisionCount || 0}
+              elapsedTime={(uiState as any).elapsedTime || 0}
+              themeClasses={themeClasses}
+            />
+          )}
         </div>
 
         {/* Right Control Panel - Resizable */}
@@ -400,22 +411,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             </div>
           )}
 
-          {/* Conditionally show metrics based on simulation mode */}
-          {uiState.simulationMode === 'single' ? (
+          {/* Conditionally show metrics based on simulation mode - Rate mode metrics now in BottomBar */}
+          {uiState.simulationMode === 'single' && (
             <CompactLiveData
               relativeVelocity={relativeVelocity}
               attackAngle={attackAngle}
               reactionProbability={uiState.reactionProbability}
               timeScale={timeScale}
-              themeClasses={themeClasses}
-            />
-          ) : (
-            <ReactionRateMetrics
-              reactionRate={uiState.reactionRate}
-              remainingReactants={uiState.remainingReactants}
-              productsFormed={uiState.productsFormed}
-              collisionCount={0}
-              elapsedTime={0}
               themeClasses={themeClasses}
             />
           )}

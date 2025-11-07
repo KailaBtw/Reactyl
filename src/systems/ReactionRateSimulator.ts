@@ -269,6 +269,37 @@ export class ReactionRateSimulator {
         const body = molecule.physicsBody as any;
         body.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
         body.velocity.set(currentVelocity.x, currentVelocity.y, currentVelocity.z);
+        
+        // Preserve angular velocity during wall bounce (rotation continues)
+        // Angular velocity may change slightly on bounce, but we keep it realistic
+        // If angular velocity is zero, add some rotation
+        const currentAngVel = body.angularVelocity;
+        const angVelMag = Math.sqrt(
+          currentAngVel.x * currentAngVel.x +
+          currentAngVel.y * currentAngVel.y +
+          currentAngVel.z * currentAngVel.z
+        );
+        
+        // If no rotation, add some based on bounce direction
+        if (angVelMag < 0.01) {
+          const linearSpeed = Math.sqrt(
+            currentVelocity.x * currentVelocity.x +
+            currentVelocity.y * currentVelocity.y +
+            currentVelocity.z * currentVelocity.z
+          );
+          const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0.5;
+          const angularDirection = new CANNON.Vec3(
+            (Math.random() - 0.5),
+            (Math.random() - 0.5),
+            (Math.random() - 0.5)
+          ).unit();
+          body.angularVelocity.set(
+            angularDirection.x * angularSpeed,
+            angularDirection.y * angularSpeed,
+            angularDirection.z * angularSpeed
+          );
+        }
+        
         body.wakeUp(); // Ensure body stays active
       }
       
@@ -430,7 +461,9 @@ export class ReactionRateSimulator {
     
     // Use baseSpeed as the reference visualization speed at room temperature
     // Then scale proportionally based on the ratio of v_rms values
-    const referenceBaseSpeed = baseSpeed || 3.0; // Default 3 m/s at room temp
+    // Increased base speed for better visibility (was 3.0 m/s, now 12.0 m/s)
+    // This makes temperature differences much more noticeable
+    const referenceBaseSpeed = baseSpeed || 12.0; // Default 12 m/s at room temp for better visibility
     const speedRatio = v_rms / referenceVrms; // How much faster/slower than room temp
     
     // Final speed: scale baseSpeed by the temperature ratio

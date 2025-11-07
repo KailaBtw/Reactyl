@@ -348,12 +348,12 @@ Where:
 In this simulation, all molecules use:
 v = baseSpeed × √(T/T_ref)
 
-Where baseSpeed = 3.0 m/s and T_ref = 298K (room temperature).
+Where baseSpeed = 12.0 m/s and T_ref = 298K (room temperature).
 
 Examples:
-• 200K (cryogenic): v = 3.0 × √(200/298) ≈ 2.45 m/s
-• 298K (room temp): v = 3.0 × √(298/298) = 3.0 m/s
-• 600K (high temp): v = 3.0 × √(600/298) ≈ 4.24 m/s
+• 200K (cryogenic): v = 12.0 × √(200/298) ≈ 9.8 m/s
+• 298K (room temp): v = 12.0 × √(298/298) = 12.0 m/s
+• 473K (200°C): v = 12.0 × √(473/298) ≈ 15.1 m/s
 
 Doubling temperature increases velocity by √2 ≈ 1.41×. At higher temperatures, molecules move faster and collide more frequently, increasing reaction rates according to the Arrhenius equation:
 
@@ -411,7 +411,7 @@ Where reaction rate k increases exponentially with temperature T.`}
             <input 
               type="range"
               min="200"
-              max="600"
+              max="473"
               step="1"
               value={temperature}
               onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
@@ -419,13 +419,12 @@ Where reaction rate k increases exponentially with temperature T.`}
               style={{
                 background: `linear-gradient(to right, 
                   #1e40af 0%, 
-                  #1e40af ${((273 - 200) / (600 - 200)) * 100}%,
-                  #3b82f6 ${((273 - 200) / (600 - 200)) * 100}%,
-                  #3b82f6 ${((298 - 200) / (600 - 200)) * 100}%,
-                  #f97316 ${((298 - 200) / (600 - 200)) * 100}%,
-                  #f97316 ${((373 - 200) / (600 - 200)) * 100}%,
-                  #ef4444 ${((373 - 200) / (600 - 200)) * 100}%,
-                  #dc2626 ${((473 - 200) / (600 - 200)) * 100}%,
+                  #1e40af ${((273 - 200) / (473 - 200)) * 100}%,
+                  #3b82f6 ${((273 - 200) / (473 - 200)) * 100}%,
+                  #3b82f6 ${((298 - 200) / (473 - 200)) * 100}%,
+                  #f97316 ${((298 - 200) / (473 - 200)) * 100}%,
+                  #f97316 ${((373 - 200) / (473 - 200)) * 100}%,
+                  #ef4444 ${((373 - 200) / (473 - 200)) * 100}%,
                   #dc2626 100%)`
               }}
             />
@@ -450,7 +449,7 @@ Where reaction rate k increases exponentially with temperature T.`}
               </div>
               <div className="text-center">
                 <div className="text-red-600 font-medium">High Temp</div>
-                <div className="text-red-500">327°C</div>
+                <div className="text-red-500">200°C</div>
               </div>
             </div>
             
@@ -461,9 +460,7 @@ Where reaction rate k increases exponentially with temperature T.`}
                temperature < 298 ? 'Cold - slow reactions' :
                temperature < 310 ? 'Room temperature - typical lab conditions' :
                temperature < 373 ? 'Warm - increased reaction rate' :
-               temperature < 473 ? 'Hot - fast reactions' :
-               temperature < 573 ? 'Very hot - very fast reactions' :
-               'Extreme - explosive reaction rates'}
+               'Hot - fast reactions'}
             </div>
           </div>
         </div>

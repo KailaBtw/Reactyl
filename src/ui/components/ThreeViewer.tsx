@@ -108,7 +108,7 @@ export const ThreeViewer = forwardRef<HTMLDivElement, ThreeViewerProps>(({
         else if (ref) (ref as any).current = el;
         containerRef.current = el;
       }}
-      className="w-full h-full relative"
+      className="w-full h-full relative min-h-0"
       style={{ background: backgroundColor }}
     >
       <MoleculeColorLegend 

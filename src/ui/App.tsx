@@ -235,9 +235,11 @@ export const App: React.FC = () => {
       updateUIState({
         reactionRate: metrics.reactionRate,
         remainingReactants: metrics.remainingReactants,
-        productsFormed: metrics.productsFormed
-      });
-    }, 500); // Update every 500ms
+        productsFormed: metrics.productsFormed,
+        collisionCount: metrics.collisionCount,
+        elapsedTime: metrics.elapsedTime
+      } as any);
+    }, 500); // Update every 500ms - real-time updates
 
     return () => clearInterval(interval);
   }, [uiState.simulationMode, uiState.isPlaying, updateUIState]);

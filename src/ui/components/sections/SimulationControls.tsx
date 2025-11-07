@@ -1,5 +1,4 @@
 import React from 'react';
-import { calculateAngleProbability } from '../../utils/angleProbability';
 
 interface SimulationControlsProps {
   isPlaying: boolean;
@@ -21,10 +20,6 @@ interface SimulationControlsProps {
 export const SimulationControls: React.FC<SimulationControlsProps> = ({
   isPlaying,
   timeScale,
-  currentReaction,
-  attackAngle,
-  relativeVelocity,
-  temperature,
   simulationMode = 'single',
   onPlay,
   onPause,
@@ -34,94 +29,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   onAutoplayChange,
   themeClasses
 }) => {
-  // Calculate reaction status based on current parameters
-  const calculateReactionStatus = () => {
-    // Calculate kinetic energy (simplified)
-    const velocityScale = relativeVelocity / 500;
-    const maxKineticEnergy = 40; // kJ/mol
-    const kineticEnergy = velocityScale * maxKineticEnergy;
-    
-    // Apply temperature factor
-    const temperatureFactor = Math.sqrt(temperature / 298);
-    const adjustedKineticEnergy = kineticEnergy * temperatureFactor;
-    
-    // Get angle probability
-    const angleResult = calculateAngleProbability(attackAngle, currentReaction);
-    
-    // Calculate overall probability
-    const activationEnergy = 30; // kJ/mol
-    const energyRatio = adjustedKineticEnergy / activationEnergy;
-    
-    let energyProbability = 0;
-    if (energyRatio >= 1.0) {
-      energyProbability = 0.95;
-    } else if (energyRatio >= 0.9) {
-      energyProbability = 0.7;
-    } else if (energyRatio >= 0.8) {
-      energyProbability = 0.4;
-    } else if (energyRatio >= 0.6) {
-      energyProbability = 0.1;
-    } else {
-      energyProbability = 0.01;
-    }
-    
-    const overallProbability = energyProbability * angleResult.probability;
-    
-    // Determine status
-    if (overallProbability > 0.7) {
-      return {
-        status: 'Reaction Ready',
-        message: 'Optimal conditions',
-        color: 'green',
-        dotColor: 'bg-green-500'
-      };
-    } else if (overallProbability > 0.3) {
-      return {
-        status: 'Poor Conditions',
-        message: 'Low reaction probability',
-        color: 'orange',
-        dotColor: 'bg-orange-500'
-      };
-    } else {
-      return {
-        status: 'No Reaction',
-        message: 'Insufficient energy or poor angle',
-        color: 'red',
-        dotColor: 'bg-red-500'
-      };
-    }
-  };
-  
-  const reactionStatus = calculateReactionStatus();
   return (
     <section className={`p-5 border-b ${themeClasses.card.includes('border-') ? themeClasses.card.split(' ').find((cls: string) => cls.startsWith('border-')) : 'border-gray-100'}`}>
       <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${themeClasses.text}`}>
         Simulation
       </h3>
       <div className="space-y-3">
-        {/* Status Indicator */}
-        <div className={`${themeClasses.card} border rounded p-3 transition-all duration-300 ${
-          reactionStatus.color === 'green' ? 'border-green-200 bg-green-50' :
-          reactionStatus.color === 'orange' ? 'border-orange-200 bg-orange-50' :
-          'border-red-200 bg-red-50'
-        }`}>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 ${reactionStatus.dotColor} rounded-full`}></div>
-            <span className={`text-sm font-medium ${
-              reactionStatus.color === 'green' ? 'text-green-800' :
-              reactionStatus.color === 'orange' ? 'text-orange-800' :
-              'text-red-800'
-            }`}>{reactionStatus.status}</span>
-          </div>
-          <div className={`text-xs mt-1 ${
-            reactionStatus.color === 'green' ? 'text-green-600' :
-            reactionStatus.color === 'orange' ? 'text-orange-600' :
-            'text-red-600'
-          }`}>
-            {reactionStatus.message}
-          </div>
-        </div>
-        
         {/* Speed Control */}
         <div>
           <label className={`block text-xs font-medium mb-2 ${themeClasses.textSecondary}`}>

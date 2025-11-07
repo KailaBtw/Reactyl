@@ -92,6 +92,45 @@ export class ThreeJSBridge {
       });
 
       container.appendChild(this.renderer.domElement);
+      
+      // Handle window resize to update renderer and camera
+      const handleResize = () => {
+        if (!this.renderer || !this.camera || !container) return;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (width > 0 && height > 0) {
+          this.camera.aspect = width / height;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(width, height);
+        }
+      };
+      
+      // Initial resize
+      handleResize();
+      
+      // Watch for container size changes
+      const resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(container);
+      
+      // Also listen to window resize as fallback
+      window.addEventListener('resize', handleResize);
+      
+      // Store cleanup function
+      (this.renderer.domElement as any).__cleanupResize = () => {
+        resizeObserver.disconnect();
+        window.removeEventListener('resize', handleResize);
+      };
+    } else {
+      // Update existing renderer size if container changed
+      if (this.renderer && this.camera) {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (width > 0 && height > 0) {
+          this.camera.aspect = width / height;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(width, height);
+        }
+      }
     }
 
     // Only add lighting if scene is empty (preserve existing lighting)
@@ -711,6 +750,11 @@ export class ThreeJSBridge {
   }
 
   dispose() {
+    // Cleanup resize observers
+    if (this.renderer && (this.renderer.domElement as any).__cleanupResize) {
+      (this.renderer.domElement as any).__cleanupResize();
+    }
+    
     // Dispose controls
     if (this.controls) {
       this.controls.dispose();
