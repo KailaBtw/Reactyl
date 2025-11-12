@@ -1,9 +1,10 @@
 import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getReactionMasses } from '../../utils/molecularMassLookup';
 import { PlotlyEnergyProfile } from '../ScientificallyAccuratePlotlyEnergyProfile';
 
 // Card styling constants - matching rate metrics cards style
-// Card wraps content, doesn't force full height
+// Card wraps graph content with padding, fits to content size
 const energyCardClasses = [
   'rounded-lg',
   'border',
@@ -16,9 +17,13 @@ const energyCardClasses = [
   'flex',
   'flex-col',
   'relative',
-  'w-full', // Card takes full width
-  'p-0', // Padding inside card
+  'inline-block', // Card fits to content, not full width
 ].join(' ');
+
+// Card sizing constants
+const CARD_PADDING = 16; // Padding around graph inside card
+const TITLE_HEIGHT = 32; // Approximate title height
+const CARD_MARGIN = 20; // Margin around card in panel
 
 interface BottomEnergyPanelProps {
   height?: number;
@@ -39,8 +44,8 @@ interface BottomEnergyPanelProps {
   substrateMass?: number;
   nucleophileMass?: number;
   attackAngle?: number;
-  timeScale?: number;
-  reactionProbability?: number; // 0..100 percent
+  timeScale?: number; // Unused but part of interface
+  reactionProbability?: number; // 0..100 percent, unused but part of interface
 }
 
 export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
@@ -56,34 +61,94 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
   substrateMass: propSubstrateMass,
   nucleophileMass: propNucleophileMass,
   attackAngle = 180,
-  timeScale = 0.8,
-  reactionProbability = 0,
+  timeScale: _timeScale = 0.8,
+  reactionProbability: _reactionProbability = 0,
 }) => {
   // Use provided molecular masses or fallback to lookup
   const substrateMass =
     propSubstrateMass || getReactionMasses(substrate, nucleophile).substrateMass;
   const nucleophileMass =
     propNucleophileMass || getReactionMasses(substrate, nucleophile).nucleophileMass;
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [graphDimensions, setGraphDimensions] = useState({ width: 600, height: 200 });
+  
+  // Calculate graph dimensions based on available panel space
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const panelWidth = rect.width;
+        const panelHeight = rect.height;
+        
+        // Account for card padding, title, and margin when calculating available space
+        const availableWidth = Math.max(300, panelWidth - (CARD_MARGIN * 2) - (CARD_PADDING * 2));
+        const availableHeight = Math.max(100, panelHeight - TITLE_HEIGHT - (CARD_PADDING * 2) - (CARD_MARGIN * 2));
+        
+        // Maintain aspect ratio (2:1) but fit within available space
+        const ASPECT_RATIO = 2;
+        let graphWidth: number;
+        let graphHeight: number;
+        
+        // Calculate dimensions that fit within available space while maintaining aspect ratio
+        const widthFromHeight = availableHeight * ASPECT_RATIO;
+        
+        if (widthFromHeight <= availableWidth) {
+          // Panel is wide enough, fit to height
+          graphHeight = availableHeight;
+          graphWidth = graphHeight * ASPECT_RATIO;
+        } else {
+          // Panel is narrow, fit to width
+          graphWidth = availableWidth;
+          graphHeight = graphWidth / ASPECT_RATIO;
+        }
+        
+        setGraphDimensions({ width: graphWidth, height: graphHeight });
+      }
+    };
+    
+    // Initial calculation
+    updateDimensions();
+    
+    // Use ResizeObserver to track panel size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions();
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [height]);
+  
   return (
-    <div className={`border-t ${themeClasses.card} h-full flex flex-col items-center justify-center relative`}>
-      {/* Styled card wrapper matching rate metrics cards - wraps graph content */}
-      <div className={energyCardClasses}>
+    <div 
+      ref={containerRef}
+      className={`border-t ${themeClasses.card} flex items-center justify-center relative overflow-hidden`}
+      style={{ height: `${height}px`, minHeight: '150px' }}
+    >
+      {/* Styled card wrapper - fits to content with padding, centered in panel */}
+      <div 
+        ref={cardRef}
+        className={energyCardClasses}
+        style={{
+          padding: `${CARD_PADDING}px`,
+        }}
+      >
         {/* Title */}
-        <div className="mb-1 flex-shrink-0 px-1 pt-1">
+        <div className="flex-shrink-0 mb-2">
           <h3 className={`text-sm font-semibold ${themeClasses.text} m-0`}>
             Activation Energy Profile
           </h3>
         </div>
-        {/* Graph container - resizes based on bottom panel height, card wraps it */}
-        <div className="flex flex-col items-center justify-center overflow-hidden px-1 pb-1 w-full" style={{ height: 'calc(100% - 2rem)' }}>
-          <div 
-            className="w-full h-full relative"
-            style={{ 
-              aspectRatio: '2 / 1',
-              maxWidth: '100%',
-              maxHeight: '100%',
-            }}
-          >
+        {/* Graph - resizes based on panel height, card wraps it with padding */}
+        <div className="relative">
             <PlotlyEnergyProfile
               data={{
                 reactantEnergy: thermodynamicData.reactantEnergy,
@@ -97,8 +162,9 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
                 nucleophileMass: nucleophileMass,
               }}
               isAnimating={isPlaying}
+            width={graphDimensions.width}
+            height={graphDimensions.height}
             />
-          </div>
         </div>
       </div>
     </div>

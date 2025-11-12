@@ -116,6 +116,7 @@ export const App: React.FC = () => {
   const sceneRef = useRef<HTMLDivElement>(null);
   const threeSceneRef = useRef<THREE.Scene | null>(null);
   const autoplayTimeoutRef = useRef<number | null>(null);
+  const pendingParameterChangeRef = useRef<{ type: 'angle' | 'velocity'; value: number } | null>(null);
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -163,6 +164,17 @@ export const App: React.FC = () => {
       }
       autoplayTimeoutRef.current = window.setTimeout(async () => {
         try {
+          // Apply any pending parameter changes before restarting
+          if (pendingParameterChangeRef.current) {
+            const pending = pendingParameterChangeRef.current;
+            if (pending.type === 'angle') {
+              updateUIState({ approachAngle: pending.value });
+            } else if (pending.type === 'velocity') {
+              updateUIState({ relativeVelocity: pending.value });
+            }
+            pendingParameterChangeRef.current = null;
+          }
+          
           threeJSBridge.clear();
           await threeJSBridge.startReactionAnimation();
           updateUIState({ isPlaying: true, reactionInProgress: true });
@@ -281,21 +293,29 @@ export const App: React.FC = () => {
       updateUIState({ nucleophileMolecule: nucleophile }),
     onAttackAngleChange: (angle: number) => {
       updateUIState({ approachAngle: angle });
-      // If autoplay is active and simulation is playing, debounce reset and respawn
+      // If autoplay is active and simulation is playing, queue reset after collision completes
       if (uiState.autoplay && uiState.isPlaying && uiState.simulationMode === 'single') {
-        // Debounce: wait 500ms after last change before resetting
-        if ((window as any).angleChangeTimeout) {
-          clearTimeout((window as any).angleChangeTimeout);
-        }
-        (window as any).angleChangeTimeout = setTimeout(async () => {
-          try {
-            threeJSBridge.clear();
-            await threeJSBridge.startReactionAnimation();
-            updateUIState({ isPlaying: true, reactionInProgress: true });
-          } catch (e) {
-            console.error('Failed to reset on angle change:', e);
+        const orchestrator = (window as any).reactionOrchestrator;
+        const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
+        
+        if (isReactionInProgress) {
+          // Reaction in progress - queue the change to apply after collision completes
+          pendingParameterChangeRef.current = { type: 'angle', value: angle };
+        } else {
+          // No reaction in progress - reset immediately after debounce
+          if ((window as any).angleChangeTimeout) {
+            clearTimeout((window as any).angleChangeTimeout);
           }
-        }, 500);
+          (window as any).angleChangeTimeout = setTimeout(async () => {
+            try {
+              threeJSBridge.clear();
+              await threeJSBridge.startReactionAnimation();
+              updateUIState({ isPlaying: true, reactionInProgress: true });
+            } catch (e) {
+              console.error('Failed to reset on angle change:', e);
+            }
+          }, 500);
+        }
       }
     },
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),

@@ -8,10 +8,10 @@ import { useResizable } from '../hooks/useResizable';
 import { ControlsHelp } from './ControlsHelp';
 import { SettingsModal } from './SettingsModal';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
-import { CompactLiveData } from './sections/CompactLiveData';
+import { ModeTabs } from './sections/ModeTabs';
 import { RateMetricsCard } from './sections/RateMetricsCard';
 import { ReactionSetup } from './sections/ReactionSetup';
-import { SimulationControls } from './sections/SimulationControls';
+import { SingleCollisionSidebar } from './sections/SingleCollisionSidebar';
 import { ThreeViewer } from './ThreeViewer';
 
 interface MainLayoutProps {
@@ -295,46 +295,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             style={{ cursor: 'col-resize' }}
             title="Drag to resize sidebar"
           />
-          <div className="flex-1 overflow-y-auto">
-            <ReactionSetup
-              currentReaction={currentReaction}
-              substrate={substrate}
-              nucleophile={nucleophile}
-              attackAngle={attackAngle}
-              relativeVelocity={relativeVelocity}
-              temperature={temperature}
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Mode Tabs */}
+            <ModeTabs
               simulationMode={uiState.simulationMode}
-              concentration={uiState.concentration}
-              onReactionChange={onReactionChange}
-              onSubstrateChange={onSubstrateChange}
-              onNucleophileChange={onNucleophileChange}
-              onAttackAngleChange={onAttackAngleChange}
-              onRelativeVelocityChange={onRelativeVelocityChange}
-              onTemperatureChange={temp => {
-                // Update UI state immediately for responsive slider
-                onTemperatureChange(temp);
-
-                // Debounce expensive physics updates (update velocities for all molecules)
-                pendingTemperatureRef.current = temp;
-
-                // Clear existing timeout
-                if (temperatureUpdateTimeoutRef.current) {
-                  clearTimeout(temperatureUpdateTimeoutRef.current);
-                }
-
-                // Only update physics after user stops dragging (300ms delay)
-                temperatureUpdateTimeoutRef.current = setTimeout(() => {
-                  const finalTemp = pendingTemperatureRef.current;
-                  if (
-                    finalTemp !== null &&
-                    uiState.simulationMode === 'rate' &&
-                    uiState.isPlaying
-                  ) {
-                    threeJSBridge.updateRateSimulationTemperature(finalTemp);
-                  }
-                  pendingTemperatureRef.current = null;
-                }, 300);
-              }}
               onSimulationModeChange={async mode => {
                 const previousMode = uiState.simulationMode;
                 updateUIState({ simulationMode: mode });
@@ -381,53 +345,96 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   }
                 }
               }}
-              onConcentrationChange={async conc => {
-                const particleCount = concentrationToParticleCount(conc);
-                updateUIState({ concentration: conc, particleCount });
-
-                // If rate simulation is running, adjust concentration dynamically
-                // Pass current temperature to ensure new molecules respect it
-                if (uiState.simulationMode === 'rate' && uiState.isPlaying) {
-                  try {
-                    await threeJSBridge.adjustRateSimulationConcentration(
-                      particleCount,
-                      uiState.temperature
-                    );
-                  } catch (error) {
-                    console.error('Failed to adjust concentration:', error);
-                  }
-                }
-              }}
               themeClasses={themeClasses}
             />
-
-            {/* Conditionally show metrics based on simulation mode - Rate mode metrics now in BottomBar */}
-            {uiState.simulationMode === 'single' && (
-              <CompactLiveData
-                relativeVelocity={relativeVelocity}
+            
+            {/* Sidebar Content */}
+            <div className="flex-1 overflow-y-auto">
+              {uiState.simulationMode === 'single' ? (
+                <SingleCollisionSidebar
+                currentReaction={currentReaction}
+                substrate={substrate}
+                nucleophile={nucleophile}
                 attackAngle={attackAngle}
-                reactionProbability={uiState.reactionProbability}
+                relativeVelocity={relativeVelocity}
+                temperature={temperature}
+                isPlaying={isPlaying}
                 timeScale={timeScale}
+                reactionProbability={uiState.reactionProbability}
+                onReactionChange={onReactionChange}
+                onSubstrateChange={onSubstrateChange}
+                onNucleophileChange={onNucleophileChange}
+                onAttackAngleChange={onAttackAngleChange}
+                onRelativeVelocityChange={onRelativeVelocityChange}
+                onPlay={onPlay}
+                onPause={onPause}
+                onReset={onReset}
+                onTimeScaleChange={onTimeScaleChange}
+                autoplay={autoplay}
+                onAutoplayChange={onAutoplayChange}
+                themeClasses={themeClasses}
+              />
+            ) : (
+              <ReactionSetup
+                currentReaction={currentReaction}
+                substrate={substrate}
+                nucleophile={nucleophile}
+                attackAngle={attackAngle}
+                relativeVelocity={relativeVelocity}
+                temperature={temperature}
+                simulationMode={uiState.simulationMode}
+                concentration={uiState.concentration}
+                onReactionChange={onReactionChange}
+                onSubstrateChange={onSubstrateChange}
+                onNucleophileChange={onNucleophileChange}
+                onAttackAngleChange={onAttackAngleChange}
+                onRelativeVelocityChange={onRelativeVelocityChange}
+                onTemperatureChange={temp => {
+                  // Update UI state immediately for responsive slider
+                  onTemperatureChange(temp);
+
+                  // Debounce expensive physics updates (update velocities for all molecules)
+                  pendingTemperatureRef.current = temp;
+
+                  // Clear existing timeout
+                  if (temperatureUpdateTimeoutRef.current) {
+                    clearTimeout(temperatureUpdateTimeoutRef.current);
+                  }
+
+                  // Only update physics after user stops dragging (300ms delay)
+                  temperatureUpdateTimeoutRef.current = setTimeout(() => {
+                    const finalTemp = pendingTemperatureRef.current;
+                    if (
+                      finalTemp !== null &&
+                      uiState.simulationMode === 'rate' &&
+                      uiState.isPlaying
+                    ) {
+                      threeJSBridge.updateRateSimulationTemperature(finalTemp);
+                    }
+                    pendingTemperatureRef.current = null;
+                  }, 300);
+                }}
+                onConcentrationChange={async conc => {
+                  const particleCount = concentrationToParticleCount(conc);
+                  updateUIState({ concentration: conc, particleCount });
+
+                  // If rate simulation is running, adjust concentration dynamically
+                  // Pass current temperature to ensure new molecules respect it
+                  if (uiState.simulationMode === 'rate' && uiState.isPlaying) {
+                    try {
+                      await threeJSBridge.adjustRateSimulationConcentration(
+                        particleCount,
+                        uiState.temperature
+                      );
+                    } catch (error) {
+                      console.error('Failed to adjust concentration:', error);
+                    }
+                  }
+                }}
                 themeClasses={themeClasses}
               />
             )}
-
-            <SimulationControls
-              isPlaying={isPlaying}
-              timeScale={timeScale}
-              currentReaction={currentReaction}
-              attackAngle={attackAngle}
-              relativeVelocity={relativeVelocity}
-              temperature={temperature}
-              simulationMode={uiState.simulationMode}
-              onPlay={onPlay}
-              onPause={onPause}
-              onReset={onReset}
-              onTimeScaleChange={onTimeScaleChange}
-              autoplay={autoplay}
-              onAutoplayChange={onAutoplayChange}
-              themeClasses={themeClasses}
-            />
+            </div>
           </div>
         </aside>
       </div>
