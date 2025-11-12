@@ -21,7 +21,7 @@ export class ReactionDetector {
   detectReaction(
     collision: CollisionData,
     reaction: ReactionType,
-    temperature: number,
+    temperature: number, // Temperature is accounted for in collision.collisionEnergy via velocity scaling
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup
   ): ReactionResult {
@@ -50,11 +50,14 @@ export class ReactionDetector {
       reaction.optimalAngle
     );
 
-    // 3. Calculate temperature factor (Arrhenius equation)
-    const tempFactor = reaction.probabilityFactors.temperature(temperature);
-
-    // 4. Combined probability (energy, orientation, temperature)
-    const probability = energyFactor * orientationFactor * tempFactor;
+    // 3. Temperature is already accounted for in collision energy via velocity scaling
+    // (Maxwell-Boltzmann distribution scales velocities with temperature)
+    // So we don't need to apply Arrhenius factor again - it would be double-counting
+    // The collision energy already reflects the temperature-dependent molecular speeds
+    
+    // 4. Combined probability (energy, orientation)
+    // Temperature dependence is built into collision energy through velocity scaling
+    const probability = energyFactor * orientationFactor;
 
     // 6. Stochastic determination (only if energy threshold passed)
     const occurs = Math.random() < probability;
@@ -114,7 +117,12 @@ export class ReactionDetector {
     }
 
     // Gaussian distribution around optimal angle
-    const deviation = Math.abs(actual - optimal);
+    // Handle angle wrapping: 338.8° is 21.2° away from 180°, not 158.8°
+    let deviation = Math.abs(actual - optimal);
+    if (deviation > 180) {
+      deviation = 360 - deviation;
+    }
+    
     const sigma = 30; // degrees tolerance (standard deviation)
     // Gaussian: exp(-(x-μ)²/(2σ²)) where μ = optimal, σ = tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
@@ -144,16 +152,22 @@ export class ReactionDetector {
     const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
     const BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
     const REFERENCE_TEMP = 298; // K
-    const VISUALIZATION_BASE_SPEED = 12.0; // m/s at reference temp
+    // NOTE: Rate mode uses baseSpeed 3.0 m/s, but we need to scale to real molecular speeds
+    // Real molecular speeds are ~100-1000 m/s, so visualization speeds are scaled down significantly
+    const VISUALIZATION_BASE_SPEED = 3.0; // m/s - actual baseSpeed used in rate mode
 
-    // Scale visualization velocity to real molecular velocity using Maxwell-Boltzmann
-    // Real molecular speeds: v_rms = sqrt(3kT/m)
+    // Calculate real molecular RMS velocity using Maxwell-Boltzmann: v_rms = sqrt(3kT/m)
     const avgMass = (mass1 + mass2) / 2;
     const mass_kg = avgMass * AMU_TO_KG;
     const realVrms_at_T = Math.sqrt((3 * BOLTZMANN_CONSTANT * temperature) / mass_kg);
     const realVrms_at_ref = Math.sqrt((3 * BOLTZMANN_CONSTANT * REFERENCE_TEMP) / mass_kg);
-    const velocityScaleFactor = realVrms_at_T / realVrms_at_ref;
-    const realVelocity = relativeVelocity * velocityScaleFactor;
+    
+    // Scale visualization velocity UP to real molecular velocity
+    // Visualization speeds are scaled down for display (3 m/s), real speeds are much higher (~280 m/s for 95 AMU)
+    // Scale factor: how much faster real molecules move compared to visualization
+    const visualizationToRealScale = realVrms_at_ref / VISUALIZATION_BASE_SPEED;
+    const temperatureScaleFactor = realVrms_at_T / realVrms_at_ref;
+    const realVelocity = relativeVelocity * visualizationToRealScale * temperatureScaleFactor;
 
     // Calculate collision energy using reduced mass
     const mass1_kg = mass1 * AMU_TO_KG;

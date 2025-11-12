@@ -10,7 +10,7 @@ import { SettingsModal } from './SettingsModal';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
 import { ModeTabs } from './sections/ModeTabs';
 import { RateMetricsCard } from './sections/RateMetricsCard';
-import { ReactionSetup } from './sections/ReactionSetup';
+import { RateModeSidebar } from './sections/RateModeSidebar';
 import { SingleCollisionSidebar } from './sections/SingleCollisionSidebar';
 import { ThreeViewer } from './ThreeViewer';
 
@@ -375,20 +375,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 themeClasses={themeClasses}
               />
             ) : (
-              <ReactionSetup
+              <RateModeSidebar
                 currentReaction={currentReaction}
                 substrate={substrate}
                 nucleophile={nucleophile}
-                attackAngle={attackAngle}
-                relativeVelocity={relativeVelocity}
                 temperature={temperature}
-                simulationMode={uiState.simulationMode}
                 concentration={uiState.concentration}
+                isPlaying={isPlaying}
+                timeScale={timeScale}
+                reactionProbability={uiState.reactionProbability}
                 onReactionChange={onReactionChange}
                 onSubstrateChange={onSubstrateChange}
                 onNucleophileChange={onNucleophileChange}
-                onAttackAngleChange={onAttackAngleChange}
-                onRelativeVelocityChange={onRelativeVelocityChange}
                 onTemperatureChange={temp => {
                   // Update UI state immediately for responsive slider
                   onTemperatureChange(temp);
@@ -431,6 +429,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     }
                   }
                 }}
+                onPlay={onPlay}
+                onPause={onPause}
+                onReset={onReset}
+                onTimeScaleChange={onTimeScaleChange}
+                autoplay={autoplay}
+                onAutoplayChange={onAutoplayChange}
                 themeClasses={themeClasses}
               />
             )}

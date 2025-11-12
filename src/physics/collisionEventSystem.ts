@@ -201,12 +201,9 @@ class CollisionEventSystem {
    * Emit a collision event to all registered handlers
    * @param event - Collision event data
    */
-  emitCollision(event: CollisionEvent): void {
-    console.log(`🔔 emitCollision called: ${event.moleculeA.name} + ${event.moleculeB.name}`);
-
+  async emitCollision(event: CollisionEvent): Promise<void> {
     // Check if either molecule is in a reaction to prevent race conditions
     if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
-      console.log(`⏸️ Skipping: molecules already reacting`);
       return;
     }
 
@@ -223,12 +220,6 @@ class CollisionEventSystem {
     if (this.collisionHistory.has(key)) {
       const lastCollision = this.collisionHistory.get(key);
       if (lastCollision && now - lastCollision < effectiveCooldown) {
-        // Debug: Log cooldown occasionally
-        if (Math.random() < 0.05) {
-          console.log(
-            `⏳ Collision in cooldown: ${key} (${((now - lastCollision) * 1000).toFixed(0)}ms ago, need ${(effectiveCooldown * 1000).toFixed(0)}ms)`
-          );
-        }
         return; // Still in cooldown
       }
     }
@@ -238,9 +229,9 @@ class CollisionEventSystem {
 
     // Process reaction detection FIRST (before emitting to handlers)
     // This ensures reactionResult is set on the event before handlers receive it
+    // CRITICAL: Must await this async function so reactionResult is set before handlers run
     if (this.currentReactionType) {
-      console.log(`✅ Reaction type is set: ${this.currentReactionType.id}`);
-      this.processReactionDetection(event);
+      await this.processReactionDetection(event);
     } else {
       console.warn(
         '⚠️ Collision detected but no reaction type set. Set reaction type with collisionEventSystem.setReactionType()'
@@ -266,19 +257,13 @@ class CollisionEventSystem {
    */
   private async processReactionDetection(event: CollisionEvent): Promise<void> {
     if (!this.currentReactionType) {
-      console.warn('⚠️ processReactionDetection called but no reaction type set');
       return;
     }
 
     // Check if either molecule is already in a reaction to prevent race conditions
     if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
-      console.log(`⏸️ Skipping reaction detection: molecules already reacting`);
       return;
     }
-
-    console.log(
-      `🧪 Processing reaction detection: ${event.moleculeA.name} + ${event.moleculeB.name}, type: ${this.currentReactionType.id}, temp: ${this.temperature}K`
-    );
 
     // Calculate collision data
     const collisionData: CollisionData = {
@@ -317,10 +302,6 @@ class CollisionEventSystem {
       }
     } else {
       // Use main thread
-      const relVelMag = collisionData.relativeVelocity.length();
-      console.log(
-        `⚗️ Calling detectReaction: relVel=${relVelMag.toFixed(2)} m/s, E_collision=${collisionData.collisionEnergy.toFixed(2)} kJ/mol, E_activation=${this.currentReactionType.activationEnergy} kJ/mol, angle=${collisionData.approachAngle.toFixed(1)}°`
-      );
       reactionResult = this.reactionDetector.detectReaction(
         collisionData,
         this.currentReactionType,
@@ -330,9 +311,41 @@ class CollisionEventSystem {
       );
     }
 
-    console.log(
-      `📊 Reaction result: occurs=${reactionResult.occurs}, prob=${(reactionResult.probability * 100).toFixed(2)}%`
-    );
+    // Calculate factors for debugging (before testing mode override)
+    const energyFactor = collisionData.collisionEnergy >= this.currentReactionType.activationEnergy
+      ? Math.min(1, 1 - Math.exp(-(collisionData.collisionEnergy - this.currentReactionType.activationEnergy) / this.currentReactionType.activationEnergy))
+      : 0;
+    
+    // Calculate angle deviation with proper wrapping (angles are modulo 360)
+    const optimalAngle = this.currentReactionType.optimalAngle || 180;
+    let angleDeviation = Math.abs(collisionData.approachAngle - optimalAngle);
+    // Handle wrapping: 338.8° is 21.2° away from 180°, not 158.8°
+    if (angleDeviation > 180) {
+      angleDeviation = 360 - angleDeviation;
+    }
+    
+    const orientationFactor = this.currentReactionType.optimalAngle === 0
+      ? 1.0
+      : Math.exp(-(angleDeviation ** 2) / (2 * 30 ** 2));
+    // Temperature is already accounted for in collision energy via velocity scaling
+    // No separate tempFactor needed - it would double-count temperature effects
+
+    // Single-line JSON debug log per collision
+    const debugInfo = {
+      collision: `${event.moleculeA.name} + ${event.moleculeB.name}`,
+      type: this.currentReactionType.id,
+      temp: `${this.temperature}K`,
+      relVel: `${collisionData.relativeVelocity.length().toFixed(2)} m/s`,
+      E_collision: `${collisionData.collisionEnergy.toFixed(2)} kJ/mol`,
+      E_activation: `${this.currentReactionType.activationEnergy} kJ/mol`,
+      angle: `${collisionData.approachAngle.toFixed(1)}°`,
+      angleDev: `${angleDeviation.toFixed(1)}°`,
+      energyFactor: energyFactor.toFixed(3),
+      orientFactor: orientationFactor.toFixed(3),
+      occurs: reactionResult.occurs,
+      prob: `${(reactionResult.probability * 100).toFixed(2)}%`,
+    };
+    console.log(JSON.stringify(debugInfo));
 
     // RAPID OVERRIDE: Use UI-calculated probability instead of forcing 100%
     if (this.testingMode) {
@@ -395,20 +408,7 @@ class CollisionEventSystem {
       (reactionResult as any).occurs = occurs;
     }
 
-    // Log reactions for debugging
-    if (reactionResult.occurs) {
-      console.log(
-        `✅ REACTION: ${event.moleculeA.name} + ${event.moleculeB.name} (${(reactionResult.probability * 100).toFixed(1)}%)`
-      );
-    } else if (reactionResult.probability > 0.1) {
-      // Log high-probability collisions that didn't react (for debugging)
-      if (Math.random() < 0.1) {
-        // Log 10% of high-probability non-reactions
-        console.log(
-          `⚠️ High prob collision (${(reactionResult.probability * 100).toFixed(1)}%) but no reaction: ${event.moleculeA.name} + ${event.moleculeB.name}`
-        );
-      }
-    }
+    // Reactions are logged in the single-line JSON above
 
     // Emit collision detected event to unified system
     reactionEventBus.emitCollisionDetected(
@@ -438,23 +438,65 @@ class CollisionEventSystem {
   }
 
   /**
+   * Get molecular mass from molecule name (fallback when molecularProperties not available)
+   */
+  private getMassFromName(moleculeName: string): number {
+    // Common molecular masses in AMU (fallback lookup)
+    const massLookup: { [key: string]: number } = {
+      // Substrates
+      methyl_bromide: 94.94,
+      methyl_chloride: 50.49,
+      methyl_iodide: 141.94,
+      ethyl_bromide: 108.97,
+      // Nucleophiles
+      hydroxide: 17.01,
+      hydroxide_ion: 17.01,
+      cyanide: 26.02,
+      methoxide: 31.03,
+      ammonia: 17.03,
+      methanol: 32.04,
+      water: 18.02,
+    };
+
+    const nameLower = moleculeName.toLowerCase();
+    
+    // Check if name contains any of the lookup keys
+    for (const [key, mass] of Object.entries(massLookup)) {
+      if (nameLower.includes(key)) {
+        return mass;
+      }
+    }
+
+    // Default fallback based on naming pattern
+    if (nameLower.startsWith('substrate_')) {
+      return 95.0; // Typical substrate mass (methyl bromide)
+    } else if (nameLower.startsWith('nucleophile_')) {
+      return 17.0; // Typical nucleophile mass (hydroxide)
+    }
+
+    return 50.0; // Reasonable default (between substrate and nucleophile)
+  }
+
+  /**
    * Calculate collision energy from event data
    */
   private calculateCollisionEnergy(event: CollisionEvent): number {
-    const massA =
+    let massA =
       (event.moleculeA as unknown as { molecularProperties?: { totalMass?: number } })
-        .molecularProperties?.totalMass || 1.0;
-    const massB =
+        .molecularProperties?.totalMass;
+    let massB =
       (event.moleculeB as unknown as { molecularProperties?: { totalMass?: number } })
-        .molecularProperties?.totalMass || 1.0;
-    const relativeVelocity = event.relativeVelocity.length();
+        .molecularProperties?.totalMass;
 
-    // Debug: Log masses and velocity occasionally
-    if (Math.random() < 0.01) {
-      console.log(
-        `Energy calc: massA=${massA.toFixed(1)} AMU, massB=${massB.toFixed(1)} AMU, relVel=${relativeVelocity.toFixed(2)} m/s, temp=${this.temperature}K`
-      );
+    // Fallback to name-based lookup if molecularProperties not available
+    if (!massA || massA <= 0) {
+      massA = this.getMassFromName(event.moleculeA.name);
     }
+    if (!massB || massB <= 0) {
+      massB = this.getMassFromName(event.moleculeB.name);
+    }
+
+    const relativeVelocity = event.relativeVelocity.length();
 
     // Pass current temperature to collision energy calculation for proper scaling
     const energy = this.reactionDetector.calculateCollisionEnergy(
@@ -463,11 +505,6 @@ class CollisionEventSystem {
       relativeVelocity,
       this.temperature
     );
-
-    // Debug: Log calculated energy occasionally
-    if (Math.random() < 0.01) {
-      console.log(`Calculated collision energy: ${energy.toFixed(4)} kJ/mol`);
-    }
 
     return energy;
   }

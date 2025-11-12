@@ -493,7 +493,10 @@ export class CannonPhysicsEngine {
         }
         const collisionEvent = createCollisionEvent(a, b);
         console.log(`📡 Emitting collision: ${a.name} + ${b.name}`);
-        collisionEventSystem.emitCollision(collisionEvent);
+        // Fire and forget - don't await to avoid blocking physics loop
+        collisionEventSystem.emitCollision(collisionEvent).catch(error => {
+          console.error('Error emitting collision:', error);
+        });
       }
     }
   }
@@ -514,7 +517,10 @@ export class CannonPhysicsEngine {
 
         // Create collision event
         const collisionEvent = createCollisionEvent(molA, molB);
-        collisionEventSystem.emitCollision(collisionEvent);
+        // Fire and forget - don't await to avoid blocking physics loop
+        collisionEventSystem.emitCollision(collisionEvent).catch(error => {
+          console.error('Error emitting collision:', error);
+        });
       }
     }
   }

@@ -1,11 +1,13 @@
 import type React from 'react';
-import { SimulationControls } from '../SimulationControls';
 
 // Shared card classes
 const controlCardClasses = 'p-4 rounded-lg border flex flex-col';
 const cardTitleClasses = 'text-sm font-semibold mb-3';
-const probabilityRowClasses = 'flex items-center justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700';
+const subHeaderClasses = 'text-xs font-medium mb-2';
 const probabilityBarClasses = 'w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-2';
+const sliderClasses = 'slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer';
+const sliderLabelsClasses = 'flex justify-between text-xs mt-1';
+const sectionDividerClasses = 'border-b border-gray-200 dark:border-gray-700 mb-3 pb-3';
 
 // Color theme configuration
 const controlCardThemes = {
@@ -19,10 +21,6 @@ const controlCardThemes = {
 interface SimulationControlsCardProps {
   isPlaying: boolean;
   timeScale: number;
-  currentReaction: string;
-  attackAngle: number;
-  relativeVelocity: number;
-  temperature: number;
   reactionProbability: number;
   onPlay: () => void;
   onPause: () => void;
@@ -36,10 +34,6 @@ interface SimulationControlsCardProps {
 export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
   isPlaying,
   timeScale,
-  currentReaction,
-  attackAngle,
-  relativeVelocity,
-  temperature,
   reactionProbability,
   onPlay,
   onPause,
@@ -62,17 +56,18 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
     <div
       className={`${controlCardClasses} ${themeClasses.card} ${theme.border} ${theme.gradient}`}
     >
-      {/* Reaction Probability Section */}
-      <div>
-        <div className={probabilityRowClasses}>
-          <div>
-            <label className={`${cardTitleClasses} ${themeClasses.text}`}>
-              Reaction Probability
-            </label>
-            <div className={`text-2xl font-bold ${themeClasses.text}`}>
-              {reactionProbability.toFixed(1)}%
-            </div>
-          </div>
+      {/* Main Title */}
+      <label className={`${cardTitleClasses} ${themeClasses.text}`}>
+        Simulation Controls
+      </label>
+
+      {/* Reaction Probability Sub-section */}
+      <div className={sectionDividerClasses}>
+        <label className={`${subHeaderClasses} ${themeClasses.textSecondary}`}>
+          Reaction Probability
+        </label>
+        <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
+          {reactionProbability.toFixed(1)}%
         </div>
         <div className={probabilityBarClasses}>
           <div
@@ -82,24 +77,57 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
         </div>
       </div>
 
-      {/* Simulation Controls */}
-      <div className="mt-4 -mx-4 -mb-4">
-        <SimulationControls
-          isPlaying={isPlaying}
-          timeScale={timeScale}
-          currentReaction={currentReaction}
-          attackAngle={attackAngle}
-          relativeVelocity={relativeVelocity}
-          temperature={temperature}
-          simulationMode="single"
-          onPlay={onPlay}
-          onPause={onPause}
-          onReset={onReset}
-          onTimeScaleChange={onTimeScaleChange}
-          autoplay={autoplay}
-          onAutoplayChange={onAutoplayChange}
-          themeClasses={themeClasses}
+      {/* Playback Speed Sub-section */}
+      <div className="mb-3">
+        <label className={`${subHeaderClasses} ${themeClasses.textSecondary}`}>
+          Playback Speed: {timeScale.toFixed(1)}x
+        </label>
+        <input
+          type="range"
+          min="0.1"
+          max="2.0"
+          step="0.1"
+          value={timeScale}
+          onChange={e => onTimeScaleChange(parseFloat(e.target.value))}
+          className={sliderClasses}
         />
+        <div className={`${sliderLabelsClasses} ${themeClasses.textSecondary}`}>
+          <span>Slow Motion</span>
+          <span>Fast Forward</span>
+        </div>
+      </div>
+
+      {/* Play/Pause and Reset Buttons */}
+      <div className="flex gap-2 mb-2">
+        <button
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 ${
+            isPlaying
+              ? 'bg-gradient-to-r from-red-500 to-red-600 text-white border-red-500 shadow-red-200 shadow-md'
+              : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-500 shadow-blue-200 shadow-md'
+          }`}
+          onClick={isPlaying ? onPause : onPlay}
+        >
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <button
+          className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 bg-gradient-to-r from-red-400 to-orange-500 text-white border-red-400 shadow-red-200 shadow-md`}
+          onClick={onReset}
+        >
+          <span>🔄</span>
+          Reset
+        </button>
+      </div>
+
+      {/* Autoplay toggle */}
+      <div>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={autoplay}
+            onChange={e => onAutoplayChange(e.target.checked)}
+          />
+          <span className={themeClasses.textSecondary}>Autoplay</span>
+        </label>
       </div>
     </div>
   );

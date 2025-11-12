@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import { reactionAnimationManager } from '../animations/ReactionAnimationManager';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
 import { ContainerVisualization } from '../components/ContainerVisualization';
 import type { CannonPhysicsEngine } from '../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../physics/collisionEventSystem';
 import { type ContainerBounds, MoleculeSpawner } from '../services/MoleculeSpawner';
 import type { MoleculeManager } from '../types';
+import type { MoleculeState } from './ReactionOrchestrator';
 import { log } from '../utils/debug';
 
 /**
@@ -211,6 +213,21 @@ export class ReactionRateSimulator {
   }
 
   /**
+   * Convert MoleculeGroup to MoleculeState format (required by animation manager)
+   */
+  private createMoleculeState(molecule: any): MoleculeState {
+    return {
+      group: molecule.group,
+      position: molecule.group.position.clone(),
+      rotation: molecule.group.rotation.clone(),
+      quaternion: molecule.group.quaternion.clone(),
+      velocity: molecule.velocity ? molecule.velocity.clone() : new THREE.Vector3(),
+      name: molecule.name,
+      cid: molecule.cid || 'unknown',
+    };
+  }
+
+  /**
    * Handle collision events
    */
   private handleCollision(event: any): void {
@@ -225,6 +242,8 @@ export class ReactionRateSimulator {
       const moleculeAId = event.moleculeA?.name || event.moleculeA?.id;
       const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
 
+      console.log(`🔬 ReactionRateSimulator.handleCollision: ${moleculeAId} + ${moleculeBId}, reactionResult.occurs=${reactionOccurred}`);
+
       if (moleculeAId && moleculeBId) {
         // Mark the pair as reacted
         const pair = this.moleculePairs.find(
@@ -233,13 +252,108 @@ export class ReactionRateSimulator {
             (p.substrateId === moleculeBId && p.nucleophileId === moleculeAId)
         );
 
-        if (pair && !pair.reacted) {
-          pair.reacted = true;
-          this.reactionCount++;
-          log(`Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
+        if (pair) {
+          if (!pair.reacted) {
+            pair.reacted = true;
+            this.reactionCount++;
+            console.log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
+
+            // Execute visual reaction animation
+            this.executeVisualReaction(event, moleculeAId, moleculeBId);
+          } else {
+            console.log(`⏭️ Pair already reacted: ${moleculeAId} + ${moleculeBId}`);
+          }
+        } else {
+          console.log(`⚠️ Pair not found in moleculePairs: ${moleculeAId} + ${moleculeBId} (Total pairs: ${this.moleculePairs.length})`);
+          // Debug: show some example pairs
+          if (this.moleculePairs.length > 0) {
+            console.log(`   Example pairs: ${this.moleculePairs.slice(0, 3).map(p => `${p.substrateId}+${p.nucleophileId}`).join(', ')}`);
+          }
         }
+      } else {
+        console.log(`⚠️ Missing molecule IDs: A=${moleculeAId}, B=${moleculeBId}`);
       }
     }
+  }
+
+  /**
+   * Execute visual reaction animation for a reacted pair
+   * Uses requestIdleCallback or setTimeout to defer execution and avoid blocking UI
+   */
+  private executeVisualReaction(event: any, moleculeAId: string, moleculeBId: string): void {
+    // Defer animation to next idle period to avoid blocking UI/physics loop
+    // This allows multiple reactions to be queued without lag
+    const scheduleAnimation = (callback: () => void) => {
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(callback, { timeout: 100 }); // Max 100ms delay
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(callback, 0);
+      }
+    };
+
+    scheduleAnimation(() => {
+      try {
+        // Get molecules from manager
+        const moleculeA = this.moleculeManager.getMolecule(moleculeAId);
+        const moleculeB = this.moleculeManager.getMolecule(moleculeBId);
+
+        // Check if molecules still exist
+        if (!moleculeA || !moleculeB) {
+          console.log(`⚠️ Cannot animate reaction: molecules not found (${moleculeAId}, ${moleculeBId})`);
+          return;
+        }
+
+        // Determine which is substrate and which is nucleophile based on naming convention
+        // In rate mode, substrates are named "substrate_X" and nucleophiles "nucleophile_X"
+        let substrate: any;
+        let nucleophile: any;
+
+        if (moleculeAId.startsWith('substrate_')) {
+          substrate = moleculeA;
+          nucleophile = moleculeB;
+        } else if (moleculeBId.startsWith('substrate_')) {
+          substrate = moleculeB;
+          nucleophile = moleculeA;
+        } else {
+          // Fallback: use first molecule as substrate, second as nucleophile
+          substrate = moleculeA;
+          nucleophile = moleculeB;
+        }
+
+        // Convert to MoleculeState format
+        const substrateState = this.createMoleculeState(substrate);
+        const nucleophileState = this.createMoleculeState(nucleophile);
+
+        // Get reaction type from UI state or collision event system
+        const uiState = (window as any).uiState;
+        const reactionType = uiState?.reactionType || collisionEventSystem.getReactionType()?.id || 'sn2';
+        const reactionTypeLower = reactionType.toLowerCase();
+
+        // Execute appropriate animation based on reaction type
+        console.log(`🎬 Executing ${reactionTypeLower} reaction animation for ${moleculeAId} + ${moleculeBId}`);
+
+        if (reactionTypeLower === 'sn2') {
+          reactionAnimationManager.animateSN2Reaction(substrateState, nucleophileState, {
+            onComplete: () => {
+              console.log(`✅ Reaction animation completed for ${moleculeAId} + ${moleculeBId}`);
+              // Optionally fade out or remove molecules after animation
+              // For now, we'll keep them visible but marked as reacted
+            },
+            onStart: () => {
+              console.log(`🎬 Reaction animation started for ${moleculeAId} + ${moleculeBId}`);
+            },
+          });
+        } else {
+          // For SN1 and E2, we could add similar handling if animation methods exist
+          // For now, just log that reaction occurred
+          console.log(`⚠️ Visual animation not yet implemented for reaction type: ${reactionTypeLower}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error executing visual reaction: ${error}`);
+        console.error('Visual reaction execution error:', error);
+      }
+    });
   }
 
   /**

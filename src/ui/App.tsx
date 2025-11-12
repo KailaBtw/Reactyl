@@ -152,12 +152,13 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [uiState.bottomBarExpanded]);
 
-  // Autoplay: restart shortly after a collision if enabled and not paused
+  // Autoplay: restart shortly after a collision completes if enabled and not paused
   useEffect(() => {
-    const handler = (_event: any) => {
+    const handleRestart = () => {
       if (!uiState.autoplay) return;
       if (!uiState.isPlaying) return;
-      // Delay after collision before restarting
+      
+      // Delay after collision/reaction completes before restarting
       const delayMs = 1500;
       if (autoplayTimeoutRef.current) {
         clearTimeout(autoplayTimeoutRef.current);
@@ -183,9 +184,34 @@ export const App: React.FC = () => {
         }
       }, delayMs);
     };
-    reactionEventBus.on('collision-detected', handler);
-    return () => reactionEventBus.off('collision-detected', handler);
-  }, [uiState.autoplay, uiState.isPlaying, updateUIState]);
+
+    // Listen for reaction completion (successful reaction)
+    const reactionHandler = (_event: any) => {
+      handleRestart();
+    };
+    
+    // Listen for collision detection - only restart if no reaction occurred
+    // (if reaction occurs, reaction-completed will handle restart)
+    const collisionHandler = (_event: any) => {
+      // Wait a moment to see if a reaction starts
+      setTimeout(() => {
+        const orchestrator = (window as any).reactionOrchestrator;
+        const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
+        // Only restart if no reaction occurred (collision but no reaction)
+        if (!isReactionInProgress) {
+          handleRestart();
+        }
+      }, 200);
+    };
+
+    reactionEventBus.on('reaction-completed', reactionHandler);
+    reactionEventBus.on('collision-detected', collisionHandler);
+    
+    return () => {
+      reactionEventBus.off('reaction-completed', reactionHandler);
+      reactionEventBus.off('collision-detected', collisionHandler);
+    };
+  }, [uiState.autoplay, uiState.isPlaying, uiState.reactionInProgress, updateUIState]);
 
   // Continuously update reaction probability based on current parameters
   useEffect(() => {
@@ -321,39 +347,28 @@ export const App: React.FC = () => {
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
     onRelativeVelocityChange: (value: number) => {
       updateUIState({ relativeVelocity: value });
-      // If autoplay is active and simulation is playing, update velocities in real-time
+      // If autoplay is active and simulation is playing, queue reset after collision completes
       if (uiState.autoplay && uiState.isPlaying && uiState.simulationMode === 'single') {
-        // Update velocities without resetting - just speed up/slow down active scene
         const orchestrator = (window as any).reactionOrchestrator;
-        if (orchestrator && orchestrator.isReactionInProgress()) {
-          // Update velocities for existing molecules
-          const moleculeManager = threeJSBridge.getMoleculeManager();
-          if (moleculeManager) {
-            const molecules = moleculeManager.getAllMolecules();
-            const substrate = molecules.find((m: any) => m.name === 'substrate');
-            const nucleophile = molecules.find((m: any) => m.name === 'nucleophile');
-            
-            if (substrate && nucleophile) {
-              // Recalculate velocities based on new relativeVelocity
-              const approachAngleRad = (uiState.approachAngle * Math.PI) / 180;
-              const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(
-                new THREE.Vector3(0, 1, 0),
-                approachAngleRad
-              );
-              const visualScale = 0.1; // Match the scaling used in applyEncounter
-              const scaledVelocity = value * visualScale;
-              
-              const substrateVelocity = new THREE.Vector3(0, 0, 0);
-              const nucleophileVelocity = direction.clone().multiplyScalar(scaledVelocity);
-              
-              if (substrate.hasPhysics) {
-                physicsEngine.setVelocity(substrate, substrateVelocity);
-              }
-              if (nucleophile.hasPhysics) {
-                physicsEngine.setVelocity(nucleophile, nucleophileVelocity);
-              }
-            }
+        const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
+        
+        if (isReactionInProgress) {
+          // Reaction in progress - queue the change to apply after collision completes
+          pendingParameterChangeRef.current = { type: 'velocity', value: value };
+        } else {
+          // No reaction in progress - reset immediately after debounce
+          if ((window as any).velocityChangeTimeout) {
+            clearTimeout((window as any).velocityChangeTimeout);
           }
+          (window as any).velocityChangeTimeout = setTimeout(async () => {
+            try {
+              threeJSBridge.clear();
+              await threeJSBridge.startReactionAnimation();
+              updateUIState({ isPlaying: true, reactionInProgress: true });
+            } catch (e) {
+              console.error('Failed to reset on velocity change:', e);
+            }
+          }, 500);
         }
       }
     },

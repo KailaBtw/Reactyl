@@ -1,27 +1,26 @@
 import type React from 'react';
-import { ApproachAngleCard } from './cards/ApproachAngleCard';
-import { CollisionVelocityCard } from './cards/CollisionVelocityCard';
+import { ConcentrationCard } from './cards/ConcentrationCard';
 import { ReactionMoleculesCard } from './cards/ReactionMoleculesCard';
 import { SimulationControlsCard } from './cards/SimulationControlsCard';
+import { TemperatureCard } from './cards/TemperatureCard';
 
 // Container spacing
 const containerClasses = 'space-y-4 p-4';
 
-interface SingleCollisionSidebarProps {
+interface RateModeSidebarProps {
   currentReaction: string;
   substrate: string;
   nucleophile: string;
-  attackAngle: number;
-  relativeVelocity: number;
   temperature: number;
+  concentration: number;
   isPlaying: boolean;
   timeScale: number;
   reactionProbability: number;
   onReactionChange: (reaction: string) => void;
   onSubstrateChange: (substrate: string) => void;
   onNucleophileChange: (nucleophile: string) => void;
-  onAttackAngleChange: (angle: number) => void;
-  onRelativeVelocityChange: (value: number) => void;
+  onTemperatureChange: (value: number) => void;
+  onConcentrationChange: (value: number) => void;
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -31,21 +30,20 @@ interface SingleCollisionSidebarProps {
   themeClasses: any;
 }
 
-export const SingleCollisionSidebar: React.FC<SingleCollisionSidebarProps> = ({
+export const RateModeSidebar: React.FC<RateModeSidebarProps> = ({
   currentReaction,
   substrate,
   nucleophile,
-  attackAngle,
-  relativeVelocity,
   temperature,
+  concentration,
   isPlaying,
   timeScale,
   reactionProbability,
   onReactionChange,
   onSubstrateChange,
   onNucleophileChange,
-  onAttackAngleChange,
-  onRelativeVelocityChange,
+  onTemperatureChange,
+  onConcentrationChange,
   onPlay,
   onPause,
   onReset,
@@ -67,18 +65,17 @@ export const SingleCollisionSidebar: React.FC<SingleCollisionSidebarProps> = ({
         themeClasses={themeClasses}
       />
 
-      {/* Approach Angle Card */}
-      <ApproachAngleCard
-        attackAngle={attackAngle}
-        onAttackAngleChange={onAttackAngleChange}
-        reactionType={currentReaction}
+      {/* Concentration Card */}
+      <ConcentrationCard
+        concentration={concentration}
+        onConcentrationChange={onConcentrationChange}
         themeClasses={themeClasses}
       />
 
-      {/* Collision Velocity Card */}
-      <CollisionVelocityCard
-        relativeVelocity={relativeVelocity}
-        onRelativeVelocityChange={onRelativeVelocityChange}
+      {/* Temperature Card */}
+      <TemperatureCard
+        temperature={temperature}
+        onTemperatureChange={onTemperatureChange}
         themeClasses={themeClasses}
       />
 

@@ -4,13 +4,18 @@ import { TabbedSearch } from './sections/TabbedSearch';
 
 type TabId = 'reactions' | 'molecules' | 'debug';
 
+const TABS = [
+  { id: 'reactions' as const, label: 'Reactions', icon: '⚗️' },
+  { id: 'molecules' as const, label: 'Molecules', icon: '🧪' },
+] as const;
+
 export const RightSidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('reactions');
 
   return (
     <div className={`modern-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-      {/* Control Panel Header Card */}
+      {/* Control Panel Header */}
       <div className="cp-header">
         <div className="cp-left">
           <div className="cp-emblem">⚛️</div>
@@ -24,21 +29,17 @@ export const RightSidebar: React.FC = () => {
             className="collapse-btn"
             onClick={() => setIsCollapsed(!isCollapsed)}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? '◀' : '▶'}
           </button>
         </div>
       </div>
 
-      {/* Integrated Tabs */}
+      {/* Tabs Navigation */}
       {!isCollapsed && (
         <div className="cp-tabs">
-          {(
-            [
-              { id: 'reactions', label: 'Reactions', icon: '⚗️' },
-              { id: 'molecules', label: 'Molecules', icon: '🧪' },
-            ] as Array<{ id: TabId; label: string; icon: string }>
-          ).map(tab => (
+          {TABS.map(tab => (
             <button
               key={tab.id}
               className={`cp-tab ${activeTab === tab.id ? 'active' : ''}`}
@@ -51,6 +52,7 @@ export const RightSidebar: React.FC = () => {
         </div>
       )}
 
+      {/* Tab Content */}
       {!isCollapsed && (
         <div className="tab-content cp-content">
           <TabbedSearch
