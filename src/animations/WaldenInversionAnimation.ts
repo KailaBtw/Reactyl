@@ -3,10 +3,10 @@
  * Handles smooth stereochemistry inversion for SN2 reactions
  */
 
-import * as THREE from 'three';
-import { AnimationRunner, EasingFunctions, type AnimationOptions } from './AnimationUtils';
-import { log } from '../utils/debug';
+import type * as THREE from 'three';
 import type { MoleculeState } from '../systems/ReactionOrchestrator';
+import { log } from '../utils/debug';
+import { type AnimationOptions, AnimationRunner, EasingFunctions } from './AnimationUtils';
 
 export interface WaldenInversionOptions {
   duration?: number;
@@ -25,15 +25,12 @@ export class WaldenInversionAnimation {
    * Animate Walden inversion for SN2 reactions
    * Shows proper umbrella flip mechanism where hydrogens flip to opposite side
    */
-  animate(
-    substrate: MoleculeState,
-    options: WaldenInversionOptions = {}
-  ): AnimationRunner {
+  animate(substrate: MoleculeState, options: WaldenInversionOptions = {}): AnimationRunner {
     const {
       duration = 1000, // 1 second default
       easing = EasingFunctions.easeOutCubic,
       onComplete,
-      onStart
+      onStart,
     } = options;
 
     log('Starting Walden inversion animation (umbrella flip mechanism)...');
@@ -46,7 +43,7 @@ export class WaldenInversionAnimation {
     // Find the carbon atom and hydrogen atoms for proper umbrella flip
     const carbonAtom = this.findCarbonAtom(substrate);
     const hydrogenAtoms = this.findHydrogenAtoms(substrate);
-    
+
     if (!carbonAtom || hydrogenAtoms.length === 0) {
       log('Could not find carbon or hydrogen atoms for Walden inversion');
       return new AnimationRunner();
@@ -54,7 +51,7 @@ export class WaldenInversionAnimation {
 
     // Store initial positions
     const initialHydrogenPositions = hydrogenAtoms.map(h => h.position.clone());
-    
+
     // Calculate umbrella flip: hydrogens move to opposite side of carbon
     const carbonPosition = carbonAtom.position.clone();
     const targetHydrogenPositions = initialHydrogenPositions.map(initialPos => {
@@ -75,7 +72,7 @@ export class WaldenInversionAnimation {
           const currentPos = startPos.clone().lerp(targetPos, progress);
           hydrogen.position.copy(currentPos);
         });
-        
+
         // Also rotate the entire molecule slightly for visual effect
         const rotationProgress = Math.sin(progress * Math.PI) * 0.1; // Small oscillation
         substrate.group.rotation.y = rotationProgress;
@@ -86,7 +83,7 @@ export class WaldenInversionAnimation {
         if (onComplete) {
           onComplete();
         }
-      }
+      },
     };
 
     this.animationRunner = new AnimationRunner();

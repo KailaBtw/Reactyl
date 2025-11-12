@@ -1,15 +1,18 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 
 export type AttackMode = 'backside' | 'frontside' | 'perpendicular';
 
 export interface AttackModeConfig {
   nucleophileYaw: number; // radians to rotate around Y after lookAt
-  substrateYaw: number;   // radians to rotate around Y after lookAt
+  substrateYaw: number; // radians to rotate around Y after lookAt
   substrateFacesNucleophile: boolean; // if true, substrate lookAt nucleophile before yaw
-  productYaw: number;     // radians to rotate product around Y after reaction
+  productYaw: number; // radians to rotate product around Y after reaction
 }
 
-export function getAttackModeConfig(reactionType: string, attackMode: AttackMode): AttackModeConfig {
+export function getAttackModeConfig(
+  reactionType: string,
+  attackMode: AttackMode
+): AttackModeConfig {
   const type = reactionType.toLowerCase();
   const mode = attackMode.toLowerCase() as AttackMode;
 
@@ -20,7 +23,7 @@ export function getAttackModeConfig(reactionType: string, attackMode: AttackMode
           nucleophileYaw: Math.PI / 2,
           substrateYaw: Math.PI / 2,
           substrateFacesNucleophile: true,
-          productYaw: Math.PI/2, // Flip product 180° for proper orientation
+          productYaw: Math.PI / 2, // Flip product 180° for proper orientation
         };
       case 'frontside':
         return {
@@ -49,7 +52,11 @@ export function getAttackModeConfig(reactionType: string, attackMode: AttackMode
 }
 
 // Small helper to compose lookAt with a yaw rotation
-export function lookAtThenYaw(object: THREE.Object3D, target: THREE.Vector3, yawRadians: number): void {
+export function lookAtThenYaw(
+  object: THREE.Object3D,
+  target: THREE.Vector3,
+  yawRadians: number
+): void {
   object.lookAt(target);
   if (yawRadians !== 0) {
     object.rotateY(yawRadians);
@@ -62,5 +69,3 @@ export function applyProductOrientation(product: THREE.Object3D, yawRadians: num
     product.rotateY(yawRadians);
   }
 }
-
-

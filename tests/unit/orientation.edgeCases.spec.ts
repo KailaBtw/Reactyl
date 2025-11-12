@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
 import { orientSN2Backside } from '../../src/config/moleculePositioning';
 
 function molecule(name: string) {
@@ -7,7 +7,7 @@ function molecule(name: string) {
     name,
     group: new THREE.Group(),
     rotation: new THREE.Euler(),
-    physicsBody: { quaternion: new THREE.Quaternion() }
+    physicsBody: { quaternion: new THREE.Quaternion() },
   } as any;
 }
 
@@ -49,11 +49,11 @@ describe('Orientation Strategies - Edge Cases', () => {
     const forwardAfter = new THREE.Vector3(0, 0, -1).applyQuaternion(n.group.quaternion);
 
     // After orientation, strategy applies a +90° yaw; expect perpendicular relation
-    const toSubstrate = new THREE.Vector3().subVectors(s.group.position, n.group.position).normalize();
+    const toSubstrate = new THREE.Vector3()
+      .subVectors(s.group.position, n.group.position)
+      .normalize();
     const dot = forwardAfter.dot(toSubstrate);
     expect(Math.abs(dot)).toBeLessThan(0.2); // roughly perpendicular
     expect(forwardAfter.equals(forwardBefore)).toBe(false);
   });
 });
-
-

@@ -16,21 +16,21 @@ export interface AnimationOptions {
 export const EasingFunctions = {
   linear: (t: number) => t,
   easeIn: (t: number) => t * t,
-  easeOut: (t: number) => 1 - Math.pow(1 - t, 2),
-  easeInOut: (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
-  easeOutCubic: (t: number) => 1 - Math.pow(1 - t, 3),
+  easeOut: (t: number) => 1 - (1 - t) ** 2,
+  easeInOut: (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2),
+  easeOutCubic: (t: number) => 1 - (1 - t) ** 3,
   easeInCubic: (t: number) => t * t * t,
-  easeInOutCubic: (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
-  easeOutQuart: (t: number) => 1 - Math.pow(1 - t, 4),
+  easeInOutCubic: (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2),
+  easeOutQuart: (t: number) => 1 - (1 - t) ** 4,
   easeInQuart: (t: number) => t * t * t * t,
-  easeInOutQuart: (t: number) => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2,
-  easeOutExpo: (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t),
-  easeInExpo: (t: number) => t === 0 ? 0 : Math.pow(2, 10 * (t - 1)),
+  easeInOutQuart: (t: number) => (t < 0.5 ? 8 * t * t * t * t : 1 - (-2 * t + 2) ** 4 / 2),
+  easeOutExpo: (t: number) => (t === 1 ? 1 : 1 - 2 ** (-10 * t)),
+  easeInExpo: (t: number) => (t === 0 ? 0 : 2 ** (10 * (t - 1))),
   easeInOutExpo: (t: number) => {
     if (t === 0) return 0;
     if (t === 1) return 1;
-    return t < 0.5 ? Math.pow(2, 20 * t - 10) / 2 : (2 - Math.pow(2, -20 * t + 10)) / 2;
-  }
+    return t < 0.5 ? 2 ** (20 * t - 10) / 2 : (2 - 2 ** (-20 * t + 10)) / 2;
+  },
 };
 
 /**
@@ -67,7 +67,7 @@ export class AnimationRunner {
       } else {
         this.isRunning = false;
         this.animationId = null;
-        
+
         // Call completion callback
         if (options.onComplete) {
           options.onComplete();

@@ -3,7 +3,7 @@
  * Extends existing MolecularData interface with chemical intelligence.
  */
 
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import type { MolObject } from './index';
 
 export interface ReactionConditions {
@@ -67,14 +67,14 @@ export interface CacheMetadata {
 export interface EnhancedMolecularJSON {
   // Original MOL data (preserved for compatibility)
   original: MolObject;
-  
+
   // Enhanced structure data
   structure: {
     atoms: EnhancedAtom[];
     bonds: EnhancedBond[];
     geometry: MolecularGeometry;
   };
-  
+
   // Cache integration
   cacheMetadata: CacheMetadata;
 }

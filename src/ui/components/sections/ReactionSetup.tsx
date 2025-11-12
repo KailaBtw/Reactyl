@@ -1,9 +1,9 @@
-import React from 'react';
+import type React from 'react';
+import { concentrationToParticleCount } from '../../../utils/concentrationConverter';
+import { AVAILABLE_MOLECULES } from '../../constants/availableMolecules';
+import { InfoBubble } from '../common/InfoBubble';
 import { AttackModeSelector } from './AttackModeSelector';
 import { IdealButton } from './IdealButton';
-import { InfoBubble } from '../common/InfoBubble';
-import { AVAILABLE_MOLECULES } from '../../constants/availableMolecules';
-import { concentrationToParticleCount } from '../../../utils/concentrationConverter';
 
 interface ReactionSetupProps {
   currentReaction: string;
@@ -42,19 +42,27 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
   onTemperatureChange,
   onSimulationModeChange,
   onConcentrationChange,
-  themeClasses
+  themeClasses,
 }) => {
   // Calculate particle count from concentration when concentration changes
   const calculatedParticleCount = concentrationToParticleCount(concentration);
   // Filter molecules into substrates and nucleophiles
-  const substrateOptions = AVAILABLE_MOLECULES.filter(mol => 
-    mol.includes('Methyl') || mol.includes('Ethyl') || mol.includes('Isopropyl') || 
-    mol.includes('Tert') || mol.includes('butyl')
+  const substrateOptions = AVAILABLE_MOLECULES.filter(
+    mol =>
+      mol.includes('Methyl') ||
+      mol.includes('Ethyl') ||
+      mol.includes('Isopropyl') ||
+      mol.includes('Tert') ||
+      mol.includes('butyl')
   );
-  
-  const nucleophileOptions = AVAILABLE_MOLECULES.filter(mol => 
-    mol.includes('Hydroxide') || mol.includes('Cyanide') || mol.includes('Methoxide') ||
-    mol.includes('Methanol') || mol.includes('Water')
+
+  const nucleophileOptions = AVAILABLE_MOLECULES.filter(
+    mol =>
+      mol.includes('Hydroxide') ||
+      mol.includes('Cyanide') ||
+      mol.includes('Methoxide') ||
+      mol.includes('Methanol') ||
+      mol.includes('Water')
   );
 
   return (
@@ -62,7 +70,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
       {/* Tab Header */}
       <div className="flex mb-5 border-b-2 border-gray-200 dark:border-gray-700">
         <button
-          onClick={(e) => {
+          onClick={e => {
             // Don't switch tabs if clicking on InfoBubble
             if ((e.target as HTMLElement).closest('[data-infobubble]')) {
               return;
@@ -88,7 +96,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
           )}
         </button>
         <button
-          onClick={(e) => {
+          onClick={e => {
             // Don't switch tabs if clicking on InfoBubble
             if ((e.target as HTMLElement).closest('[data-infobubble]')) {
               return;
@@ -122,27 +130,33 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             <label className={`block text-sm font-medium mb-1.5 ${themeClasses.textSecondary}`}>
               Reaction Type:
             </label>
-            <select 
+            <select
               value={currentReaction}
-              onChange={(e) => onReactionChange(e.target.value)}
+              onChange={e => onReactionChange(e.target.value)}
               className={`w-full text-sm px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
             >
               <option value="sn2">SN2 - Bimolecular Substitution</option>
-              <option value="sn1" disabled style={{color: '#999', backgroundColor: '#f5f5f5'}}>SN1 - Unimolecular Substitution (Coming Soon)</option>
-              <option value="e2" disabled style={{color: '#999', backgroundColor: '#f5f5f5'}}>E2 - Bimolecular Elimination (Coming Soon)</option>
-              <option value="e1" disabled style={{color: '#999', backgroundColor: '#f5f5f5'}}>E1 - Unimolecular Elimination (Coming Soon)</option>
+              <option value="sn1" disabled style={{ color: '#999', backgroundColor: '#f5f5f5' }}>
+                SN1 - Unimolecular Substitution (Coming Soon)
+              </option>
+              <option value="e2" disabled style={{ color: '#999', backgroundColor: '#f5f5f5' }}>
+                E2 - Bimolecular Elimination (Coming Soon)
+              </option>
+              <option value="e1" disabled style={{ color: '#999', backgroundColor: '#f5f5f5' }}>
+                E1 - Unimolecular Elimination (Coming Soon)
+              </option>
             </select>
           </div>
-          
+
           {/* Molecule Selection - Compact Grid */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={`block text-xs font-medium mb-1 ${themeClasses.textSecondary}`}>
                 Substrate:
               </label>
-              <select 
+              <select
                 value={substrate}
-                onChange={(e) => onSubstrateChange(e.target.value)}
+                onChange={e => onSubstrateChange(e.target.value)}
                 className={`w-full text-xs px-2 py-1.5 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
               >
                 <option value="">Select substrate...</option>
@@ -157,9 +171,9 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               <label className={`block text-xs font-medium mb-1 ${themeClasses.textSecondary}`}>
                 Nucleophile:
               </label>
-              <select 
+              <select
                 value={nucleophile}
-                onChange={(e) => onNucleophileChange(e.target.value)}
+                onChange={e => onNucleophileChange(e.target.value)}
                 className={`w-full text-xs px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${themeClasses.input}`}
               >
                 <option value="">Select nucleophile...</option>
@@ -171,7 +185,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               </select>
             </div>
           </div>
-          
+
           {/* Attack Mode - Using extracted component */}
           <AttackModeSelector
             attackAngle={attackAngle}
@@ -179,7 +193,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             reactionType={currentReaction}
             themeClasses={themeClasses}
           />
-          
+
           {/* Relative Velocity - Clean and Simple */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -194,13 +208,13 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
                 themeClasses={themeClasses}
               />
             </div>
-            <input 
+            <input
               type="range"
               min="50"
               max="500"
               step="10"
               value={relativeVelocity}
-              onChange={(e) => onRelativeVelocityChange(parseFloat(e.target.value))}
+              onChange={e => onRelativeVelocityChange(parseFloat(e.target.value))}
               className="slider w-full"
             />
             <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-1`}>
@@ -208,7 +222,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               <span>High Energy</span>
             </div>
           </div>
-          
+
           {/* Temperature Slider - Lab Realistic */}
           <div>
             <div className="mb-2">
@@ -216,13 +230,13 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
                 Temperature: {Math.round(temperature - 273.15)}°C ({temperature} K)
               </label>
             </div>
-            <input 
+            <input
               type="range"
               min="200"
               max="600"
               step="1"
               value={temperature}
-              onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
+              onChange={e => onTemperatureChange?.(parseInt(e.target.value))}
               className="slider w-full"
             />
             <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-1`}>
@@ -240,30 +254,38 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
         <div className="space-y-4">
           {/* Reaction Type */}
           <div>
-            <label className={`block text-xs font-semibold mb-2 uppercase tracking-wide ${themeClasses.textSecondary}`}>
+            <label
+              className={`block text-xs font-semibold mb-2 uppercase tracking-wide ${themeClasses.textSecondary}`}
+            >
               Reaction Type
             </label>
-            <select 
+            <select
               value={currentReaction}
-              onChange={(e) => onReactionChange(e.target.value)}
+              onChange={e => onReactionChange(e.target.value)}
               className={`w-full text-sm px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${themeClasses.input}`}
             >
               <option value="sn2">SN2 - Bimolecular Substitution</option>
-              <option value="sn1" disabled>SN1 - Unimolecular Substitution (Coming Soon)</option>
-              <option value="e2" disabled>E2 - Bimolecular Elimination (Coming Soon)</option>
-              <option value="e1" disabled>E1 - Unimolecular Elimination (Coming Soon)</option>
+              <option value="sn1" disabled>
+                SN1 - Unimolecular Substitution (Coming Soon)
+              </option>
+              <option value="e2" disabled>
+                E2 - Bimolecular Elimination (Coming Soon)
+              </option>
+              <option value="e1" disabled>
+                E1 - Unimolecular Elimination (Coming Soon)
+              </option>
             </select>
           </div>
-          
+
           {/* Molecule Selection - Compact Grid */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={`block text-xs font-medium mb-1.5 ${themeClasses.textSecondary}`}>
                 Substrate
               </label>
-              <select 
+              <select
                 value={substrate}
-                onChange={(e) => onSubstrateChange(e.target.value)}
+                onChange={e => onSubstrateChange(e.target.value)}
                 className={`w-full text-xs px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${themeClasses.input}`}
               >
                 <option value="">Select...</option>
@@ -278,9 +300,9 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               <label className={`block text-xs font-medium mb-1.5 ${themeClasses.textSecondary}`}>
                 Nucleophile
               </label>
-              <select 
+              <select
                 value={nucleophile}
-                onChange={(e) => onNucleophileChange(e.target.value)}
+                onChange={e => onNucleophileChange(e.target.value)}
                 className={`w-full text-xs px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${themeClasses.input}`}
               >
                 <option value="">Select...</option>
@@ -292,30 +314,31 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               </select>
             </div>
           </div>
-          
+
           {/* Concentration Slider */}
-          <div className={`p-4 rounded-lg ${themeClasses.card} border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10`}>
+          <div
+            className={`p-4 rounded-lg ${themeClasses.card} border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10`}
+          >
             <div className="flex items-center justify-between mb-3">
-              <label className={`text-sm font-semibold ${themeClasses.text}`}>
-                Concentration
-              </label>
+              <label className={`text-sm font-semibold ${themeClasses.text}`}>Concentration</label>
               <span className={`text-xs font-medium text-purple-600 dark:text-purple-400`}>
                 {calculatedParticleCount} pairs
               </span>
             </div>
             <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
-              {concentration.toFixed(3)} <span className={`text-sm font-normal ${themeClasses.textSecondary}`}>mol/L</span>
+              {concentration.toFixed(3)}{' '}
+              <span className={`text-sm font-normal ${themeClasses.textSecondary}`}>mol/L</span>
             </div>
             <div className={`text-xs ${themeClasses.textSecondary} mb-2 italic`}>
               Realistic: showing actual molecules in tiny sample volume
             </div>
-            <input 
+            <input
               type="range"
               min="0.001"
               max="10"
               step="0.001"
               value={concentration}
-              onChange={(e) => onConcentrationChange?.(parseFloat(e.target.value))}
+              onChange={e => onConcentrationChange?.(parseFloat(e.target.value))}
               className="slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
             <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-2`}>
@@ -325,13 +348,13 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               <span>10 M</span>
             </div>
           </div>
-          
+
           {/* Temperature Slider - Lab Realistic */}
-          <div className={`p-4 rounded-lg ${themeClasses.card} border border-orange-500/20 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10`}>
+          <div
+            className={`p-4 rounded-lg ${themeClasses.card} border border-orange-500/20 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10`}
+          >
             <div className="mb-3 flex items-center gap-2">
-              <label className={`text-sm font-semibold ${themeClasses.text}`}>
-                Temperature
-              </label>
+              <label className={`text-sm font-semibold ${themeClasses.text}`}>Temperature</label>
               <InfoBubble
                 term="Temperature & Molecular Velocity"
                 explanation={`Temperature controls molecular motion through the Maxwell-Boltzmann distribution. 
@@ -363,15 +386,13 @@ Where reaction rate k increases exponentially with temperature T.`}
                 size="small"
               />
             </div>
-            
+
             {/* Temperature Display - Dual Units */}
             <div className="flex items-baseline gap-2 mb-3">
               <div className={`text-3xl font-bold ${themeClasses.text}`}>
                 {Math.round(temperature - 273.15)}
               </div>
-              <div className={`text-lg font-medium ${themeClasses.textSecondary}`}>
-                °C
-              </div>
+              <div className={`text-lg font-medium ${themeClasses.textSecondary}`}>°C</div>
               <div className={`text-lg font-medium ${themeClasses.textSecondary} ml-2`}>
                 ({temperature} K)
               </div>
@@ -384,21 +405,27 @@ Where reaction rate k increases exponentially with temperature T.`}
               const kineticEnergy = tempFactor * 2.5; // Base kinetic energy at room temp (~2.5 kJ/mol)
               const activationEnergy = 30; // kJ/mol for SN2
               const energyRatio = kineticEnergy / activationEnergy;
-              
+
               return (
                 <div className="mb-3 text-xs">
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`${themeClasses.textSecondary}`}>Molecular Kinetic Energy</span>
-                    <span className={`font-medium ${energyRatio >= 0.1 ? 'text-orange-600 dark:text-orange-400' : themeClasses.textSecondary}`}>
+                    <span className={`${themeClasses.textSecondary}`}>
+                      Molecular Kinetic Energy
+                    </span>
+                    <span
+                      className={`font-medium ${energyRatio >= 0.1 ? 'text-orange-600 dark:text-orange-400' : themeClasses.textSecondary}`}
+                    >
                       {kineticEnergy.toFixed(1)} kJ/mol
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                    <div 
+                    <div
                       className={`h-1.5 rounded-full transition-all ${
-                        temperature < 298 ? 'bg-blue-500' :
-                        temperature < 373 ? 'bg-orange-500' :
-                        'bg-red-500'
+                        temperature < 298
+                          ? 'bg-blue-500'
+                          : temperature < 373
+                            ? 'bg-orange-500'
+                            : 'bg-red-500'
                       }`}
                       style={{ width: `${Math.min(100, (tempFactor / 1.5) * 100)}%` }}
                     />
@@ -406,15 +433,15 @@ Where reaction rate k increases exponentially with temperature T.`}
                 </div>
               );
             })()}
-            
+
             {/* Temperature Slider */}
-            <input 
+            <input
               type="range"
               min="200"
               max="473"
               step="1"
               value={temperature}
-              onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
+              onChange={e => onTemperatureChange?.(parseInt(e.target.value))}
               className="slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, 
@@ -425,10 +452,10 @@ Where reaction rate k increases exponentially with temperature T.`}
                   #f97316 ${((298 - 200) / (473 - 200)) * 100}%,
                   #f97316 ${((373 - 200) / (473 - 200)) * 100}%,
                   #ef4444 ${((373 - 200) / (473 - 200)) * 100}%,
-                  #dc2626 100%)`
+                  #dc2626 100%)`,
               }}
             />
-            
+
             {/* Lab Temperature Markers */}
             <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-2`}>
               <div className="text-center">
@@ -452,15 +479,20 @@ Where reaction rate k increases exponentially with temperature T.`}
                 <div className="text-red-500">200°C</div>
               </div>
             </div>
-            
+
             {/* Scientific Info */}
             <div className={`mt-3 text-xs italic ${themeClasses.textSecondary}`}>
-              {temperature < 200 ? 'Cryogenic - extremely slow' :
-               temperature < 273 ? 'Very cold - very slow reactions' :
-               temperature < 298 ? 'Cold - slow reactions' :
-               temperature < 310 ? 'Room temperature - typical lab conditions' :
-               temperature < 373 ? 'Warm - increased reaction rate' :
-               'Hot - fast reactions'}
+              {temperature < 200
+                ? 'Cryogenic - extremely slow'
+                : temperature < 273
+                  ? 'Very cold - very slow reactions'
+                  : temperature < 298
+                    ? 'Cold - slow reactions'
+                    : temperature < 310
+                      ? 'Room temperature - typical lab conditions'
+                      : temperature < 373
+                        ? 'Warm - increased reaction rate'
+                        : 'Hot - fast reactions'}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { IdealButton } from './IdealButton';
 
 interface AttackModeSelectorProps {
@@ -12,7 +12,7 @@ export const AttackModeSelector: React.FC<AttackModeSelectorProps> = ({
   attackAngle,
   onAttackAngleChange,
   reactionType,
-  themeClasses
+  themeClasses,
 }) => {
   // Get ideal angle for current reaction type
   const getIdealAngle = () => {
@@ -39,7 +39,7 @@ export const AttackModeSelector: React.FC<AttackModeSelectorProps> = ({
           themeClasses={themeClasses}
         />
       </div>
-      
+
       {/* Angle Slider */}
       <div className="mb-3">
         <input
@@ -47,7 +47,7 @@ export const AttackModeSelector: React.FC<AttackModeSelectorProps> = ({
           min="0"
           max="180"
           value={attackAngle}
-          onChange={(e) => onAttackAngleChange(parseInt(e.target.value))}
+          onChange={e => onAttackAngleChange(parseInt(e.target.value))}
           className="slider w-full"
         />
         <div className="flex justify-between text-xs text-gray-500 mt-1">

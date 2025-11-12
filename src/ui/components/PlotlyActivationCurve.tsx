@@ -1,19 +1,20 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Plotly from 'plotly.js-dist-min';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface EnergyProfileData {
-  reactantEnergy: number;      // Starting energy (typically 0)
-  activationEnergy: number;    // Ea - height above reactants
-  enthalpyChange: number;      // ΔH - final energy relative to reactants
-  reactionProgress: number;    // 0-1 for animation
-  reactionType: string;        // SN1, SN2, E2, etc.
-  currentVelocity?: number;    // For kinetic energy calculations
-  temperature?: number;        // For rate calculations
-  distance?: number;          // Current molecular distance
-  timeToCollision?: number;   // Time until collision
+  reactantEnergy: number; // Starting energy (typically 0)
+  activationEnergy: number; // Ea - height above reactants
+  enthalpyChange: number; // ΔH - final energy relative to reactants
+  reactionProgress: number; // 0-1 for animation
+  reactionType: string; // SN1, SN2, E2, etc.
+  currentVelocity?: number; // For kinetic energy calculations
+  temperature?: number; // For rate calculations
+  distance?: number; // Current molecular distance
+  timeToCollision?: number; // Time until collision
   reactionProbability?: number; // Probability of reaction
-  substrateMass?: number;      // Molecular mass of substrate (kg/mol)
-  nucleophileMass?: number;   // Molecular mass of nucleophile (kg/mol)
+  substrateMass?: number; // Molecular mass of substrate (kg/mol)
+  nucleophileMass?: number; // Molecular mass of nucleophile (kg/mol)
 }
 
 interface PlotlyActivationCurveProps {
@@ -29,17 +30,17 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
   isAnimating,
   width = 600,
   height = 120,
-  className = ""
+  className = '',
 }) => {
   const plotRef = useRef<HTMLDivElement>(null);
   const plotlyInstanceRef = useRef<any>(null);
   const [isPlotReady, setIsPlotReady] = useState(false);
 
-  const { 
-    reactantEnergy, 
-    activationEnergy, 
-    enthalpyChange, 
-    reactionProgress, 
+  const {
+    reactantEnergy,
+    activationEnergy,
+    enthalpyChange,
+    reactionProgress,
     reactionType,
     currentVelocity = 0,
     temperature = 298,
@@ -47,7 +48,7 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
     timeToCollision = 0,
     reactionProbability = 0,
     substrateMass = 0.028,
-    nucleophileMass = 0.017
+    nucleophileMass = 0.017,
   } = data;
 
   // Calculate key thermodynamic points
@@ -62,13 +63,13 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
 
     // Define key anchor points for continuity
     const anchorPoints = [
-      { x: 0.0, y: reactantEnergy },           // Reactants
-      { x: 0.1, y: reactantEnergy + 2 },      // Early approach
-      { x: 0.3, y: reactantEnergy + 8 },      // Intermediate
-      { x: 0.5, y: transitionStateEnergy },  // Transition state
+      { x: 0.0, y: reactantEnergy }, // Reactants
+      { x: 0.1, y: reactantEnergy + 2 }, // Early approach
+      { x: 0.3, y: reactantEnergy + 8 }, // Intermediate
+      { x: 0.5, y: transitionStateEnergy }, // Transition state
       { x: 0.7, y: transitionStateEnergy - 8 }, // Post-TS
-      { x: 0.9, y: productEnergy + 2 },       // Near products
-      { x: 1.0, y: productEnergy }            // Products
+      { x: 0.9, y: productEnergy + 2 }, // Near products
+      { x: 1.0, y: productEnergy }, // Products
     ];
 
     // Apply Hammond's postulate adjustments
@@ -81,10 +82,11 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
 
     // Adjust anchor points based on Hammond's postulate
     const adjustedPoints = anchorPoints.map((point, index) => {
-      if (index === 2) { // Intermediate point
+      if (index === 2) {
+        // Intermediate point
         return {
           x: point.x,
-          y: point.y + (hammondFactor - 1) * 5
+          y: point.y + (hammondFactor - 1) * 5,
         };
       }
       return point;
@@ -99,7 +101,7 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
       let leftPoint = adjustedPoints[0];
       let rightPoint = adjustedPoints[adjustedPoints.length - 1];
       let segmentIndex = 0;
-      
+
       for (let j = 0; j < adjustedPoints.length - 1; j++) {
         if (xi >= adjustedPoints[j].x && xi <= adjustedPoints[j + 1].x) {
           leftPoint = adjustedPoints[j];
@@ -113,7 +115,7 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
       const t = (xi - leftPoint.x) / (rightPoint.x - leftPoint.x);
       const t2 = t * t;
       const t3 = t2 * t;
-      
+
       // Hermite interpolation for smooth derivatives
       const h1 = 2 * t3 - 3 * t2 + 1;
       const h2 = -2 * t3 + 3 * t2;
@@ -121,13 +123,18 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
       const h4 = t3 - t2;
 
       // Calculate derivatives at anchor points for smoothness
-      const leftDerivative = segmentIndex > 0 ? 
-        (adjustedPoints[segmentIndex].y - adjustedPoints[segmentIndex-1].y) / (adjustedPoints[segmentIndex].x - adjustedPoints[segmentIndex-1].x) : 0;
-      const rightDerivative = segmentIndex < adjustedPoints.length - 1 ? 
-        (adjustedPoints[segmentIndex+1].y - adjustedPoints[segmentIndex].y) / (adjustedPoints[segmentIndex+1].x - adjustedPoints[segmentIndex].x) : 0;
+      const leftDerivative =
+        segmentIndex > 0
+          ? (adjustedPoints[segmentIndex].y - adjustedPoints[segmentIndex - 1].y) /
+            (adjustedPoints[segmentIndex].x - adjustedPoints[segmentIndex - 1].x)
+          : 0;
+      const rightDerivative =
+        segmentIndex < adjustedPoints.length - 1
+          ? (adjustedPoints[segmentIndex + 1].y - adjustedPoints[segmentIndex].y) /
+            (adjustedPoints[segmentIndex + 1].x - adjustedPoints[segmentIndex].x)
+          : 0;
 
-      energy = h1 * leftPoint.y + h2 * rightPoint.y + 
-               h3 * leftDerivative + h4 * rightDerivative;
+      energy = h1 * leftPoint.y + h2 * rightPoint.y + h3 * leftDerivative + h4 * rightDerivative;
 
       x.push(xi);
       y.push(energy);
@@ -139,13 +146,10 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
   // Calculate current ball position for animation
   const getBallPosition = () => {
     const { x: curveX, y: curveY } = generateActivationCurve();
-    const index = Math.min(
-      Math.floor(reactionProgress * (curveX.length - 1)),
-      curveX.length - 1
-    );
+    const index = Math.min(Math.floor(reactionProgress * (curveX.length - 1)), curveX.length - 1);
     return {
       x: curveX[index] || 0,
-      y: curveY[index] || reactantEnergy
+      y: curveY[index] || reactantEnergy,
     };
   };
 
@@ -153,9 +157,9 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
   const calculateKineticEnergy = () => {
     // Use reduced mass for collision energy calculation
     const reducedMass = (substrateMass * nucleophileMass) / (substrateMass + nucleophileMass);
-    
+
     // Convert velocity (m/s) to kinetic energy (kJ/mol)
-    const kineticEnergyJ = 0.5 * reducedMass * Math.pow(currentVelocity, 2);
+    const kineticEnergyJ = 0.5 * reducedMass * currentVelocity ** 2;
     return (kineticEnergyJ * 6.022e23) / 1000; // Convert to kJ/mol
   };
 
@@ -178,13 +182,13 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
           color: '#2563eb',
           width: 3,
           shape: 'spline',
-          smoothing: 0.3
+          smoothing: 0.3,
         },
         name: 'Energy Profile',
         hovertemplate: '<b>Energy:</b> %{y:.1f} kJ/mol<br><b>Progress:</b> %{x:.1%}<extra></extra>',
-        showlegend: false
+        showlegend: false,
       },
-      
+
       // Key state markers
       {
         x: [0, 0.5, 1],
@@ -195,26 +199,26 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
           size: [10, 10, 10],
           color: ['#3b82f6', '#dc2626', '#059669'],
           line: { color: 'white', width: 2 },
-          symbol: 'circle'
+          symbol: 'circle',
         },
         text: ['R', 'TS', 'P'],
         textposition: ['bottom center', 'top center', 'bottom center'],
-        textfont: { 
-          size: 10, 
+        textfont: {
+          size: 10,
           color: '#374151',
-          family: 'Inter, system-ui, sans-serif'
+          family: 'Inter, system-ui, sans-serif',
         },
         name: 'Key States',
         hovertemplate: '<b>%{text}</b><br><b>Energy:</b> %{y:.1f} kJ/mol<extra></extra>',
-        showlegend: false
-      }
+        showlegend: false,
+      },
     ];
 
     // Add kinetic energy threshold line if velocity is set
     if (currentVelocity > 0) {
       const thresholdEnergy = reactantEnergy + kineticEnergy;
       const willReact = kineticEnergy >= activationEnergy;
-      
+
       traces.push({
         x: [0, 1],
         y: [thresholdEnergy, thresholdEnergy],
@@ -223,11 +227,11 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
         line: {
           color: willReact ? '#059669' : '#dc2626',
           width: 2,
-          dash: 'dash'
+          dash: 'dash',
         },
         name: 'Kinetic Energy',
         hovertemplate: `<b>Kinetic Energy:</b> ${kineticEnergy.toFixed(1)} kJ/mol<br><b>Status:</b> ${willReact ? 'Sufficient' : 'Insufficient'}<br><b>Distance:</b> ${distance.toFixed(1)} Å<br><b>Time to Collision:</b> ${timeToCollision.toFixed(2)}s<br><b>Reaction Probability:</b> ${(reactionProbability * 100).toFixed(1)}%<extra></extra>`,
-        showlegend: false
+        showlegend: false,
       });
     }
 
@@ -242,11 +246,11 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
           size: 12,
           color: '#f59e0b',
           line: { color: '#ffffff', width: 2 },
-          symbol: 'circle'
+          symbol: 'circle',
         },
         name: 'Reaction Progress',
         hovertemplate: '<b>Current Position</b><br><b>Energy:</b> %{y:.1f} kJ/mol<extra></extra>',
-        showlegend: false
+        showlegend: false,
       });
     }
 
@@ -255,15 +259,15 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
       width: width,
       height: height,
       margin: { l: 60, r: 20, t: 20, b: 30 },
-      
+
       xaxis: {
         title: {
           text: 'Reaction Direction →',
-          font: { 
-            size: 11, 
+          font: {
+            size: 11,
             color: '#6b7280',
-            family: 'Inter, system-ui, sans-serif'
-          }
+            family: 'Inter, system-ui, sans-serif',
+          },
         },
         showgrid: true,
         gridcolor: '#f3f4f6',
@@ -271,26 +275,26 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
         showline: true,
         linecolor: '#d1d5db',
         linewidth: 1,
-            tickmode: 'array' as const,
+        tickmode: 'array' as const,
         tickvals: [0, 0.5, 1],
         ticktext: ['Reactants', 'Transition State', 'Products'],
-        tickfont: { 
-          size: 8, 
+        tickfont: {
+          size: 8,
           color: '#6b7280',
-          family: 'Inter, system-ui, sans-serif'
+          family: 'Inter, system-ui, sans-serif',
         },
         range: [-0.02, 1.02],
-        zeroline: false
+        zeroline: false,
       },
-      
+
       yaxis: {
         title: {
           text: 'Energy (kJ/mol)',
-          font: { 
-            size: 11, 
+          font: {
+            size: 11,
             color: '#6b7280',
-            family: 'Inter, system-ui, sans-serif'
-          }
+            family: 'Inter, system-ui, sans-serif',
+          },
         },
         showgrid: true,
         gridcolor: '#f3f4f6',
@@ -298,23 +302,20 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
         showline: true,
         linecolor: '#d1d5db',
         linewidth: 1,
-        tickfont: { 
-          size: 9, 
+        tickfont: {
+          size: 9,
           color: '#6b7280',
-          family: 'Inter, system-ui, sans-serif'
+          family: 'Inter, system-ui, sans-serif',
         },
-        range: [
-          Math.min(reactantEnergy, productEnergy) - 15,
-          transitionStateEnergy + 15
-        ],
-        zeroline: false
+        range: [Math.min(reactantEnergy, productEnergy) - 15, transitionStateEnergy + 15],
+        zeroline: false,
       },
-      
+
       plot_bgcolor: 'white',
       paper_bgcolor: 'white',
-      
+
       showlegend: false,
-      
+
       // Scientific annotations
       annotations: [
         // Activation energy arrow and label
@@ -329,17 +330,17 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
           arrowsize: 0.8,
           ax: -25,
           ay: 0,
-          font: { 
-            size: 10, 
+          font: {
+            size: 10,
             color: '#dc2626',
-            family: 'Inter, system-ui, sans-serif'
+            family: 'Inter, system-ui, sans-serif',
           },
           bgcolor: 'rgba(255,255,255,0.9)',
           bordercolor: '#dc2626',
           borderwidth: 1,
-          borderpad: 2
+          borderpad: 2,
         },
-        
+
         // Enthalpy change arrow and label
         {
           x: 0.8,
@@ -352,17 +353,17 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
           arrowsize: 0.8,
           ax: 25,
           ay: 0,
-          font: { 
-            size: 10, 
+          font: {
+            size: 10,
             color: enthalpyChange < 0 ? '#059669' : '#f59e0b',
-            family: 'Inter, system-ui, sans-serif'
+            family: 'Inter, system-ui, sans-serif',
           },
           bgcolor: 'rgba(255,255,255,0.9)',
           bordercolor: enthalpyChange < 0 ? '#059669' : '#f59e0b',
           borderwidth: 1,
-          borderpad: 2
-        }
-      ]
+          borderpad: 2,
+        },
+      ],
     };
 
     const config = {
@@ -370,7 +371,7 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
       responsive: true,
       staticPlot: false,
       scrollZoom: false,
-      doubleClick: 'reset'
+      doubleClick: 'reset',
     };
 
     // Create or update plot
@@ -398,7 +399,7 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
     reactionProbability,
     substrateMass,
     nucleophileMass,
-    isAnimating
+    isAnimating,
   ]);
 
   // Initialize and update plot
@@ -419,12 +420,8 @@ export const PlotlyActivationCurve: React.FC<PlotlyActivationCurveProps> = ({
 
   return (
     <div className={`w-full ${className}`}>
-      <div 
-        ref={plotRef} 
-        className="w-full"
-        style={{ minHeight: height }}
-      />
-      
+      <div ref={plotRef} className="w-full" style={{ minHeight: height }} />
+
       {!isPlotReady && (
         <div className="flex items-center justify-center h-24">
           <div className="text-gray-500 text-sm">Loading energy profile...</div>

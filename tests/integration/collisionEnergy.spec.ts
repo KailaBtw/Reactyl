@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactionDetector } from '../../src/chemistry/reactionDetector';
 
 describe('Collision Energy Integration', () => {
@@ -175,7 +175,7 @@ describe('Collision Energy Integration', () => {
       { mass1: 0.1, mass2: 0.1, velocity: 0.1 },
       { mass1: 1000, mass2: 1000, velocity: 1000 },
       { mass1: 1e-6, mass2: 1e-6, velocity: 1e-6 },
-      { mass1: 1e6, mass2: 1e6, velocity: 1e6 }
+      { mass1: 1e6, mass2: 1e6, velocity: 1e6 },
     ];
 
     testCases.forEach(({ mass1, mass2, velocity }) => {

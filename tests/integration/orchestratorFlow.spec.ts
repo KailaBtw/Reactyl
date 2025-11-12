@@ -1,28 +1,32 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import * as strategies from '../../src/config/moleculePositioning';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reactionAnimationManager } from '../../src/animations/ReactionAnimationManager';
+import * as strategies from '../../src/config/moleculePositioning';
 import { collisionEventSystem } from '../../src/physics/collisionEventSystem';
+import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 
 // Spy-safe patching for animation manager
-vi.mock('../../src/animations/ReactionAnimationManager', async (orig) => {
+vi.mock('../../src/animations/ReactionAnimationManager', async orig => {
   const actual = await (orig as any)();
   return {
     ...actual,
     reactionAnimationManager: {
       ...actual.reactionAnimationManager,
-      animateSN2Reaction: vi.fn().mockReturnValue({ run: vi.fn() })
-    }
+      animateSN2Reaction: vi.fn().mockReturnValue({ run: vi.fn() }),
+    },
   };
 });
 
 const moleculeStore: Record<string, any> = {};
 const moleculeManager: any = {
-  addMolecule: vi.fn((name: string, mol: any) => { moleculeStore[name] = mol; }),
+  addMolecule: vi.fn((name: string, mol: any) => {
+    moleculeStore[name] = mol;
+  }),
   getAllMolecules: vi.fn().mockReturnValue([]),
   getMolecule: vi.fn((name: string) => moleculeStore[name]),
-  clearAllMolecules: vi.fn(() => { Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]); })
+  clearAllMolecules: vi.fn(() => {
+    Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]);
+  }),
 };
 
 describe('ReactionOrchestrator flow', () => {
@@ -41,31 +45,33 @@ describe('ReactionOrchestrator flow', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Substrate' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Nucleophile' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     // Mock loadMolecule to avoid network
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      const pos = position || { x: 0, y: 0, z: 0 };
-      group.position.set(
-        isNaN(pos.x) ? 0 : pos.x,
-        isNaN(pos.y) ? 0 : pos.y,
-        isNaN(pos.z) ? 0 : pos.z
-      );
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(), 
-        physicsBody: { 
-          quaternion: new THREE.Quaternion(),
-          velocity: { x: 0, y: 0, z: 0 }
-        } 
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        const pos = position || { x: 0, y: 0, z: 0 };
+        group.position.set(
+          isNaN(pos.x) ? 0 : pos.x,
+          isNaN(pos.y) ? 0 : pos.y,
+          isNaN(pos.z) ? 0 : pos.z
+        );
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: {
+            quaternion: new THREE.Quaternion(),
+            velocity: { x: 0, y: 0, z: 0 },
+          },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Spy orientation method (orchestrator uses its own orientMoleculesForReaction, not getOrientationStrategy)
     const orientSpy = vi.spyOn<any, any>(orchestrator as any, 'orientMoleculesForReaction');
@@ -77,16 +83,32 @@ describe('ReactionOrchestrator flow', () => {
     expect(orientSpy).toHaveBeenCalledWith('sn2');
 
     // Emit a synthetic collision reaction to trigger animation
-    const sub: any = { name: 'Substrate', group: new THREE.Group(), velocity: new THREE.Vector3(), molecularProperties: { totalMass: 50 } };
-    const nuc: any = { name: 'Nucleophile', group: new THREE.Group(), velocity: new THREE.Vector3(), molecularProperties: { totalMass: 17 } };
+    const sub: any = {
+      name: 'Substrate',
+      group: new THREE.Group(),
+      velocity: new THREE.Vector3(),
+      molecularProperties: { totalMass: 50 },
+    };
+    const nuc: any = {
+      name: 'Nucleophile',
+      group: new THREE.Group(),
+      velocity: new THREE.Vector3(),
+      molecularProperties: { totalMass: 17 },
+    };
     collisionEventSystem.emitCollision({
       type: 'reaction',
       reactionType: 'sn2',
       moleculeA: sub,
       moleculeB: nuc,
       relativeVelocity: new THREE.Vector3(0, 0, 5),
-      reactionResult: { occurs: true, probability: 1, reactionType: { key: 'sn2' }, substrate: sub, nucleophile: nuc },
-      collisionData: { approachAngle: 180 }
+      reactionResult: {
+        occurs: true,
+        probability: 1,
+        reactionType: { key: 'sn2' },
+        substrate: sub,
+        nucleophile: nuc,
+      },
+      collisionData: { approachAngle: 180 },
     } as any);
 
     await new Promise(r => setTimeout(r, 10));
@@ -99,5 +121,3 @@ describe('ReactionOrchestrator flow', () => {
     expect(nucleophileArg?.group?.isObject3D).toBe(true);
   });
 });
-
-

@@ -1,8 +1,15 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { MolecularProperties } from '../chemistry/molecularPropertiesCalculator';
+import { workerManager } from '../services/workerManager';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
+import type {
+  PhysicsWorkerMessage,
+  SerializableBodyData,
+  SerializableCollisionPair,
+} from '../workers/types';
+import { deserializeBodyData, serializeBodyData } from '../workers/utils';
 import { collisionEventSystem, createCollisionEvent } from './collisionEventSystem';
 
 // Extend Cannon.js Body type to include userData
@@ -37,6 +44,10 @@ export class CannonPhysicsEngine {
   private timeScale = 1.0;
   // Queue for collision events so we don't emit during Cannon internal step
   private pendingCollisionPairs: Array<{ a: MoleculeGroup; b: MoleculeGroup }> = [];
+  // Worker support
+  private useWorker = false; // Feature flag - disabled by default
+  private workerInitialized = false;
+  private pendingStepPromise: Promise<void> | null = null;
 
   constructor() {
     log('Initializing Cannon.js Physics Engine...');
@@ -71,6 +82,85 @@ export class CannonPhysicsEngine {
     this.setupCollisionEvents();
 
     log('Cannon.js Physics Engine initialized successfully');
+  }
+
+  /**
+   * Enable physics worker (feature flag)
+   */
+  async enableWorker(): Promise<void> {
+    if (this.useWorker) {
+      return; // Already enabled
+    }
+
+    try {
+      await workerManager.enablePhysicsWorker();
+      await this.initializeWorker();
+      this.useWorker = true;
+      log('Physics worker enabled');
+    } catch (error) {
+      console.error('Failed to enable physics worker:', error);
+      this.useWorker = false;
+    }
+  }
+
+  /**
+   * Disable physics worker
+   */
+  disableWorker(): void {
+    if (!this.useWorker) {
+      return;
+    }
+
+    this.useWorker = false;
+    workerManager.disablePhysicsWorker();
+    this.workerInitialized = false;
+    log('Physics worker disabled');
+  }
+
+  /**
+   * Check if worker is enabled
+   */
+  isWorkerEnabled(): boolean {
+    return this.useWorker && workerManager.isPhysicsWorkerEnabled();
+  }
+
+  /**
+   * Initialize physics worker with current world state
+   */
+  private async initializeWorker(): Promise<void> {
+    if (this.workerInitialized) {
+      return;
+    }
+
+    try {
+      // Send world config to worker
+      const message: PhysicsWorkerMessage = {
+        type: 'init',
+        worldConfig: {
+          gravity: { x: 0, y: 0, z: 0 },
+          timeScale: this.timeScale,
+          fixedTimeStep: 1 / 60,
+          maxSubSteps: 2,
+        },
+      };
+
+      await workerManager.sendPhysicsMessage(message);
+
+      // Send all existing bodies to worker
+      for (const [id, bodyData] of this.moleculeBodies.entries()) {
+        const serialized = serializeBodyData(bodyData.body, id);
+        await workerManager.sendPhysicsMessage({
+          type: 'addBody',
+          bodyData: serialized,
+        });
+      }
+
+      this.workerInitialized = true;
+      log('Physics worker initialized with current world state');
+    } catch (error) {
+      console.error('Failed to initialize physics worker:', error);
+      throw error;
+    }
   }
 
   /**
@@ -114,16 +204,16 @@ export class CannonPhysicsEngine {
       // Angular velocity is proportional to linear velocity for realistic motion
       const linearSpeed = Math.sqrt(
         molecule.velocity.x * molecule.velocity.x +
-        molecule.velocity.y * molecule.velocity.y +
-        molecule.velocity.z * molecule.velocity.z
+          molecule.velocity.y * molecule.velocity.y +
+          molecule.velocity.z * molecule.velocity.z
       );
       // Angular velocity in rad/s - molecules rotate as they move
       // Scale: ~0.5-2.0 rad/s for typical molecular speeds
       const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
       const angularDirection = new CANNON.Vec3(
-        (Math.random() - 0.5),
-        (Math.random() - 0.5),
-        (Math.random() - 0.5)
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+        Math.random() - 0.5
       ).unit();
       body.angularVelocity.set(
         angularDirection.x * angularSpeed,
@@ -145,7 +235,7 @@ export class CannonPhysicsEngine {
       (body as CannonBodyWithUserData).userData = {
         molecule: molecule,
         moleculeId: molecule.id,
-        lastSync: performance.now()
+        lastSync: performance.now(),
       };
 
       // Add to world
@@ -157,13 +247,30 @@ export class CannonPhysicsEngine {
         molecule,
         lastSync: performance.now(),
       });
-      
+
       // Store body reference directly on molecule for faster access
       molecule.physicsBody = body;
       molecule.hasPhysics = true;
-      
+
+      // Add to worker if enabled
+      if (this.useWorker && this.workerInitialized && workerManager.isPhysicsWorkerEnabled()) {
+        try {
+          const serialized = serializeBodyData(body, molecule.id);
+          workerManager
+            .sendPhysicsMessage({
+              type: 'addBody',
+              bodyData: serialized,
+            })
+            .catch(error => {
+              console.error('Failed to add body to worker:', error);
+            });
+        } catch (error) {
+          console.error('Error adding body to worker:', error);
+        }
+      }
+
       // Debug logging removed for performance
-      
+
       return true;
     } catch (error) {
       log(`Physics engine error for ${molecule.name}: ${error}`);
@@ -177,7 +284,7 @@ export class CannonPhysicsEngine {
   removeMolecule(molecule: MoleculeGroup): void {
     // Use physicsBody directly from molecule if available, otherwise fall back to map lookup
     const body = molecule.physicsBody || this.moleculeBodies.get(molecule.id)?.body;
-    
+
     if (body) {
       const bodyWithData = body as CannonBodyWithUserData;
       // Clear userData reference (physics and visual stored together!)
@@ -185,10 +292,26 @@ export class CannonPhysicsEngine {
         bodyWithData.userData.molecule = undefined;
         bodyWithData.userData.moleculeId = undefined;
       }
-      
+
+      // Remove from worker if enabled
+      if (this.useWorker && this.workerInitialized && workerManager.isPhysicsWorkerEnabled()) {
+        try {
+          workerManager
+            .sendPhysicsMessage({
+              type: 'removeBody',
+              id: molecule.id,
+            })
+            .catch(error => {
+              console.error('Failed to remove body from worker:', error);
+            });
+        } catch (error) {
+          console.error('Error removing body from worker:', error);
+        }
+      }
+
       this.world.removeBody(body);
       this.moleculeBodies.delete(molecule.id);
-      
+
       // Clear the physicsBody reference
       molecule.physicsBody = undefined;
       molecule.hasPhysics = false;
@@ -209,6 +332,85 @@ export class CannonPhysicsEngine {
       return;
     }
 
+    // Use worker if enabled and initialized (fire-and-forget for non-blocking)
+    if (this.useWorker && this.workerInitialized && workerManager.isPhysicsWorkerEnabled()) {
+      // Fire-and-forget: don't block render loop
+      // If worker is slow, we'll fall back to main thread on next frame
+      if (!this.pendingStepPromise) {
+        this.pendingStepPromise = this.stepWithWorker(deltaTime).finally(() => {
+          this.pendingStepPromise = null;
+        });
+      }
+      // Fallback to main thread if worker is busy
+      return;
+    }
+
+    // Fallback to main thread stepping
+    this.stepOnMainThread(deltaTime);
+  }
+
+  /**
+   * Step physics simulation using worker
+   */
+  private async stepWithWorker(deltaTime: number): Promise<void> {
+    try {
+      // Send all body states to worker
+      const bodyStates: SerializableBodyData[] = [];
+      for (const [id, bodyData] of this.moleculeBodies.entries()) {
+        bodyStates.push(serializeBodyData(bodyData.body, id));
+      }
+
+      // Send step message to worker
+      const message: PhysicsWorkerMessage = {
+        type: 'step',
+        deltaTime: deltaTime * this.timeScale,
+      };
+
+      // Batch update bodies in worker (more efficient)
+      if (bodyStates.length > 0) {
+        const updateMessages = bodyStates.map(bodyState => ({
+          type: 'updateBody' as const,
+          bodyData: bodyState,
+        }));
+        await workerManager.batchSendPhysicsMessages(updateMessages);
+      }
+
+      // Step worker simulation
+      const response = await workerManager.sendPhysicsMessage(message);
+
+      if (response.type === 'stepComplete' && response.updatedBodies) {
+        // Apply updated body states from worker
+        for (const updatedBody of response.updatedBodies) {
+          const bodyData = this.moleculeBodies.get(updatedBody.id);
+          if (bodyData) {
+            deserializeBodyData(bodyData.body, updatedBody);
+            // Sync to visual
+            const bodyWithData = bodyData.body as CannonBodyWithUserData;
+            const molecule = bodyWithData.userData?.molecule as MoleculeGroup | undefined;
+            if (molecule) {
+              this.syncBodyToVisual(bodyData.body, molecule);
+            }
+          }
+        }
+
+        // Process collisions from worker
+        if (response.collisions) {
+          this.processWorkerCollisions(response.collisions);
+        }
+      }
+    } catch (error) {
+      console.error('Physics worker step failed, falling back to main thread:', error);
+      // Fallback to main thread
+      this.stepOnMainThread(deltaTime);
+      // Disable worker on error
+      this.disableWorker();
+    }
+  }
+
+  /**
+   * Step physics simulation on main thread (original implementation)
+   */
+  private stepOnMainThread(deltaTime: number): void {
     // Apply time scale
     const scaledDeltaTime = deltaTime * this.timeScale;
 
@@ -227,27 +429,28 @@ export class CannonPhysicsEngine {
     let awakeCount = 0;
     let movingCount = 0;
     let totalVelMag = 0;
-    
+
     for (const body of this.world.bodies) {
       const bodyWithData = body as CannonBodyWithUserData;
       // Skip if not a molecule body (no userData)
       if (!bodyWithData.userData || !bodyWithData.userData.molecule) {
         continue;
       }
-      
+
       const molecule = bodyWithData.userData.molecule as MoleculeGroup;
-      
+
       // Wake up bodies that have velocity but are sleeping
       // Cannon.js: sleepState 0 = AWAKE, 1 = SLEEPY, 2 = SLEEPING
-      const velSq = body.velocity.x * body.velocity.x + 
-                    body.velocity.y * body.velocity.y + 
-                    body.velocity.z * body.velocity.z;
+      const velSq =
+        body.velocity.x * body.velocity.x +
+        body.velocity.y * body.velocity.y +
+        body.velocity.z * body.velocity.z;
       const velMag = Math.sqrt(velSq);
-      
+
       if (velSq > 0.0001) {
         movingCount++;
         totalVelMag += velMag;
-        
+
         // CRITICAL: Keep bodies awake if they have velocity
         if (body.sleepState !== 0) {
           body.wakeUp();
@@ -256,33 +459,32 @@ export class CannonPhysicsEngine {
         body.sleepSpeedLimit = 0.0001;
         body.sleepTimeLimit = 10.0;
         body.allowSleep = false; // Disable sleep for moving bodies
-        
+
         // NO DAMPING - Newton's laws: objects in motion stay in motion
         // Ensure damping stays at 0 every frame for moving bodies
         body.linearDamping = 0.0;
         body.angularDamping = 0.0;
       }
-      
+
       if (body.sleepState === 0) {
         awakeCount++;
-    }
-      
+      }
+
       // Direct sync: physics body → visual group (stored together!)
       this.syncBodyToVisual(body, molecule);
     }
-    
 
     // Emit queued collision events AFTER stepping to avoid removing bodies during
     // Cannon's narrowphase, which can cause bi undefined errors
     if (this.pendingCollisionPairs.length > 0) {
       const pairs = this.pendingCollisionPairs.slice();
       this.pendingCollisionPairs.length = 0;
-      
+
       // Debug: Log collision detection
       if (pairs.length > 0) {
         console.log(`💥 Detected ${pairs.length} collision(s) this frame`);
       }
-      
+
       for (const { a, b } of pairs) {
         // Skip if either molecule began a reaction since queuing
         if ((a as any).reactionInProgress || (b as any).reactionInProgress) {
@@ -291,6 +493,27 @@ export class CannonPhysicsEngine {
         }
         const collisionEvent = createCollisionEvent(a, b);
         console.log(`📡 Emitting collision: ${a.name} + ${b.name}`);
+        collisionEventSystem.emitCollision(collisionEvent);
+      }
+    }
+  }
+
+  /**
+   * Process collisions from worker
+   */
+  private processWorkerCollisions(collisions: SerializableCollisionPair[]): void {
+    for (const collision of collisions) {
+      const molA = this.moleculeBodies.get(collision.bodyAId)?.molecule;
+      const molB = this.moleculeBodies.get(collision.bodyBId)?.molecule;
+
+      if (molA && molB) {
+        // Skip if either molecule is already reacting
+        if ((molA as any).reactionInProgress || (molB as any).reactionInProgress) {
+          continue;
+        }
+
+        // Create collision event
+        const collisionEvent = createCollisionEvent(molA, molB);
         collisionEventSystem.emitCollision(collisionEvent);
       }
     }
@@ -339,9 +562,11 @@ export class CannonPhysicsEngine {
     // Find the point with lowest z coordinate
     let startPoint = points[0];
     for (const point of points) {
-      if (point.z < startPoint.z || 
-          (point.z === startPoint.z && point.y < startPoint.y) ||
-          (point.z === startPoint.z && point.y === startPoint.y && point.x < startPoint.x)) {
+      if (
+        point.z < startPoint.z ||
+        (point.z === startPoint.z && point.y < startPoint.y) ||
+        (point.z === startPoint.z && point.y === startPoint.y && point.x < startPoint.x)
+      ) {
         startPoint = point;
       }
     }
@@ -358,8 +583,10 @@ export class CannonPhysicsEngine {
 
         // Check if this point is "more to the right" than nextPoint
         const cross = this.getCrossProduct(currentPoint, nextPoint, point);
-        if (cross > 0 || 
-            (cross === 0 && currentPoint.distanceTo(point) > currentPoint.distanceTo(nextPoint))) {
+        if (
+          cross > 0 ||
+          (cross === 0 && currentPoint.distanceTo(point) > currentPoint.distanceTo(nextPoint))
+        ) {
           nextPoint = point;
         }
       }
@@ -376,7 +603,7 @@ export class CannonPhysicsEngine {
   private getCrossProduct(a: CANNON.Vec3, b: CANNON.Vec3, c: CANNON.Vec3): number {
     const ab = b.clone().vsub(a);
     const ac = c.clone().vsub(a);
-    
+
     // Cross product in 2D (looking down the z-axis)
     return ab.x * ac.y - ab.y * ac.x;
   }
@@ -390,7 +617,12 @@ export class CannonPhysicsEngine {
 
     // Update Three.js position and rotation directly from physics body
     molecule.group.position.set(body.position.x, body.position.y, body.position.z);
-    molecule.group.quaternion.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
+    molecule.group.quaternion.set(
+      body.quaternion.x,
+      body.quaternion.y,
+      body.quaternion.z,
+      body.quaternion.w
+    );
 
     // Update molecule velocity for compatibility with existing systems
     molecule.velocity.set(body.velocity.x, body.velocity.y, body.velocity.z);
@@ -403,7 +635,7 @@ export class CannonPhysicsEngine {
       bodyWithData.userData.lastSync = performance.now();
     }
   }
-  
+
   /**
    * Synchronize Three.js molecule with physics body (backward compatibility)
    */
@@ -468,7 +700,6 @@ export class CannonPhysicsEngine {
       }
     }
   }
-
 
   /**
    * Get physics world for advanced operations
@@ -571,39 +802,37 @@ export class CannonPhysicsEngine {
     if (body) {
       // Set velocity directly on Cannon.js body
       body.velocity.set(velocity.x, velocity.y, velocity.z);
-      
+
       // Set realistic angular velocity for molecular rotation
       // Angular velocity is proportional to linear velocity
       const linearSpeed = Math.sqrt(
-        velocity.x * velocity.x +
-        velocity.y * velocity.y +
-        velocity.z * velocity.z
+        velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z
       );
       // Angular velocity in rad/s - molecules rotate as they move
       // Scale: ~0.5-2.0 rad/s for typical molecular speeds
       const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
       const angularDirection = new CANNON.Vec3(
-        (Math.random() - 0.5),
-        (Math.random() - 0.5),
-        (Math.random() - 0.5)
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+        Math.random() - 0.5
       ).unit();
       body.angularVelocity.set(
         angularDirection.x * angularSpeed,
         angularDirection.y * angularSpeed,
         angularDirection.z * angularSpeed
       );
-      
+
       // NO DAMPING - Newton's laws: objects in motion stay in motion
       body.linearDamping = 0.0;
       body.angularDamping = 0.0;
-      
+
       // Wake up the body so Cannon.js processes its movement
       body.wakeUp();
-      
+
       // Prevent body from sleeping immediately
       body.sleepSpeedLimit = 0.001;
       body.sleepTimeLimit = 2.0;
-      
+
       // Update the molecule's velocity property for consistency
       molecule.velocity.copy(velocity);
     }
@@ -628,13 +857,17 @@ export class CannonPhysicsEngine {
     if (body) {
       body.position.set(position.x, position.y, position.z);
       // Reduced logging frequency - only log occasionally
-      if (Math.random() < 0.01) { // Log ~1% of the time
-      log(`✅ Set position for ${molecule.name}: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+      if (Math.random() < 0.01) {
+        // Log ~1% of the time
+        log(
+          `✅ Set position for ${molecule.name}: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`
+        );
       }
     } else {
       // Only log errors occasionally
-      if (Math.random() < 0.1) { // Log ~10% of errors
-      log(`⚠️ No physics body found for ${molecule.name}`);
+      if (Math.random() < 0.1) {
+        // Log ~10% of errors
+        log(`⚠️ No physics body found for ${molecule.name}`);
       }
     }
   }
@@ -669,7 +902,12 @@ export class CannonPhysicsEngine {
   getOrientation(molecule: MoleculeGroup): THREE.Quaternion | null {
     const body = this.getPhysicsBody(molecule);
     if (body) {
-      return new THREE.Quaternion(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
+      return new THREE.Quaternion(
+        body.quaternion.x,
+        body.quaternion.y,
+        body.quaternion.z,
+        body.quaternion.w
+      );
     }
     return null;
   }

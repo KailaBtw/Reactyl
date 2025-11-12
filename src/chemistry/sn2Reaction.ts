@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { MoleculeGroup } from '../types';
-import { log } from '../utils/debug';
 import { reactionGraphics } from '../graphics/reactions';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';
+import type { MoleculeGroup } from '../types';
+import { log } from '../utils/debug';
 
 /**
  * Ultra-Simple SN2 Reaction System
@@ -54,16 +54,16 @@ export class SN2ReactionSystem {
       if (success) {
         // Step 4: Create leaving group
         const leavingGroup = this.createSimpleLeavingGroup(substrate);
-        
+
         // Step 5: Pause simulation after reaction to allow user observation
         this.pauseSimulationAfterReaction(substrate, nucleophile);
-        
+
         log('✅ Simple SN2 reaction completed');
-      return {
-        success: true,
+        return {
+          success: true,
           product: substrate, // Substrate becomes the product
-        leavingGroup
-      };
+          leavingGroup,
+        };
       } else {
         log('❌ Simple SN2 reaction failed');
         return { success: false, product: null, leavingGroup: null };
@@ -121,11 +121,11 @@ export class SN2ReactionSystem {
    */
   private createSimpleLeavingGroup(substrate: MoleculeGroup): MoleculeGroup | null {
     log('🧪 Creating simple leaving group');
-    
+
     // Find the leaving group type from the original substrate
     const atoms = substrate.molObject?.atoms || [];
     const leavingGroupType = atoms.find(atom => ['Br', 'Cl', 'I', 'F'].includes(atom.type))?.type;
-    
+
     if (!leavingGroupType) {
       log('❌ No leaving group found');
       return null;
@@ -142,8 +142,8 @@ export class SN2ReactionSystem {
       radius: 1.0,
       molObject: {
         atoms: [{ type: leavingGroupType, position: { x: '0', y: '0', z: '0' } }],
-        bonds: []
-      }
+        bonds: [],
+      },
     };
 
     log(`✅ Created ${leavingGroupType}⁻ leaving group`);
@@ -155,16 +155,16 @@ export class SN2ReactionSystem {
    */
   private pauseSimulationAfterReaction(substrate: MoleculeGroup, nucleophile: MoleculeGroup): void {
     log('⏸️ Starting post-reaction simulation pause monitoring');
-    
+
     const SEPARATION_THRESHOLD = 6.0; // Pause when molecules are 6 units apart
     const CHECK_INTERVAL = 100; // Check every 100ms
     const MAX_CHECKS = 30; // Stop checking after 3 seconds (30 * 100ms)
-    
+
     let checkCount = 0;
-    
+
     const pauseMonitorInterval = setInterval(() => {
       checkCount++;
-      
+
       // Stop checking after max time to prevent infinite loops
       if (checkCount >= MAX_CHECKS) {
         log('⏰ Post-reaction pause monitoring timeout - pausing simulation anyway');
@@ -172,18 +172,18 @@ export class SN2ReactionSystem {
         this.removeInterval(pauseMonitorInterval);
         return;
       }
-      
+
       // Check if molecules still exist (they might have been cleared during reset)
       if (!substrate.group || !nucleophile.group) {
         log('⚠️ Molecules no longer exist - stopping pause monitoring');
         this.removeInterval(pauseMonitorInterval);
         return;
       }
-      
+
       try {
         // Calculate distance between molecules
         const distance = substrate.group.position.distanceTo(nucleophile.group.position);
-        
+
         // If molecules are far enough apart, pause the simulation
         if (distance >= SEPARATION_THRESHOLD) {
           log(`⏸️ Molecules separated by ${distance.toFixed(2)} units - pausing simulation`);
@@ -196,7 +196,7 @@ export class SN2ReactionSystem {
         this.removeInterval(pauseMonitorInterval);
       }
     }, CHECK_INTERVAL);
-    
+
     // Track this interval so we can clear it during reset
     this.runningIntervals.push(pauseMonitorInterval);
   }
@@ -221,7 +221,7 @@ export class SN2ReactionSystem {
         physicsEngine.pause();
         log('⏸️ Physics simulation paused - user can observe reaction products');
         log('💡 Tip: Use the play button to resume simulation');
-        
+
         // Update UI state to reflect paused state
         this.updateGlobalUIState({ isPlaying: false });
       }
@@ -248,10 +248,13 @@ export class SN2ReactionSystem {
    * Get reaction equation
    */
   getReactionEquation(substrate: MoleculeGroup, nucleophile: MoleculeGroup): string {
-    const substrateName = substrate.name.includes('bromide') ? 'CH₃Br' : 
-                         substrate.name.includes('chloride') ? 'CH₃Cl' : 'CH₃X';
+    const substrateName = substrate.name.includes('bromide')
+      ? 'CH₃Br'
+      : substrate.name.includes('chloride')
+        ? 'CH₃Cl'
+        : 'CH₃X';
     const nucleophileName = nucleophile.name.includes('Hydroxide') ? 'OH⁻' : 'Nu⁻';
-    
+
     return `${substrateName} + ${nucleophileName} → CH₃OH + ${substrateName.includes('bromide') ? 'Br⁻' : 'Cl⁻'}`;
   }
 }

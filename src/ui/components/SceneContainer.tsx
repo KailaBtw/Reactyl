@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useRef } from 'react';
+import type { UIState } from '../App';
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
-import type { UIState } from '../App';
 
 type SceneContainerProps = {};
 

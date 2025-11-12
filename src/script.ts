@@ -20,13 +20,12 @@ import {
 import { drawMolecule } from './components/moleculeDrawer'; // Import functions for fetching and drawing molecules.
 // Legacy spatial grid imports removed - now using physics engine
 import { physicsEngine } from './physics/cannonPhysicsEngine'; // Import Cannon.js physics engine
-// import { visualizeHulls } from './physics/convexHullCollision'; // Hull visualization disabled
-import { sceneBridge } from './services/SceneBridge'; // Bridge for React-Three.js communication
 // My Imports - Application-Specific Modules
 import { createMoleculeManager } from './services/moleculeManager'; // Import the MoleculeManager factory.
-import { addObjectDebug, DEBUG_MODE, initFpsDebug, log, updateFpsDebug } from './utils/debug'; // Import debugging utilities.
-
+// import { visualizeHulls } from './physics/convexHullCollision'; // Hull visualization disabled
+import { sceneBridge } from './services/SceneBridge'; // Bridge for React-Three.js communication
 import type { MoleculeManager } from './types';
+import { addObjectDebug, DEBUG_MODE, initFpsDebug, log, updateFpsDebug } from './utils/debug'; // Import debugging utilities.
 
 // Import StructureEngine demo for testing
 import './demo/structureEngineDemo';

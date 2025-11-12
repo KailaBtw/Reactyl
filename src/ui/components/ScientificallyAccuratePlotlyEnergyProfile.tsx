@@ -1,19 +1,20 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Plotly from 'plotly.js-dist-min';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { calculateAngleProbability } from '../utils/angleProbability';
 
 interface EnergyProfileData {
-  reactantEnergy: number;      // Starting energy (typically 0)
-  activationEnergy: number;    // Ea - FIXED barrier height (doesn't change with velocity/attack mode)
-  enthalpyChange: number;      // ΔH - final energy relative to reactants
-  reactionProgress: number;    // 0-1 for animation
-  reactionType: string;        // SN1, SN2, E2, etc.
-  currentVelocity: number;     // For kinetic energy calculations (m/s)
-  attackAngle?: number;        // 0-180 degrees (0=frontside, 180=backside)
-  temperature?: number;        // For rate calculations (K)
-  distance?: number;          // Current molecular distance
-  substrateMass?: number;      // Molecular mass of substrate (kg/mol)
-  nucleophileMass?: number;   // Molecular mass of nucleophile (kg/mol)
+  reactantEnergy: number; // Starting energy (typically 0)
+  activationEnergy: number; // Ea - FIXED barrier height (doesn't change with velocity/attack mode)
+  enthalpyChange: number; // ΔH - final energy relative to reactants
+  reactionProgress: number; // 0-1 for animation
+  reactionType: string; // SN1, SN2, E2, etc.
+  currentVelocity: number; // For kinetic energy calculations (m/s)
+  attackAngle?: number; // 0-180 degrees (0=frontside, 180=backside)
+  temperature?: number; // For rate calculations (K)
+  distance?: number; // Current molecular distance
+  substrateMass?: number; // Molecular mass of substrate (kg/mol)
+  nucleophileMass?: number; // Molecular mass of nucleophile (kg/mol)
 }
 
 interface PlotlyEnergyProfileProps {
@@ -29,22 +30,22 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
   isAnimating,
   width = 600,
   height = 120,
-  className = ""
+  className = '',
 }) => {
   const plotRef = useRef<HTMLDivElement>(null);
   const plotlyInstanceRef = useRef<any>(null);
   const [isPlotReady, setIsPlotReady] = useState(false);
 
-  const { 
-    reactantEnergy, 
-    activationEnergy, 
-    enthalpyChange, 
-    reactionProgress, 
+  const {
+    reactantEnergy,
+    activationEnergy,
+    enthalpyChange,
+    reactionProgress,
     reactionType,
     currentVelocity,
     attackAngle = 180, // Default to optimal backside attack
     substrateMass = 0.028,
-    nucleophileMass = 0.017
+    nucleophileMass = 0.017,
   } = data;
 
   // FIXED thermodynamic points - these don't change with velocity/attack mode
@@ -55,11 +56,11 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
   // Get orientation factor using scientific angle probability calculation
   const getOrientationFactor = () => {
     const angleResult = calculateAngleProbability(attackAngle, reactionType);
-    
+
     return {
       factor: angleResult.probability,
       description: angleResult.description,
-      isOptimal: angleResult.isOptimal
+      isOptimal: angleResult.isOptimal,
     };
   };
 
@@ -68,7 +69,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
     const numPoints = 200;
     const x: number[] = [];
     const y: number[] = [];
-    
+
     // Get angle probability to modify the curve
     const orientation = getOrientationFactor();
     const angleFactor = orientation.factor;
@@ -89,7 +90,8 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
       } else if (xi <= 0.95) {
         // Quartic descent from transition state (50-95%)
         const t = (xi - 0.5) / 0.45;
-        energy = transitionStateEnergy * (1 - t * t * (3 - 2 * t)) + productEnergy * t * t * (3 - 2 * t);
+        energy =
+          transitionStateEnergy * (1 - t * t * (3 - 2 * t)) + productEnergy * t * t * (3 - 2 * t);
       } else {
         // Flat products region (95-100%) - more realistic
         energy = productEnergy;
@@ -109,31 +111,28 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
   // Calculate current ball position for animation
   const getBallPosition = () => {
     const { x: curveX, y: curveY } = generateActivationCurve();
-    const index = Math.min(
-      Math.floor(reactionProgress * (curveX.length - 1)),
-      curveX.length - 1
-    );
+    const index = Math.min(Math.floor(reactionProgress * (curveX.length - 1)), curveX.length - 1);
     return {
       x: curveX[index] || 0,
-      y: curveY[index] || reactantEnergy
+      y: curveY[index] || reactantEnergy,
     };
   };
 
   // Calculate kinetic energy from velocity and temperature - realistic scaling for visualization
   const calculateKineticEnergy = () => {
     if (currentVelocity === 0) return 0;
-    
+
     // Scale velocity to give kinetic energies that can reach activation energy
     // At 500 m/s (max slider), we want ~40 kJ/mol to be competitive with 30 kJ/mol activation
     const velocityScale = currentVelocity / 500; // Scale velocity to 0-1 range (500 m/s max)
     const maxKineticEnergy = 40; // Maximum kinetic energy (kJ/mol) - competitive with activation
     let kineticEnergy = velocityScale * maxKineticEnergy;
-    
+
     // Add temperature effects - higher temperature increases kinetic energy
     const temperature = data.temperature || 298;
     const temperatureFactor = Math.sqrt(temperature / 298); // Square root relationship
     kineticEnergy *= temperatureFactor;
-    
+
     return kineticEnergy;
   };
 
@@ -141,7 +140,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
   const calculateReactionProbability = () => {
     const kineticEnergy = calculateKineticEnergy();
     const orientation = getOrientationFactor();
-    
+
     // Arrhenius-like energy probability calculation with better scaling
     let energyProbability = 0;
     if (kineticEnergy >= activationEnergy) {
@@ -163,9 +162,9 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         energyProbability = 0.001; // Very low energy
       }
     }
-    
+
     const overallProbability = energyProbability * orientation.factor;
-    
+
     // Debug logging to show the angle-dependent calculation
     console.log('Angle-Dependent Reaction Probability:', {
       reactionType,
@@ -179,22 +178,22 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
       angleProbability: (orientation.factor * 100).toFixed(1) + '%',
       angleDescription: orientation.description,
       isOptimalAngle: orientation.isOptimal,
-      overallProbability: (overallProbability * 100).toFixed(1) + '%'
+      overallProbability: (overallProbability * 100).toFixed(1) + '%',
     });
-    
+
     // Debug the color logic
     console.log('Color Debug:', {
       isOptimal: orientation.isOptimal,
       factor: orientation.factor,
       shouldBeRed: !orientation.isOptimal,
-      shouldBeGreen: orientation.isOptimal
+      shouldBeGreen: orientation.isOptimal,
     });
-    
+
     return {
       kineticEnergy,
       hasEnoughEnergy: kineticEnergy >= activationEnergy,
       attackViable: orientation.factor > 0,
-      overallProbability: Math.min(1.0, overallProbability)
+      overallProbability: Math.min(1.0, overallProbability),
     };
   };
 
@@ -214,13 +213,13 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         mode: 'lines',
         line: {
           color: '#2563eb',
-          width: 3
+          width: 3,
         },
         name: 'Activation Energy Barrier',
         hovertemplate: '<b>Energy:</b> %{y:.1f} kJ/mol<br><b>Progress:</b> %{x:.1%}<extra></extra>',
-        showlegend: false
+        showlegend: false,
       },
-      
+
       // Key state markers
       {
         x: [0, 0.5, 1],
@@ -231,19 +230,19 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
           size: [10, 10, 10],
           color: ['#3b82f6', '#dc2626', '#059669'],
           line: { color: 'white', width: 2 },
-          symbol: 'circle'
+          symbol: 'circle',
         },
         text: ['R', 'TS‡', 'P'],
         textposition: ['bottom center', 'top center', 'bottom center'],
-        textfont: { 
-          size: 10, 
+        textfont: {
+          size: 10,
           color: '#374151',
-          family: 'Inter, system-ui, sans-serif'
+          family: 'Inter, system-ui, sans-serif',
         },
         name: 'Key States',
         hovertemplate: '<b>%{text}</b><br><b>Energy:</b> %{y:.1f} kJ/mol<extra></extra>',
-        showlegend: false
-      }
+        showlegend: false,
+      },
     ];
 
     // Add kinetic energy line - shows available energy from velocity
@@ -253,7 +252,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
       const hasEnoughEnergy = reactionData.hasEnoughEnergy;
       const hasGoodAngle = reactionData.attackViable;
       let lineColor = '#dc2626'; // Default red
-      
+
       if (hasEnoughEnergy && hasGoodAngle) {
         lineColor = '#059669'; // Green - good energy and angle
       } else if (hasEnoughEnergy && !hasGoodAngle) {
@@ -261,7 +260,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
       } else if (!hasEnoughEnergy && hasGoodAngle) {
         lineColor = '#3b82f6'; // Blue - good angle but not enough energy
       }
-      
+
       // Kinetic energy dashed line
       traces.push({
         x: [0, 1],
@@ -271,11 +270,11 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         line: {
           color: lineColor,
           width: 2,
-          dash: 'dash'
+          dash: 'dash',
         },
         name: 'Available Kinetic Energy',
         hovertemplate: `<b>Kinetic Energy:</b> ${reactionData.kineticEnergy.toFixed(1)} kJ/mol<br><b>Will React:</b> ${reactionData.hasEnoughEnergy && reactionData.attackViable ? 'Yes' : 'No'}<br><b>Probability:</b> ${(reactionData.overallProbability * 100).toFixed(1)}%<extra></extra>`,
-        showlegend: false
+        showlegend: false,
       });
 
       // Add integrated angle compatibility indicator in bottom left (below text box)
@@ -283,7 +282,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
       const barY = -12; // Position below the text box
       const barWidth = 0.3; // Width of the bar (0 to 180 degrees)
       const barHeight = 4;
-      
+
       // Background bar (full 0-180 range)
       traces.push({
         x: [0.05, 0.05 + barWidth],
@@ -293,21 +292,21 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         line: {
           color: '#e5e7eb',
           width: barHeight,
-          dash: 'solid'
+          dash: 'solid',
         },
         name: 'Angle Range Background',
         hoverinfo: 'skip',
-        showlegend: false
+        showlegend: false,
       });
-      
+
       // Calculate position based on actual angle (0-180 degrees)
       const anglePosition = attackAngle / 180; // Normalize to 0-1
-      const positionX = 0.05 + (barWidth * anglePosition);
-      
+      const positionX = 0.05 + barWidth * anglePosition;
+
       // Color based on compatibility
-      const fillColor = orientation.factor > 0.8 ? '#059669' : 
-                       orientation.factor > 0.4 ? '#f59e0b' : '#dc2626';
-      
+      const fillColor =
+        orientation.factor > 0.8 ? '#059669' : orientation.factor > 0.4 ? '#f59e0b' : '#dc2626';
+
       // Filled portion from 0 to current angle
       traces.push({
         x: [0.05, positionX],
@@ -317,13 +316,13 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         line: {
           color: fillColor,
           width: barHeight,
-          dash: 'solid'
+          dash: 'solid',
         },
         name: 'Angle Progress',
         hovertemplate: `<b>Current Angle: ${attackAngle}°</b><br><b>Compatibility: ${(orientation.factor * 100).toFixed(1)}%</b><br><b>Status: ${orientation.description}</b><extra></extra>`,
-        showlegend: false
+        showlegend: false,
       });
-      
+
       // Add angle indicator arrow at current position
       traces.push({
         x: [positionX, positionX],
@@ -332,46 +331,46 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         mode: 'lines',
         line: {
           color: fillColor,
-          width: 2
+          width: 2,
         },
         name: 'Current Angle Position',
         hoverinfo: 'skip',
-        showlegend: false
+        showlegend: false,
       });
-      
+
       // Add scale markers (0°, 90°, 180°)
       traces.push({
-        x: [0.05, 0.05 + barWidth/2, 0.05 + barWidth],
+        x: [0.05, 0.05 + barWidth / 2, 0.05 + barWidth],
         y: [barY - 2, barY - 2, barY - 2],
         type: 'scatter',
         mode: 'markers+text',
         marker: {
           size: 3,
-          color: '#666666'
+          color: '#666666',
         },
         text: ['0°', '90°', '180°'],
         textposition: 'top',
         textfont: {
           size: 8,
-          color: '#666666'
+          color: '#666666',
         },
         name: 'Angle Scale',
         hoverinfo: 'skip',
-        showlegend: false
+        showlegend: false,
       });
 
       // Create the filled area under curve up to kinetic energy line
       if (reactionData.kineticEnergy > 0) {
         const fillOpacity = reactionData.hasEnoughEnergy ? 0.25 : 0.15;
         const fillColor = reactionData.hasEnoughEnergy ? '5, 150, 105' : '220, 38, 38';
-        
+
         // Find the transition state index (x = 0.5)
         const transitionIndex = Math.floor(curveX.length * 0.5);
-        
+
         // Create polygon points for the fill area
         const fillX: number[] = [];
         const fillY: number[] = [];
-        
+
         // Follow the curve from reactants to transition state
         for (let i = 0; i <= transitionIndex; i++) {
           fillX.push(curveX[i]);
@@ -380,14 +379,14 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
           const cappedEnergy = Math.min(curveEnergy, availableEnergy);
           fillY.push(cappedEnergy);
         }
-        
+
         // Add the kinetic energy line back from transition state to reactants
         fillX.push(0.5); // Transition state x
         fillY.push(Math.min(availableEnergy, reactantEnergy)); // Bottom of kinetic energy
-        
+
         fillX.push(0); // Back to reactants x
         fillY.push(reactantEnergy); // Reactants energy level
-        
+
         traces.push({
           x: fillX,
           y: fillY,
@@ -398,7 +397,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
           line: { width: 0 },
           name: 'Energy Available for Reaction',
           hoverinfo: 'skip',
-          showlegend: false
+          showlegend: false,
         });
       }
     }
@@ -406,7 +405,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
     // Add animated reaction ball - FIXED ball position calculation
     if (isAnimating && reactionProgress > 0) {
       const ballPos = getBallPosition();
-      
+
       traces.push({
         x: [ballPos.x],
         y: [ballPos.y],
@@ -416,19 +415,23 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
           size: 14,
           color: '#f59e0b',
           line: { color: '#ffffff', width: 3 },
-          symbol: 'circle'
+          symbol: 'circle',
         },
         name: 'Reaction Progress',
-        hovertemplate: '<b>Current Position</b><br><b>Energy:</b> %{y:.1f} kJ/mol<br><b>Progress:</b> %{x:.1%}<extra></extra>',
-        showlegend: false
+        hovertemplate:
+          '<b>Current Position</b><br><b>Energy:</b> %{y:.1f} kJ/mol<br><b>Progress:</b> %{x:.1%}<extra></extra>',
+        showlegend: false,
       });
-      
+
       // Add a subtle trail effect
       if (reactionProgress > 0.05) {
         const trailLength = Math.min(10, Math.floor(reactionProgress * curveX.length));
-        const trailStartIndex = Math.max(0, Math.floor(reactionProgress * (curveX.length - 1)) - trailLength);
+        const trailStartIndex = Math.max(
+          0,
+          Math.floor(reactionProgress * (curveX.length - 1)) - trailLength
+        );
         const trailEndIndex = Math.floor(reactionProgress * (curveX.length - 1));
-        
+
         traces.push({
           x: curveX.slice(trailStartIndex, trailEndIndex + 1),
           y: curveY.slice(trailStartIndex, trailEndIndex + 1),
@@ -437,12 +440,12 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
           line: {
             color: '#f59e0b',
             width: 4,
-            shape: 'spline'
+            shape: 'spline',
           },
           opacity: 0.6,
           name: 'Reaction Trail',
           hoverinfo: 'skip',
-          showlegend: false
+          showlegend: false,
         });
       }
     }
@@ -452,15 +455,15 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
       width: width,
       height: height,
       margin: { l: 60, r: 50, t: 20, b: 30 },
-      
+
       xaxis: {
         title: {
           text: 'Reaction Coordinate →',
-          font: { 
-            size: 11, 
+          font: {
+            size: 11,
             color: '#6b7280',
-            family: 'Inter, system-ui, sans-serif'
-          }
+            family: 'Inter, system-ui, sans-serif',
+          },
         },
         showgrid: true,
         gridcolor: '#f3f4f6',
@@ -471,23 +474,23 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         tickmode: 'array' as const,
         tickvals: [0, 0.5, 1],
         ticktext: ['Reactants', 'Transition State', 'Products'],
-        tickfont: { 
-          size: 8, 
+        tickfont: {
+          size: 8,
           color: '#6b7280',
-          family: 'Inter, system-ui, sans-serif'
+          family: 'Inter, system-ui, sans-serif',
         },
         range: [-0.02, 1.02],
-        zeroline: false
+        zeroline: false,
       },
-      
+
       yaxis: {
         title: {
           text: 'Energy (kJ/mol)',
-          font: { 
-            size: 11, 
+          font: {
+            size: 11,
             color: '#6b7280',
-            family: 'Inter, system-ui, sans-serif'
-          }
+            family: 'Inter, system-ui, sans-serif',
+          },
         },
         showgrid: true,
         gridcolor: '#f3f4f6',
@@ -495,41 +498,38 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
         showline: true,
         linecolor: '#d1d5db',
         linewidth: 1,
-        tickfont: { 
-          size: 9, 
+        tickfont: {
+          size: 9,
           color: '#6b7280',
-          family: 'Inter, system-ui, sans-serif'
+          family: 'Inter, system-ui, sans-serif',
         },
-        range: [
-          Math.min(reactantEnergy, productEnergy) - 10,
-          transitionStateEnergy + 15
-        ],
-        zeroline: false
+        range: [Math.min(reactantEnergy, productEnergy) - 10, transitionStateEnergy + 15],
+        zeroline: false,
       },
-      
+
       plot_bgcolor: 'white',
       paper_bgcolor: 'white',
       showlegend: false,
-      
+
       // Scientific annotations - only show the fixed barrier measurements
       annotations: [
         // Activation energy arrow and label
         {
-          x: 0.10,
+          x: 0.1,
           y: (reactantEnergy + transitionStateEnergy) / 2 + 2,
           text: `<b>Ea = ${activationEnergy.toFixed(1)}<br>kJ/mol</b>`,
           showarrow: false,
-          font: { 
-            size: 10, 
+          font: {
+            size: 10,
             color: '#dc2626',
-            family: 'Inter, system-ui, sans-serif'
+            family: 'Inter, system-ui, sans-serif',
           },
           bgcolor: 'rgba(255,255,255,0.9)',
           bordercolor: '#dc2626',
           borderwidth: 1,
-          borderpad: 2
+          borderpad: 2,
         },
-        
+
         // Enthalpy change arrow and label
         {
           x: 0.9, // move left of the descending product-side curve
@@ -537,17 +537,17 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
           text: `<b>ΔH = ${enthalpyChange > 0 ? '+' : ''}${enthalpyChange.toFixed(1)}<br>kJ/mol</b>`,
           showarrow: false,
           xanchor: 'left' as const,
-          font: { 
-            size: 10, 
+          font: {
+            size: 10,
             color: enthalpyChange < 0 ? '#059669' : '#f59e0b',
-            family: 'Inter, system-ui, sans-serif'
+            family: 'Inter, system-ui, sans-serif',
           },
           bgcolor: 'rgba(255,255,255,0.9)',
           bordercolor: enthalpyChange < 0 ? '#059669' : '#f59e0b',
           borderwidth: 1,
-          borderpad: 2
+          borderpad: 2,
         },
-        
+
         // Angle effect annotation - bottom left corner (moved up)
         {
           x: 0.1,
@@ -556,17 +556,19 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
           showarrow: false,
           xanchor: 'left' as const,
           yanchor: 'top' as const,
-          font: { 
-            size: 10, 
+          font: {
+            size: 10,
             color: getOrientationFactor().isOptimal ? '#059669' : '#dc2626',
-            family: 'Inter, system-ui, sans-serif'
+            family: 'Inter, system-ui, sans-serif',
           },
-          bgcolor: getOrientationFactor().isOptimal ? 'rgba(5, 150, 105, 0.15)' : 'rgba(220, 38, 38, 0.15)',
+          bgcolor: getOrientationFactor().isOptimal
+            ? 'rgba(5, 150, 105, 0.15)'
+            : 'rgba(220, 38, 38, 0.15)',
           bordercolor: getOrientationFactor().isOptimal ? '#059669' : '#dc2626',
           borderwidth: 1,
-          borderpad: 3
-        }
-      ]
+          borderpad: 3,
+        },
+      ],
     };
 
     const config = {
@@ -574,7 +576,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
       responsive: true,
       staticPlot: false,
       scrollZoom: false,
-      doubleClick: 'reset' as const
+      doubleClick: 'reset' as const,
     };
 
     // Create or update plot
@@ -602,7 +604,7 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
     nucleophileMass,
     isAnimating,
     width,
-    height
+    height,
   ]);
 
   // Initialize and update plot
@@ -623,12 +625,8 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
 
   return (
     <div className={`w-full ${className}`}>
-      <div 
-        ref={plotRef} 
-        className="w-full"
-        style={{ minHeight: height }}
-      />
-      
+      <div ref={plotRef} className="w-full" style={{ minHeight: height }} />
+
       {!isPlotReady && (
         <div className="flex items-center justify-center h-24">
           <div className="text-gray-500 text-sm">Loading energy profile...</div>

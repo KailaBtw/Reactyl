@@ -1,6 +1,6 @@
-import React from 'react';
-import { PlotlyEnergyProfile } from '../ScientificallyAccuratePlotlyEnergyProfile';
+import type React from 'react';
 import { getReactionMasses } from '../../utils/molecularMassLookup';
+import { PlotlyEnergyProfile } from '../ScientificallyAccuratePlotlyEnergyProfile';
 
 interface BottomEnergyPanelProps {
   thermodynamicData: {
@@ -37,11 +37,13 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
   nucleophileMass: propNucleophileMass,
   attackAngle = 180,
   timeScale = 0.8,
-  reactionProbability = 0
+  reactionProbability = 0,
 }) => {
   // Use provided molecular masses or fallback to lookup
-  const substrateMass = propSubstrateMass || getReactionMasses(substrate, nucleophile).substrateMass;
-  const nucleophileMass = propNucleophileMass || getReactionMasses(substrate, nucleophile).nucleophileMass;
+  const substrateMass =
+    propSubstrateMass || getReactionMasses(substrate, nucleophile).substrateMass;
+  const nucleophileMass =
+    propNucleophileMass || getReactionMasses(substrate, nucleophile).nucleophileMass;
   return (
     <div className={`border-t ${themeClasses.card}`}>
       <div className="flex flex-col lg:flex-row gap-2 p-2">
@@ -49,25 +51,27 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
         <div className="w-full">
           <div className={`${themeClasses.card} border rounded-lg overflow-hidden h-full`}>
             <div className={`p-2 border-b ${themeClasses.card}`}>
-              <h3 className={`text-sm font-semibold ${themeClasses.text}`}>Activation Energy Profile</h3>
+              <h3 className={`text-sm font-semibold ${themeClasses.text}`}>
+                Activation Energy Profile
+              </h3>
             </div>
             <div className="px-1 py-0">
-        <PlotlyEnergyProfile
-          data={{
-            reactantEnergy: thermodynamicData.reactantEnergy,
-            activationEnergy: thermodynamicData.activationEnergy,
-            enthalpyChange: thermodynamicData.enthalpyOfFormation,
-            reactionProgress: reactionProgress,
-            reactionType: reactionType,
-            currentVelocity: currentVelocity,
-            attackAngle: attackAngle,
-            substrateMass: substrateMass,
-            nucleophileMass: nucleophileMass
-          }}
-          isAnimating={isPlaying}
-          width={450}
-          height={200}
-        />
+              <PlotlyEnergyProfile
+                data={{
+                  reactantEnergy: thermodynamicData.reactantEnergy,
+                  activationEnergy: thermodynamicData.activationEnergy,
+                  enthalpyChange: thermodynamicData.enthalpyOfFormation,
+                  reactionProgress: reactionProgress,
+                  reactionType: reactionType,
+                  currentVelocity: currentVelocity,
+                  attackAngle: attackAngle,
+                  substrateMass: substrateMass,
+                  nucleophileMass: nucleophileMass,
+                }}
+                isAnimating={isPlaying}
+                width={450}
+                height={200}
+              />
             </div>
           </div>
         </div>

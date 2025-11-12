@@ -1,45 +1,53 @@
-import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { ReactionDetector } from '../../src/chemistry/reactionDetector';
+import { describe, expect, it } from 'vitest';
 import { REACTION_TYPES } from '../../src/chemistry/reactionDatabase';
+import { ReactionDetector } from '../../src/chemistry/reactionDetector';
 
-function makeQuatY(rad: number) { return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), rad); }
+function makeQuatY(rad: number) {
+  return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rad);
+}
 
 describe('ReactionDetector probability composition', () => {
   it('increases probability with higher energy and better orientation', () => {
     const det = new ReactionDetector();
 
     const collisionBase = {
-      relativeVelocity: new THREE.Vector3(0,0,5),
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
       collisionEnergy: det.calculateCollisionEnergy(10, 10, 5),
       approachAngle: 180,
       impactPoint: new THREE.Vector3(),
       moleculeOrientations: {
         substrate: makeQuatY(Math.PI),
-        nucleophile: new THREE.Quaternion()
-      }
+        nucleophile: new THREE.Quaternion(),
+      },
     } as any;
 
     const reactionType = REACTION_TYPES.sn2;
-    const sub: any = { 
+    const sub: any = {
       name: 'Sub',
       reactionFeatures: {
         leavingGroups: [{ atomIndex: 0, atomType: 'Br', strength: 7 }],
         nucleophiles: [],
-        electrophiles: []
-      }
+        electrophiles: [],
+      },
     };
-    const nuc: any = { 
+    const nuc: any = {
       name: 'Nuc',
       reactionFeatures: {
         leavingGroups: [],
         nucleophiles: [{ atomIndex: 0, atomType: 'O-', strength: 8 }],
-        electrophiles: []
-      }
+        electrophiles: [],
+      },
     };
 
-    const lowEnergy = { ...collisionBase, collisionEnergy: det.calculateCollisionEnergy(10,10,1) };
-    const highEnergy = { ...collisionBase, collisionEnergy: det.calculateCollisionEnergy(10,10,6) };
+    const lowEnergy = {
+      ...collisionBase,
+      collisionEnergy: det.calculateCollisionEnergy(10, 10, 1),
+    };
+    const highEnergy = {
+      ...collisionBase,
+      collisionEnergy: det.calculateCollisionEnergy(10, 10, 6),
+    };
 
     const poorOrientation = { ...collisionBase, approachAngle: 90 };
     const goodOrientation = { ...collisionBase, approachAngle: 180 };
@@ -60,5 +68,3 @@ describe('ReactionDetector probability composition', () => {
     }
   });
 });
-
-

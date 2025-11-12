@@ -1,19 +1,19 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { createMockMolecule, createMockAtom } from '../fixtures/mockMolecules';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMockAtom, createMockMolecule } from '../fixtures/mockMolecules';
 
 // Mock the physics engine before importing the SN2MechanismAnimation
 vi.mock('../../src/physics/cannonPhysicsEngine', () => ({
   physicsEngine: {
     addMolecule: vi.fn().mockReturnValue(true),
-    getPhysicsBody: vi.fn().mockReturnValue({ 
+    getPhysicsBody: vi.fn().mockReturnValue({
       quaternion: new THREE.Quaternion(),
       position: new THREE.Vector3(),
-      angularVelocity: new THREE.Vector3()
+      angularVelocity: new THREE.Vector3(),
     }),
     setVelocity: vi.fn(),
-    removeMolecule: vi.fn()
-  }
+    removeMolecule: vi.fn(),
+  },
 }));
 
 import { SN2MechanismAnimation } from '../../src/animations/SN2MechanismAnimation';
@@ -31,20 +31,23 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
     mockScene = new THREE.Scene();
     mockMoleculeManager = {
       newMolecule: vi.fn((name: string, position: any) => {
-        const molecule = createMockMolecule(name, new THREE.Vector3(position.x, position.y, position.z));
+        const molecule = createMockMolecule(
+          name,
+          new THREE.Vector3(position.x, position.y, position.z)
+        );
         // Add getGroup method that the createBromideIon method expects
         molecule.getGroup = vi.fn(() => molecule.group);
         return molecule;
       }),
       getMolecule: vi.fn(),
       removeMolecule: vi.fn(),
-      clearAllMolecules: vi.fn()
+      clearAllMolecules: vi.fn(),
     };
 
     // Mock global objects
     (window as any).scene = mockScene;
     (window as any).moleculeManager = mockMoleculeManager;
-    
+
     // Reset mock calls
     (physicsEngine.addMolecule as any).mockClear();
     (physicsEngine.getPhysicsBody as any).mockClear();
@@ -95,7 +98,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
 
     it('handles missing scene gracefully', () => {
       (window as any).scene = null;
-      
+
       expect(() => {
         (sn2Animation as any).removeStrayBromideIons();
       }).not.toThrow();
@@ -105,14 +108,14 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
   describe('createBromideIon', () => {
     it('creates bromide ion with proper structure', () => {
       const position = new THREE.Vector3(1, 2, 3);
-      
+
       (sn2Animation as any).createBromideIon(position);
 
       // Should create molecule via molecule manager
       expect(mockMoleculeManager.newMolecule).toHaveBeenCalledWith('Bromide ion', {
         x: 3, // position.x + 2 (offset)
         y: 2, // position.y
-        z: 3  // position.z
+        z: 3, // position.z
       });
 
       // Should add physics
@@ -122,7 +125,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
 
     it('handles missing scene or molecule manager gracefully', () => {
       (window as any).scene = null;
-      
+
       expect(() => {
         (sn2Animation as any).createBromideIon(new THREE.Vector3(0, 0, 0));
       }).not.toThrow();
@@ -134,9 +137,9 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       const substrate = createMockMolecule('Substrate', new THREE.Vector3(0, 0, 0));
       const mockPhysicsBody = {
         quaternion: new THREE.Quaternion(),
-        angularVelocity: new THREE.Vector3(1, 1, 1)
+        angularVelocity: new THREE.Vector3(1, 1, 1),
       };
-      
+
       (physicsEngine.getPhysicsBody as any).mockReturnValue(mockPhysicsBody);
       mockMoleculeManager.getMolecule.mockReturnValue(substrate);
 
@@ -177,9 +180,9 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       const originalNucleophilePos = new THREE.Vector3(0, 0, -5);
 
       (sn2Animation as any).separateProductMolecules(
-        substrate, 
-        nucleophile, 
-        originalSubstratePos, 
+        substrate,
+        nucleophile,
+        originalSubstratePos,
         originalNucleophilePos
       );
 
@@ -200,7 +203,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       const mockMolData = 'mock mol file content';
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        text: () => Promise.resolve(mockMolData)
+        text: () => Promise.resolve(mockMolData),
       });
 
       const result = await (sn2Animation as any).fetchMoleculeFromPubChem('887', 'Methanol');
@@ -208,7 +211,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       expect(result).toEqual({
         mol3d: mockMolData,
         name: 'Methanol',
-        cid: '887'
+        cid: '887',
       });
       expect(global.fetch).toHaveBeenCalledWith(
         'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/887/record/SDF/?record_type=3d&response_type=display'
@@ -227,7 +230,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 404,
-        statusText: 'Not Found'
+        statusText: 'Not Found',
       });
 
       const result = await (sn2Animation as any).fetchMoleculeFromPubChem('999', 'Unknown');
@@ -239,9 +242,9 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
   describe('launchLeavingGroup', () => {
     it('launches leaving group with correct velocity', () => {
       const leavingGroupMolecule = {
-        molecularProperties: { totalMass: 79.90, boundingRadius: 0.4 },
+        molecularProperties: { totalMass: 79.9, boundingRadius: 0.4 },
         hasPhysics: false,
-        physicsBody: null
+        physicsBody: null,
       };
       const direction = new THREE.Vector3(1, 0, 0);
 
@@ -249,7 +252,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
 
       // Should add physics
       expect(physicsEngine.addMolecule).toHaveBeenCalledWith(
-        leavingGroupMolecule, 
+        leavingGroupMolecule,
         leavingGroupMolecule.molecularProperties
       );
 
@@ -264,7 +267,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       (physicsEngine.addMolecule as any).mockReturnValue(false);
 
       const leavingGroupMolecule = {
-        molecularProperties: { totalMass: 79.90, boundingRadius: 0.4 }
+        molecularProperties: { totalMass: 79.9, boundingRadius: 0.4 },
       };
       const direction = new THREE.Vector3(1, 0, 0);
 
@@ -277,9 +280,9 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
   describe('getElementMass', () => {
     it('returns correct atomic masses for common leaving groups', () => {
       expect((sn2Animation as any).getElementMass('Cl')).toBe(35.45);
-      expect((sn2Animation as any).getElementMass('Br')).toBe(79.90);
-      expect((sn2Animation as any).getElementMass('I')).toBe(126.90);
-      expect((sn2Animation as any).getElementMass('F')).toBe(19.00);
+      expect((sn2Animation as any).getElementMass('Br')).toBe(79.9);
+      expect((sn2Animation as any).getElementMass('I')).toBe(126.9);
+      expect((sn2Animation as any).getElementMass('F')).toBe(19.0);
     });
 
     it('returns default chlorine mass for unknown elements', () => {
@@ -293,7 +296,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       substrate.group.children = [
         createMockAtom('C', new THREE.Vector3(0, 0, 0)),
         createMockAtom('H', new THREE.Vector3(1, 0, 0)),
-        createMockAtom('Br', new THREE.Vector3(0, 0, 1))
+        createMockAtom('Br', new THREE.Vector3(0, 0, 1)),
       ];
 
       const leavingGroup = (sn2Animation as any).findLeavingGroupAtom(substrate);
@@ -305,7 +308,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       const substrate = createMockMolecule('Substrate', new THREE.Vector3(0, 0, 0));
       substrate.group.children = [
         createMockAtom('C', new THREE.Vector3(0, 0, 0)),
-        createMockAtom('H', new THREE.Vector3(1, 0, 0))
+        createMockAtom('H', new THREE.Vector3(1, 0, 0)),
       ];
 
       const leavingGroup = (sn2Animation as any).findLeavingGroupAtom(substrate);
@@ -318,7 +321,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       const nucleophile = createMockMolecule('Nucleophile', new THREE.Vector3(0, 0, -5));
       nucleophile.group.children = [
         createMockAtom('O', new THREE.Vector3(0, 0, 0)),
-        createMockAtom('H', new THREE.Vector3(1, 0, 0))
+        createMockAtom('H', new THREE.Vector3(1, 0, 0)),
       ];
 
       const nucAtom = (sn2Animation as any).findNucleophileAtom(nucleophile);
@@ -328,9 +331,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
 
     it('returns null when no nucleophile atom found', () => {
       const nucleophile = createMockMolecule('Nucleophile', new THREE.Vector3(0, 0, -5));
-      nucleophile.group.children = [
-        createMockAtom('C', new THREE.Vector3(0, 0, 0))
-      ];
+      nucleophile.group.children = [createMockAtom('C', new THREE.Vector3(0, 0, 0))];
 
       const nucAtom = (sn2Animation as any).findNucleophileAtom(nucleophile);
       expect(nucAtom).toBeNull();
@@ -344,7 +345,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
       substrate.group.children = [
         createMockAtom('C', new THREE.Vector3(0, 0, 0)),
         createMockAtom('C', new THREE.Vector3(2, 0, 0)), // Further away
-        createMockAtom('H', new THREE.Vector3(1, 0, 0))
+        createMockAtom('H', new THREE.Vector3(1, 0, 0)),
       ];
 
       const nearestCarbon = (sn2Animation as any).findNearestCarbonTo(substrate, referenceAtom);
@@ -355,9 +356,7 @@ describe('SN2MechanismAnimation - Individual Methods', () => {
 
     it('returns null when no reference atom provided', () => {
       const substrate = createMockMolecule('Substrate', new THREE.Vector3(0, 0, 0));
-      substrate.group.children = [
-        createMockAtom('C', new THREE.Vector3(0, 0, 0))
-      ];
+      substrate.group.children = [createMockAtom('C', new THREE.Vector3(0, 0, 0))];
 
       const nearestCarbon = (sn2Animation as any).findNearestCarbonTo(substrate, null);
       expect(nearestCarbon).toBeNull();

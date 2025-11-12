@@ -4,38 +4,33 @@
  */
 
 // Core animation utilities
-export { 
-  AnimationRunner, 
-  EasingFunctions, 
+export {
+  type AnimationOptions,
+  AnimationRunner,
+  EasingFunctions,
   runAnimation,
-  type AnimationOptions 
 } from './AnimationUtils';
-
-// Individual animation components
-export { 
-  WaldenInversionAnimation, 
-  animateWaldenInversion,
-  type WaldenInversionOptions 
-} from './WaldenInversionAnimation';
-
-export { 
-  LeavingGroupDepartureAnimation, 
+export {
   animateLeavingGroupDeparture,
-  type LeavingGroupDepartureOptions 
+  LeavingGroupDepartureAnimation,
+  type LeavingGroupDepartureOptions,
 } from './LeavingGroupDepartureAnimation';
-
-export { 
-  SN2MechanismAnimation, 
-  animateSN2Mechanism,
-  type SN2MechanismOptions 
-} from './SN2MechanismAnimation';
-
-// Animation manager
-export { 
-  ReactionAnimationManager, 
-  reactionAnimationManager,
-  type SN2AnimationSequenceOptions 
-} from './ReactionAnimationManager';
-
 // Re-export types for convenience
 export type { MoleculeState } from './ReactionAnimationManager';
+// Animation manager
+export {
+  ReactionAnimationManager,
+  reactionAnimationManager,
+  type SN2AnimationSequenceOptions,
+} from './ReactionAnimationManager';
+export {
+  animateSN2Mechanism,
+  SN2MechanismAnimation,
+  type SN2MechanismOptions,
+} from './SN2MechanismAnimation';
+// Individual animation components
+export {
+  animateWaldenInversion,
+  WaldenInversionAnimation,
+  type WaldenInversionOptions,
+} from './WaldenInversionAnimation';

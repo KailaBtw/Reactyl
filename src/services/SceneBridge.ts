@@ -3,7 +3,7 @@
  * This allows React components to interact with the 3D scene
  */
 
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import type { MoleculeManager } from '../types';
 
 class SceneBridge {
@@ -16,15 +16,15 @@ class SceneBridge {
   initialize(scene: THREE.Scene, moleculeManager: MoleculeManager): void {
     this.scene = scene;
     this.moleculeManager = moleculeManager;
-    
+
     // Make available globally for React components
     (window as any).threeScene = scene;
     (window as any).moleculeManager = moleculeManager;
-    
+
     console.log('SceneBridge initialized:', {
       scene: !!scene,
       moleculeManager: !!moleculeManager,
-      sceneChildren: scene?.children?.length || 0
+      sceneChildren: scene?.children?.length || 0,
     });
   }
 

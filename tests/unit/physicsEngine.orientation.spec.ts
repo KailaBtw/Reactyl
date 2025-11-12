@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { physicsEngine } from '../../src/physics/cannonPhysicsEngine';
 
 function createMol(name: string) {
@@ -38,15 +38,3 @@ describe('physicsEngine orientation accessors (unit)', () => {
     expect(physicsEngine.getOrientation(mol)).toBeNull();
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-

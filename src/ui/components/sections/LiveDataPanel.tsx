@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 
 interface LiveDataPanelProps {
   relativeVelocity: number;
@@ -9,7 +9,7 @@ interface LiveDataPanelProps {
 export const LiveDataPanel: React.FC<LiveDataPanelProps> = ({
   relativeVelocity,
   onRelativeVelocityChange,
-  themeClasses
+  themeClasses,
 }) => {
   return (
     <section className="p-5">
@@ -22,13 +22,13 @@ export const LiveDataPanel: React.FC<LiveDataPanelProps> = ({
           <label className="block text-xs font-medium mb-1 text-gray-500">
             Relative Velocity: {relativeVelocity.toFixed(1)} m/s
           </label>
-          <input 
+          <input
             type="range"
             min="50"
             max="500"
             step="10"
             value={relativeVelocity}
-            onChange={(e) => onRelativeVelocityChange(parseFloat(e.target.value))}
+            onChange={e => onRelativeVelocityChange(parseFloat(e.target.value))}
             className="slider w-full h-1"
           />
         </div>

@@ -45,7 +45,7 @@ export class ContainerVisualization {
       color: this.color,
       transparent: true,
       opacity: this.wireframeOpacity,
-      linewidth: 2
+      linewidth: 2,
     });
 
     // Create line segments for the edges
@@ -59,7 +59,7 @@ export class ContainerVisualization {
       transparent: true,
       opacity: this.fillOpacity,
       side: THREE.DoubleSide,
-      wireframe: false
+      wireframe: false,
     });
     const transparentBox = new THREE.Mesh(boxGeometry, boxMaterial);
     group.add(transparentBox);
@@ -79,7 +79,7 @@ export class ContainerVisualization {
     if (this.visualization) {
       this.scene.remove(this.visualization);
       // Dispose of geometries and materials
-      this.visualization.traverse((child) => {
+      this.visualization.traverse(child => {
         if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
           if (child.geometry) child.geometry.dispose();
           if (child.material) {
@@ -112,4 +112,3 @@ export class ContainerVisualization {
     return this.visualization !== null;
   }
 }
-

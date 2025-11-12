@@ -1,13 +1,13 @@
 /**
  * Chemistry Module
- * 
+ *
  * Exports all chemistry-related functionality.
  */
 
 export { ChemicalDataService } from './chemicalDataService';
-export { SN2ReactionSystem } from './sn2Reaction';
 export { ReactionDetector } from './reactionDetector';
 export { ReactionProductGenerator } from './reactionProductGenerator';
+export { SN2ReactionSystem } from './sn2Reaction';
 
 /**
  * Version information

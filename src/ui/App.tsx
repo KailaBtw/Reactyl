@@ -1,27 +1,31 @@
 import type React from 'react';
-import { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
-import { MainLayout } from './components/MainLayout';
-import { UIStateProvider } from './context/UIStateContext';
-import { threeJSBridge } from './bridge/ThreeJSBridge';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type * as THREE from 'three';
 import { reactionEventBus } from '../events/ReactionEventBus';
+import { concentrationToParticleCount } from '../utils/concentrationConverter';
+import { threeJSBridge } from './bridge/ThreeJSBridge';
+import { MainLayout } from './components/MainLayout';
+import {
+  AVAILABLE_MOLECULES,
+  DEFAULT_NUCLEOPHILE,
+  DEFAULT_SUBSTRATE,
+} from './constants/availableMolecules';
+import { UIStateProvider } from './context/UIStateContext';
 import { calculateAngleProbability } from './utils/angleProbability';
 import { calculateActivationEnergy } from './utils/thermodynamicCalculator';
-import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from './constants/availableMolecules';
-import { concentrationToParticleCount } from '../utils/concentrationConverter';
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
   // Simulation mode
   simulationMode: 'single' | 'rate'; // Single collision vs reaction rate
-  
+
   // Time controls
   isPlaying: boolean;
   timeScale: number;
 
   // Environment
   temperature: number;
-  pressure: number; // Pressure in atm (0.1 - 10 atm)
+  pressure: number; // Pressure in atm (not used in rate mode - reactions are in solution)
 
   // Collision parameters
   approachAngle: number;
@@ -56,7 +60,7 @@ export interface UIState {
   timeToCollision: number;
   reactionProbability: number;
   autoplay: boolean;
-  
+
   // Reaction rate metrics (for rate mode)
   concentration: number; // Concentration in mol/L (0.001 - 10 mol/L)
   particleCount: number; // Number of molecules in rate simulation (calculated from concentration)
@@ -173,29 +177,36 @@ export const App: React.FC = () => {
   // Continuously update reaction probability based on current parameters
   useEffect(() => {
     const calculateProbability = () => {
-      const { approachAngle, relativeVelocity, temperature, reactionType, substrateMolecule, nucleophileMolecule } = uiState;
-      
+      const {
+        approachAngle,
+        relativeVelocity,
+        temperature,
+        reactionType,
+        substrateMolecule,
+        nucleophileMolecule,
+      } = uiState;
+
       // Calculate kinetic energy from velocity
       const velocityScale = relativeVelocity / 500;
       const maxKineticEnergy = 40; // kJ/mol
       const kineticEnergy = velocityScale * maxKineticEnergy;
-      
+
       // Apply temperature factor
       const temperatureFactor = Math.sqrt(temperature / 298);
       const adjustedKineticEnergy = kineticEnergy * temperatureFactor;
-      
+
       // Get angle probability
       const angleResult = calculateAngleProbability(approachAngle, reactionType);
-      
+
       // Get activation energy for this specific molecule combination
       const activationEnergy = calculateActivationEnergy(
         substrateMolecule || 'demo_Methyl_bromide',
         nucleophileMolecule || 'demo_Hydroxide_ion',
         reactionType
       );
-      
+
       const energyRatio = adjustedKineticEnergy / activationEnergy;
-      
+
       // Smooth probability function that scales properly with energy
       let energyProbability = 0;
       if (energyRatio >= 1.0) {
@@ -207,22 +218,30 @@ export const App: React.FC = () => {
         // Lower energy = exponentially lower probability
         const scaledRatio = energyRatio / 1.0; // Normalize to max at 1.0
         // Use power curve: P ∝ (E/Ea)^n where n makes it steeper
-        energyProbability = 0.95 * Math.pow(scaledRatio, 2.5);
+        energyProbability = 0.95 * scaledRatio ** 2.5;
         // Cap at reasonable minimum for very low energies
         energyProbability = Math.max(0.001, energyProbability);
       } else {
         energyProbability = 0.001;
       }
-      
+
       const overallProbability = energyProbability * angleResult.probability;
       const percentage = overallProbability * 100; // Convert to percentage
-      
+
       // Always update to ensure it shows the calculated value
       updateUIState({ reactionProbability: percentage });
     };
 
     calculateProbability();
-  }, [uiState.approachAngle, uiState.relativeVelocity, uiState.temperature, uiState.reactionType, uiState.substrateMolecule, uiState.nucleophileMolecule, updateUIState]);
+  }, [
+    uiState.approachAngle,
+    uiState.relativeVelocity,
+    uiState.temperature,
+    uiState.reactionType,
+    uiState.substrateMolecule,
+    uiState.nucleophileMolecule,
+    updateUIState,
+  ]);
 
   // Poll rate metrics when in rate mode
   useEffect(() => {
@@ -237,7 +256,7 @@ export const App: React.FC = () => {
         remainingReactants: metrics.remainingReactants,
         productsFormed: metrics.productsFormed,
         collisionCount: metrics.collisionCount,
-        elapsedTime: metrics.elapsedTime
+        elapsedTime: metrics.elapsedTime,
       } as any);
     }, 500); // Update every 500ms - real-time updates
 
@@ -257,7 +276,8 @@ export const App: React.FC = () => {
     distance: uiState.distance,
     onReactionChange: (reaction: string) => updateUIState({ reactionType: reaction }),
     onSubstrateChange: (substrate: string) => updateUIState({ substrateMolecule: substrate }),
-    onNucleophileChange: (nucleophile: string) => updateUIState({ nucleophileMolecule: nucleophile }),
+    onNucleophileChange: (nucleophile: string) =>
+      updateUIState({ nucleophileMolecule: nucleophile }),
     onAttackAngleChange: (angle: number) => {
       updateUIState({ approachAngle: angle });
     },
@@ -292,15 +312,21 @@ export const App: React.FC = () => {
         if (uiState.simulationMode === 'rate') {
           // Rate simulation mode
           const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
-            'demo_Methyl_bromide': { cid: '6323', name: 'Methyl bromide' },
-            'demo_Hydroxide_ion': { cid: '961', name: 'Hydroxide ion' },
-            'demo_Methanol': { cid: '887', name: 'Methanol' },
-            'demo_Water': { cid: '962', name: 'Water' }
+            demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
+            demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
+            demo_Methanol: { cid: '887', name: 'Methanol' },
+            demo_Water: { cid: '962', name: 'Water' },
           };
-          
-          const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || { cid: '6323', name: 'Methyl bromide' };
-          const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || { cid: '961', name: 'Hydroxide ion' };
-          
+
+          const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
+            cid: '6323',
+            name: 'Methyl bromide',
+          };
+          const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
+            cid: '961',
+            name: 'Hydroxide ion',
+          };
+
           // Calculate particle count from concentration
           const particleCount = concentrationToParticleCount(uiState.concentration);
           await threeJSBridge.startRateSimulation(
@@ -332,32 +358,31 @@ export const App: React.FC = () => {
         clearTimeout(autoplayTimeoutRef.current);
         autoplayTimeoutRef.current = null;
       }
-      
+
       if (uiState.simulationMode === 'rate') {
         // Rate simulation doesn't need special pause handling
         // Metrics polling will stop automatically when isPlaying = false
       }
-      
+
       updateUIState({ isPlaying: false });
     },
     onReset: () => {
-      
       if (uiState.simulationMode === 'rate') {
         threeJSBridge.stopRateSimulation();
-        updateUIState({ 
-          isPlaying: false, 
+        updateUIState({
+          isPlaying: false,
           reactionInProgress: false,
           reactionRate: 0,
           remainingReactants: 100,
-          productsFormed: 0
+          productsFormed: 0,
         });
       } else {
         threeJSBridge.clear();
-        updateUIState({ 
-          isPlaying: false, 
+        updateUIState({
+          isPlaying: false,
           reactionInProgress: false,
           distance: 0,
-          timeToCollision: 0
+          timeToCollision: 0,
         });
       }
     },

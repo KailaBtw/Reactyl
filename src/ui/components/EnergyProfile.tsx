@@ -1,11 +1,11 @@
-import React from 'react';
+import type React from 'react';
 
 interface EnergyData {
-  activationEnergy: number;        // kJ/mol
-  reactionEnthalpy: number;        // ΔH in kJ/mol
-  reactionProgress: number;        // 0-100%
-  transitionStateEnergy: number;   // kJ/mol
-  currentEnergy: number;           // Current system energy
+  activationEnergy: number; // kJ/mol
+  reactionEnthalpy: number; // ΔH in kJ/mol
+  reactionProgress: number; // 0-100%
+  transitionStateEnergy: number; // kJ/mol
+  currentEnergy: number; // Current system energy
   phase: 'reactants' | 'transition' | 'products' | 'approaching';
 }
 
@@ -15,18 +15,18 @@ interface EnergyProfileProps {
   isAnimating: boolean;
 }
 
-export const EnergyProfile: React.FC<EnergyProfileProps> = ({ 
-  energyData, 
+export const EnergyProfile: React.FC<EnergyProfileProps> = ({
+  energyData,
   reactionType,
-  isAnimating 
+  isAnimating,
 }) => {
-  const { 
-    activationEnergy, 
-    reactionEnthalpy, 
-    reactionProgress, 
+  const {
+    activationEnergy,
+    reactionEnthalpy,
+    reactionProgress,
     transitionStateEnergy,
     currentEnergy,
-    phase 
+    phase,
   } = energyData;
 
   // Generate energy curve points for SVG path
@@ -34,21 +34,21 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
     const width = 200;
     const height = 80;
     const padding = 10;
-    
+
     // Normalize energies to fit in SVG height
     const maxEnergy = Math.max(activationEnergy, Math.abs(reactionEnthalpy)) + 20;
     const baselineY = height - padding;
     const reactantY = baselineY - (0 / maxEnergy) * (height - 2 * padding);
     const transitionY = baselineY - (activationEnergy / maxEnergy) * (height - 2 * padding);
     const productY = baselineY - (reactionEnthalpy / maxEnergy) * (height - 2 * padding);
-    
+
     // Create smooth curve through key points
     const points = [
-      [padding, reactantY],                    // Reactants
-      [width * 0.25, reactantY],              // Approach
-      [width * 0.5, transitionY],             // Transition state
-      [width * 0.75, productY],               // Product formation
-      [width - padding, productY],            // Products
+      [padding, reactantY], // Reactants
+      [width * 0.25, reactantY], // Approach
+      [width * 0.5, transitionY], // Transition state
+      [width * 0.75, productY], // Product formation
+      [width - padding, productY], // Products
     ];
 
     // Create smooth curve using quadratic Bézier curves
@@ -66,22 +66,32 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
   // Get phase color based on current reaction phase
   const getPhaseColor = () => {
     switch (phase) {
-      case 'reactants': return '#3b82f6';      // Blue
-      case 'approaching': return '#f59e0b';    // Amber
-      case 'transition': return '#ef4444';     // Red
-      case 'products': return '#10b981';       // Green
-      default: return '#6b7280';               // Gray
+      case 'reactants':
+        return '#3b82f6'; // Blue
+      case 'approaching':
+        return '#f59e0b'; // Amber
+      case 'transition':
+        return '#ef4444'; // Red
+      case 'products':
+        return '#10b981'; // Green
+      default:
+        return '#6b7280'; // Gray
     }
   };
 
   // Get phase description
   const getPhaseDescription = () => {
     switch (phase) {
-      case 'reactants': return 'Reactants separated';
-      case 'approaching': return 'Molecules approaching';
-      case 'transition': return 'Transition state';
-      case 'products': return 'Products formed';
-      default: return 'Unknown phase';
+      case 'reactants':
+        return 'Reactants separated';
+      case 'approaching':
+        return 'Molecules approaching';
+      case 'transition':
+        return 'Transition state';
+      case 'products':
+        return 'Products formed';
+      default:
+        return 'Unknown phase';
     }
   };
 
@@ -90,7 +100,7 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
     const { points, width } = generateEnergyCurve();
     const padding = 10; // Same as in generateEnergyCurve
     const progressX = padding + (reactionProgress / 100) * (width - 2 * padding);
-    
+
     // Interpolate Y position based on progress
     let currentY;
     if (reactionProgress < 25) {
@@ -110,7 +120,7 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
       const t = (reactionProgress - 75) / 25;
       currentY = points[3][1] + (points[4][1] - points[3][1]) * t;
     }
-    
+
     return { x: progressX, y: currentY };
   };
 
@@ -123,7 +133,7 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
       <h3 className="text-base font-semibold mb-4 text-gray-800 flex items-center gap-2">
         ⚡ ENERGY PROFILE
       </h3>
-      
+
       {/* Energy Values */}
       <div className="space-y-2 mb-4">
         <div className="flex justify-between items-center text-sm">
@@ -134,10 +144,13 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
         </div>
         <div className="flex justify-between items-center text-sm">
           <span className="text-gray-600">Reaction Enthalpy:</span>
-          <span className={`font-mono font-semibold ${
-            reactionEnthalpy < 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {reactionEnthalpy > 0 ? '+' : ''}{reactionEnthalpy.toFixed(1)} kJ/mol
+          <span
+            className={`font-mono font-semibold ${
+              reactionEnthalpy < 0 ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {reactionEnthalpy > 0 ? '+' : ''}
+            {reactionEnthalpy.toFixed(1)} kJ/mol
           </span>
         </div>
         <div className="flex justify-between items-center text-sm">
@@ -154,11 +167,11 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
         </div>
         <div className="flex justify-between items-center text-sm">
           <span className="text-gray-600">Phase:</span>
-          <span 
+          <span
             className="font-semibold px-2 py-1 rounded text-xs"
-            style={{ 
+            style={{
               backgroundColor: `${getPhaseColor()}20`,
-              color: getPhaseColor()
+              color: getPhaseColor(),
             }}
           >
             {getPhaseDescription()}
@@ -168,20 +181,15 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
 
       {/* Energy Diagram */}
       <div className="bg-gray-50 rounded border relative overflow-hidden">
-        <svg 
-          width="100%" 
-          height="100" 
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-24"
-        >
+        <svg width="100%" height="100" viewBox={`0 0 ${width} ${height}`} className="w-full h-24">
           {/* Background grid */}
           <defs>
             <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5"/>
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
-          
+
           {/* Energy curve */}
           <path
             d={path}
@@ -190,7 +198,7 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
             strokeWidth="2"
             className="transition-all duration-300"
           />
-          
+
           {/* Current position indicator */}
           {isAnimating && (
             <circle
@@ -203,11 +211,31 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
               className="animate-pulse"
             />
           )}
-          
+
           {/* Key points */}
-          <circle cx={padding} cy={height - padding - (0 / Math.max(activationEnergy, Math.abs(reactionEnthalpy)) + 20) * (height - 2 * padding)} r="3" fill="#3b82f6" />
-          <circle cx={width - padding} cy={height - padding - (reactionEnthalpy / Math.max(activationEnergy, Math.abs(reactionEnthalpy)) + 20) * (height - 2 * padding)} r="3" fill="#10b981" />
-          
+          <circle
+            cx={padding}
+            cy={
+              height -
+              padding -
+              (0 / Math.max(activationEnergy, Math.abs(reactionEnthalpy)) + 20) *
+                (height - 2 * padding)
+            }
+            r="3"
+            fill="#3b82f6"
+          />
+          <circle
+            cx={width - padding}
+            cy={
+              height -
+              padding -
+              (reactionEnthalpy / Math.max(activationEnergy, Math.abs(reactionEnthalpy)) + 20) *
+                (height - 2 * padding)
+            }
+            r="3"
+            fill="#10b981"
+          />
+
           {/* Labels */}
           <text x={padding} y={height - 5} fontSize="10" fill="#6b7280" textAnchor="start">
             Reactants
@@ -219,10 +247,10 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
             Transition State
           </text>
         </svg>
-        
+
         {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
-          <div 
+          <div
             className="h-full bg-blue-500 transition-all duration-300"
             style={{ width: `${reactionProgress}%` }}
           />
@@ -231,12 +259,13 @@ export const EnergyProfile: React.FC<EnergyProfileProps> = ({
 
       {/* Thermodynamic Summary */}
       <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-        <div className="text-xs font-medium text-blue-800 mb-1">
-          {reactionType} Thermodynamics
-        </div>
+        <div className="text-xs font-medium text-blue-800 mb-1">{reactionType} Thermodynamics</div>
         <div className="text-xs text-blue-700 space-y-1">
           <div>Ea = {activationEnergy.toFixed(1)} kJ/mol</div>
-          <div>ΔH = {reactionEnthalpy > 0 ? '+' : ''}{reactionEnthalpy.toFixed(1)} kJ/mol</div>
+          <div>
+            ΔH = {reactionEnthalpy > 0 ? '+' : ''}
+            {reactionEnthalpy.toFixed(1)} kJ/mol
+          </div>
           <div className="text-blue-600">
             {reactionEnthalpy < 0 ? 'Exothermic' : 'Endothermic'} reaction
           </div>

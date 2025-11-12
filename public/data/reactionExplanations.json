@@ -17,7 +17,7 @@
     ]
   },
   "sn1": {
-    "name": "SN1 Reaction", 
+    "name": "SN1 Reaction",
     "description": "Unimolecular nucleophilic substitution reaction",
     "mechanism": "The leaving group departs first to form a carbocation intermediate, which is then attacked by the nucleophile.",
     "steps": [
@@ -33,17 +33,9 @@
   },
   "e2": {
     "name": "E2 Reaction",
-    "description": "Bimolecular elimination reaction", 
+    "description": "Bimolecular elimination reaction",
     "mechanism": "A base removes a proton while the leaving group departs simultaneously, forming a double bond.",
-    "steps": [
-      "Base removes proton",
-      "Leaving group departs",
-      "Double bond forms"
-    ],
-    "factors": [
-      "Strength of the base",
-      "Quality of the leaving group",
-      "Anti-periplanar geometry"
-    ]
+    "steps": ["Base removes proton", "Leaving group departs", "Double bond forms"],
+    "factors": ["Strength of the base", "Quality of the leaving group", "Anti-periplanar geometry"]
   }
 }

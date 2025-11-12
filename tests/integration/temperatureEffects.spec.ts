@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactionDetector } from '../../src/chemistry/reactionDetector';
 
 describe('Temperature Effects Integration', () => {
@@ -14,7 +14,7 @@ describe('Temperature Effects Integration', () => {
     const collisionData = {
       collisionEnergy: 100,
       approachAngle: 180,
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
 
     const reactionType: any = {
@@ -25,12 +25,12 @@ describe('Temperature Effects Integration', () => {
       optimalAngle: 180,
       requiredFeatures: {
         substrate: [],
-        nucleophile: []
+        nucleophile: [],
       },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-80 / (8.314 * T / 1000)), // Arrhenius
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-80 / ((8.314 * T) / 1000)), // Arrhenius
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     const substrate: any = { molecularProperties: { totalMass: 95 } };
@@ -76,12 +76,12 @@ describe('Temperature Effects Integration', () => {
       optimalAngle: 180,
       requiredFeatures: {
         substrate: [],
-        nucleophile: []
+        nucleophile: [],
       },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-80 / (8.314 * T / 1000)), // Arrhenius
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-80 / ((8.314 * T) / 1000)), // Arrhenius
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     // Act - Test temperature factor function directly
@@ -102,7 +102,7 @@ describe('Temperature Effects Integration', () => {
     const collisionData = {
       collisionEnergy: 100,
       approachAngle: 180,
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
 
     const reactionType: any = {
@@ -113,12 +113,12 @@ describe('Temperature Effects Integration', () => {
       optimalAngle: 180,
       requiredFeatures: {
         substrate: [],
-        nucleophile: []
+        nucleophile: [],
       },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-80 / (8.314 * T / 1000)),
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-80 / ((8.314 * T) / 1000)),
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     const substrate: any = { molecularProperties: { totalMass: 95 } };
@@ -126,7 +126,7 @@ describe('Temperature Effects Integration', () => {
 
     // Act & Assert - Should handle extreme temperatures
     const extremeTemperatures = [0.1, 1, 10, 1000, 10000];
-    
+
     extremeTemperatures.forEach(temp => {
       const result = reactionDetector.detectReaction(
         collisionData,
@@ -135,7 +135,7 @@ describe('Temperature Effects Integration', () => {
         substrate,
         nucleophile
       );
-      
+
       expect(result.probability).toBeGreaterThanOrEqual(0);
       expect(result.probability).toBeLessThanOrEqual(1);
       expect(isFinite(result.probability)).toBe(true);
@@ -147,7 +147,7 @@ describe('Temperature Effects Integration', () => {
     const collisionData = {
       collisionEnergy: 100,
       approachAngle: 180,
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
 
     const reactionType: any = {
@@ -158,26 +158,20 @@ describe('Temperature Effects Integration', () => {
       optimalAngle: 180,
       requiredFeatures: {
         substrate: [],
-        nucleophile: []
+        nucleophile: [],
       },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-80 / (8.314 * T / 1000)),
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-80 / ((8.314 * T) / 1000)),
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     const substrate: any = { molecularProperties: { totalMass: 95 } };
     const nucleophile: any = { molecularProperties: { totalMass: 17 } };
 
     // Act - Multiple calls at same temperature
-    const results = Array.from({ length: 5 }, () => 
-      reactionDetector.detectReaction(
-        collisionData,
-        reactionType,
-        298,
-        substrate,
-        nucleophile
-      )
+    const results = Array.from({ length: 5 }, () =>
+      reactionDetector.detectReaction(collisionData, reactionType, 298, substrate, nucleophile)
     );
 
     // Assert - All results should be identical
@@ -192,7 +186,7 @@ describe('Temperature Effects Integration', () => {
     const collisionData = {
       collisionEnergy: 100,
       approachAngle: 180,
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
 
     const sn2Reaction: any = {
@@ -203,9 +197,9 @@ describe('Temperature Effects Integration', () => {
       optimalAngle: 180,
       requiredFeatures: { substrate: [], nucleophile: [] },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-80 / (8.314 * T / 1000)),
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-80 / ((8.314 * T) / 1000)),
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     const sn1Reaction: any = {
@@ -216,29 +210,53 @@ describe('Temperature Effects Integration', () => {
       optimalAngle: 180,
       requiredFeatures: { substrate: [], nucleophile: [] },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-120 / (8.314 * T / 1000)),
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-120 / ((8.314 * T) / 1000)),
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     const substrate: any = { molecularProperties: { totalMass: 95 } };
     const nucleophile: any = { molecularProperties: { totalMass: 17 } };
 
     // Act
-    const sn2Result298 = reactionDetector.detectReaction(collisionData, sn2Reaction, 298, substrate, nucleophile);
-    const sn2Result373 = reactionDetector.detectReaction(collisionData, sn2Reaction, 373, substrate, nucleophile);
-    
-    const sn1Result298 = reactionDetector.detectReaction(collisionData, sn1Reaction, 298, substrate, nucleophile);
-    const sn1Result373 = reactionDetector.detectReaction(collisionData, sn1Reaction, 373, substrate, nucleophile);
+    const sn2Result298 = reactionDetector.detectReaction(
+      collisionData,
+      sn2Reaction,
+      298,
+      substrate,
+      nucleophile
+    );
+    const sn2Result373 = reactionDetector.detectReaction(
+      collisionData,
+      sn2Reaction,
+      373,
+      substrate,
+      nucleophile
+    );
+
+    const sn1Result298 = reactionDetector.detectReaction(
+      collisionData,
+      sn1Reaction,
+      298,
+      substrate,
+      nucleophile
+    );
+    const sn1Result373 = reactionDetector.detectReaction(
+      collisionData,
+      sn1Reaction,
+      373,
+      substrate,
+      nucleophile
+    );
 
     // Assert - Both reaction types should show temperature dependence
     expect(sn2Result373.probability).toBeGreaterThan(sn2Result298.probability);
-    
+
     // SN1 may have very low probabilities due to high activation energy
     // Check that temperature still has an effect (even if both are very low)
     const sn1TempEffect = sn1Result373.probability >= sn1Result298.probability;
     expect(sn1TempEffect).toBe(true);
-    
+
     // SN1 should have lower probability due to higher activation energy
     expect(sn1Result298.probability).toBeLessThanOrEqual(sn2Result298.probability);
     expect(sn1Result373.probability).toBeLessThanOrEqual(sn2Result373.probability);

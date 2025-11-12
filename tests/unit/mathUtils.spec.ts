@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
 import { getNormalizedVectorAB } from '../../src/utils/vectorHelper';
 
 describe('Math Utilities', () => {
@@ -42,9 +42,9 @@ describe('Math Utilities', () => {
       const direction = getNormalizedVectorAB(positionA, positionB);
 
       // Assert
-      expect(direction.x).toBeCloseTo(-Math.sqrt(3)/3, 2);
-      expect(direction.y).toBeCloseTo(-Math.sqrt(3)/3, 2);
-      expect(direction.z).toBeCloseTo(-Math.sqrt(3)/3, 2);
+      expect(direction.x).toBeCloseTo(-Math.sqrt(3) / 3, 2);
+      expect(direction.y).toBeCloseTo(-Math.sqrt(3) / 3, 2);
+      expect(direction.z).toBeCloseTo(-Math.sqrt(3) / 3, 2);
       expect(direction.length()).toBeCloseTo(1, 5);
     });
 

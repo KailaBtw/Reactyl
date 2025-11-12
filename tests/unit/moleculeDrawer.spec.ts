@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { drawMolecule } from '../../src/components/moleculeDrawer';
 import { physicsEngine } from '../../src/physics/cannonPhysicsEngine';
-import { MOL_FILES, TEST_POSITIONS } from '../fixtures/molFiles';
 import { createMockMoleculeManager, createMockPhysicsEngine } from '../fixtures/mockMolecules';
+import { MOL_FILES, TEST_POSITIONS } from '../fixtures/molFiles';
 
 describe('Molecule Drawer', () => {
   let scene: THREE.Scene;
@@ -17,7 +17,9 @@ describe('Molecule Drawer', () => {
 
     // Mock physics engine
     vi.spyOn(physicsEngine, 'addMolecule').mockReturnValue(true);
-    vi.spyOn(physicsEngine, 'getPhysicsBody').mockReturnValue({ quaternion: new THREE.Quaternion() });
+    vi.spyOn(physicsEngine, 'getPhysicsBody').mockReturnValue({
+      quaternion: new THREE.Quaternion(),
+    });
     vi.spyOn(physicsEngine, 'setVelocity').mockImplementation(() => {});
   });
 
@@ -37,7 +39,14 @@ describe('Molecule Drawer', () => {
 
   it('initializes molecules with zero velocity', () => {
     // Act
-    drawMolecule(MOL_FILES.METHYL_BROMIDE, moleculeManager, scene, TEST_POSITIONS.CENTER, 'TestMolecule', false);
+    drawMolecule(
+      MOL_FILES.METHYL_BROMIDE,
+      moleculeManager,
+      scene,
+      TEST_POSITIONS.CENTER,
+      'TestMolecule',
+      false
+    );
 
     // Assert
     const createdMolecule = moleculeManager.newMolecule.mock.results[0].value;
@@ -48,7 +57,14 @@ describe('Molecule Drawer', () => {
 
   it('does not call setMoleculeVelocity automatically', () => {
     // Act
-    drawMolecule(MOL_FILES.METHYL_BROMIDE, moleculeManager, scene, TEST_POSITIONS.CENTER, 'TestMolecule', false);
+    drawMolecule(
+      MOL_FILES.METHYL_BROMIDE,
+      moleculeManager,
+      scene,
+      TEST_POSITIONS.CENTER,
+      'TestMolecule',
+      false
+    );
 
     // Assert - setMoleculeVelocity should not be called
     expect(moleculeManager.setMoleculeVelocity).not.toHaveBeenCalled();
@@ -56,7 +72,14 @@ describe('Molecule Drawer', () => {
 
   it('adds physics body to molecules', () => {
     // Act
-    drawMolecule(MOL_FILES.METHYL_BROMIDE, moleculeManager, scene, TEST_POSITIONS.CENTER, 'TestMolecule', false);
+    drawMolecule(
+      MOL_FILES.METHYL_BROMIDE,
+      moleculeManager,
+      scene,
+      TEST_POSITIONS.CENTER,
+      'TestMolecule',
+      false
+    );
 
     // Assert
     expect(physicsEngine.addMolecule).toHaveBeenCalled();
@@ -68,7 +91,14 @@ describe('Molecule Drawer', () => {
     const initialChildCount = scene.children.length;
 
     // Act
-    drawMolecule(MOL_FILES.METHYL_BROMIDE, moleculeManager, scene, TEST_POSITIONS.CENTER, 'TestMolecule', false);
+    drawMolecule(
+      MOL_FILES.METHYL_BROMIDE,
+      moleculeManager,
+      scene,
+      TEST_POSITIONS.CENTER,
+      'TestMolecule',
+      false
+    );
 
     // Assert
     expect(scene.children.length).toBe(initialChildCount + 1);
@@ -76,7 +106,14 @@ describe('Molecule Drawer', () => {
 
   it('handles different molecule sizes correctly', () => {
     // Act - Small molecule (2 atoms)
-    drawMolecule(MOL_FILES.HYDROXIDE_ION, moleculeManager, scene, TEST_POSITIONS.CENTER, 'SmallMolecule', false);
+    drawMolecule(
+      MOL_FILES.HYDROXIDE_ION,
+      moleculeManager,
+      scene,
+      TEST_POSITIONS.CENTER,
+      'SmallMolecule',
+      false
+    );
 
     // Assert
     expect(physicsEngine.addMolecule).toHaveBeenCalled();
@@ -88,7 +125,14 @@ describe('Molecule Drawer', () => {
 
   it('applies random rotation when requested', () => {
     // Act
-    drawMolecule(MOL_FILES.METHYL_BROMIDE, moleculeManager, scene, TEST_POSITIONS.CENTER, 'TestMolecule', true);
+    drawMolecule(
+      MOL_FILES.METHYL_BROMIDE,
+      moleculeManager,
+      scene,
+      TEST_POSITIONS.CENTER,
+      'TestMolecule',
+      true
+    );
 
     // Assert
     const createdMolecule = moleculeManager.newMolecule.mock.results[0].value;
@@ -99,7 +143,14 @@ describe('Molecule Drawer', () => {
 
   it('does not apply random rotation when not requested', () => {
     // Act
-    drawMolecule(MOL_FILES.METHYL_BROMIDE, moleculeManager, scene, TEST_POSITIONS.CENTER, 'TestMolecule', false);
+    drawMolecule(
+      MOL_FILES.METHYL_BROMIDE,
+      moleculeManager,
+      scene,
+      TEST_POSITIONS.CENTER,
+      'TestMolecule',
+      false
+    );
 
     // Assert
     const createdMolecule = moleculeManager.newMolecule.mock.results[0].value;

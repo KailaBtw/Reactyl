@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SN2MechanismAnimation } from '../../src/animations/SN2MechanismAnimation';
 import { createMockMolecule } from '../fixtures/mockMolecules';
 
@@ -36,15 +36,3 @@ describe('SN2 Product Loading Resilience', () => {
     expect(nucleophile.group.position).toBeDefined();
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-

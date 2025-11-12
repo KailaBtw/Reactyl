@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { ChemicalDataService } from '../../../chemistry/chemicalDataService';
 import { drawMolecule } from '../../../components/moleculeDrawer';
@@ -38,93 +38,104 @@ export const MoleculeSearch: React.FC = () => {
 
     // Check periodically until ready
     const interval = setInterval(checkSceneReady, 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
-  const handleSearch = useCallback(async (query: string) => {
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    setIsSearching(true);
-    setSearchStatus('Searching...');
-
-    try {
-      let results: SearchResult[] = [];
-
-      // Enhanced search routing - detect input type
-      if (/^\d+$/.test(query)) {
-        // CID search (numeric)
-        try {
-          const molecularData = await chemicalService.fetchMoleculeByCID(query);
-          results = [
-            {
-              cid: query,
-              name: molecularData.title || molecularData.name || molecularData.formula || `Molecule ${query}`,
-              formula: molecularData.formula || 'Unknown',
-            },
-          ];
-          setSearchStatus(`Found CID ${query}`);
-        } catch (error) {
-          setSearchStatus(`CID ${query} not found`);
-          results = [];
-        }
-      } else if (isInChIKey(query)) {
-        // InChIKey search (27 characters, contains hyphens)
-        try {
-          const molecularData = await chemicalService.fetchMoleculeByInChIKey(query);
-          results = [
-            {
-              cid: String(molecularData.cid || 'Unknown'),
-              name: molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
-              formula: molecularData.formula || 'Unknown',
-            },
-          ];
-          setSearchStatus(`Found InChIKey ${query}`);
-        } catch (error) {
-          setSearchStatus(`InChIKey ${query} not found`);
-          results = [];
-        }
-      } else if (isSMILES(query)) {
-        // SMILES search (contains special characters)
-        try {
-          const molecularData = await chemicalService.fetchMoleculeBySMILES(query);
-          results = [
-            {
-              cid: String(molecularData.cid || 'Unknown'),
-              name: molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
-              formula: molecularData.formula || 'Unknown',
-            },
-          ];
-          setSearchStatus(`Found SMILES ${query}`);
-        } catch (error) {
-          setSearchStatus(`SMILES ${query} not found`);
-          results = [];
-        }
-      } else {
-        // General search (name, formula, etc.)
-        results = await chemicalService.searchMolecules(query, 10);
-        setSearchStatus(results.length > 0 ? `Found ${results.length} results` : 'No results found');
+  const handleSearch = useCallback(
+    async (query: string) => {
+      if (!query || query.length < 2) {
+        setSearchResults([]);
+        setShowDropdown(false);
+        return;
       }
 
-      setSearchResults(results);
-      setShowDropdown(results.length > 0);
-    } catch (error) {
-      setSearchStatus('Search failed');
-      setSearchResults([]);
-      setShowDropdown(false);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [chemicalService]);
+      setIsSearching(true);
+      setSearchStatus('Searching...');
+
+      try {
+        let results: SearchResult[] = [];
+
+        // Enhanced search routing - detect input type
+        if (/^\d+$/.test(query)) {
+          // CID search (numeric)
+          try {
+            const molecularData = await chemicalService.fetchMoleculeByCID(query);
+            results = [
+              {
+                cid: query,
+                name:
+                  molecularData.title ||
+                  molecularData.name ||
+                  molecularData.formula ||
+                  `Molecule ${query}`,
+                formula: molecularData.formula || 'Unknown',
+              },
+            ];
+            setSearchStatus(`Found CID ${query}`);
+          } catch (error) {
+            setSearchStatus(`CID ${query} not found`);
+            results = [];
+          }
+        } else if (isInChIKey(query)) {
+          // InChIKey search (27 characters, contains hyphens)
+          try {
+            const molecularData = await chemicalService.fetchMoleculeByInChIKey(query);
+            results = [
+              {
+                cid: String(molecularData.cid || 'Unknown'),
+                name:
+                  molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
+                formula: molecularData.formula || 'Unknown',
+              },
+            ];
+            setSearchStatus(`Found InChIKey ${query}`);
+          } catch (error) {
+            setSearchStatus(`InChIKey ${query} not found`);
+            results = [];
+          }
+        } else if (isSMILES(query)) {
+          // SMILES search (contains special characters)
+          try {
+            const molecularData = await chemicalService.fetchMoleculeBySMILES(query);
+            results = [
+              {
+                cid: String(molecularData.cid || 'Unknown'),
+                name:
+                  molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
+                formula: molecularData.formula || 'Unknown',
+              },
+            ];
+            setSearchStatus(`Found SMILES ${query}`);
+          } catch (error) {
+            setSearchStatus(`SMILES ${query} not found`);
+            results = [];
+          }
+        } else {
+          // General search (name, formula, etc.)
+          results = await chemicalService.searchMolecules(query, 10);
+          setSearchStatus(
+            results.length > 0 ? `Found ${results.length} results` : 'No results found'
+          );
+        }
+
+        setSearchResults(results);
+        setShowDropdown(results.length > 0);
+      } catch (error) {
+        setSearchStatus('Search failed');
+        setSearchResults([]);
+        setShowDropdown(false);
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [chemicalService]
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
+
     // Debounce search
     const timeoutId = setTimeout(() => {
       handleSearch(query);
@@ -152,10 +163,10 @@ export const MoleculeSearch: React.FC = () => {
 
       if (!scene || !moleculeManager) {
         setSearchStatus('Error: Scene not available. Please wait for initialization...');
-        console.error('Scene or molecule manager not available:', { 
-          scene: !!scene, 
+        console.error('Scene or molecule manager not available:', {
+          scene: !!scene,
           moleculeManager: !!moleculeManager,
-          bridgeInitialized: sceneBridge.isInitialized()
+          bridgeInitialized: sceneBridge.isInitialized(),
         });
         return;
       }
@@ -163,25 +174,19 @@ export const MoleculeSearch: React.FC = () => {
       // Load the molecule with stationary position
       const position = { x: 0, y: 0, z: 0 }; // Stationary at origin
       const molecularData = await chemicalService.fetchMoleculeByCID(result.cid);
-      
+
       if (!molecularData.mol3d) {
         setSearchStatus(`❌ No 3D structure available for ${result.name}`);
         return;
       }
-      
-      drawMolecule(
-        molecularData.mol3d,
-        moleculeManager,
-        scene,
-        position,
-        result.name
-      );
+
+      drawMolecule(molecularData.mol3d, moleculeManager, scene, position, result.name);
 
       // Make the molecule stationary by setting zero velocity
       moleculeManager.setMoleculeVelocity(result.name, new THREE.Vector3(0, 0, 0), 0);
 
       setSearchStatus(`✅ Loaded ${result.name} (stationary)`);
-      
+
       // Note: Not updating availableMolecules list - search spawns molecules independently
       // The dropdowns use hardcoded demo molecules for user testing
     } catch (error) {
@@ -194,7 +199,7 @@ export const MoleculeSearch: React.FC = () => {
   };
 
   const isSMILES = (query: string): boolean => {
-    return /[=#@\[\]()]/.test(query);
+    return /[=#@[\]()]/.test(query);
   };
 
   return (
@@ -207,7 +212,11 @@ export const MoleculeSearch: React.FC = () => {
             value={searchQuery}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder={sceneReady ? "e.g., benzene, 241, C6H6, C1=CC=CC=C1, etc..." : "Waiting for scene initialization..."}
+            placeholder={
+              sceneReady
+                ? 'e.g., benzene, 241, C6H6, C1=CC=CC=C1, etc...'
+                : 'Waiting for scene initialization...'
+            }
             disabled={!sceneReady}
             className="form-input"
             style={{
@@ -221,7 +230,7 @@ export const MoleculeSearch: React.FC = () => {
               cursor: sceneReady ? 'text' : 'not-allowed',
             }}
           />
-          
+
           {showDropdown && searchResults.length > 0 && (
             <div
               style={{
@@ -248,10 +257,10 @@ export const MoleculeSearch: React.FC = () => {
                     color: '#fff',
                     fontSize: '12px',
                   }}
-                  onMouseEnter={(e) => {
+                  onMouseEnter={e => {
                     e.currentTarget.style.backgroundColor = '#444';
                   }}
-                  onMouseLeave={(e) => {
+                  onMouseLeave={e => {
                     e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
@@ -264,7 +273,7 @@ export const MoleculeSearch: React.FC = () => {
             </div>
           )}
         </div>
-        
+
         <div
           style={{
             color: isSearching ? '#81C784' : sceneReady ? '#aaa' : '#ff6b6b',
@@ -275,7 +284,7 @@ export const MoleculeSearch: React.FC = () => {
         >
           {searchStatus}
         </div>
-        
+
         {!sceneReady && (
           <div style={{ marginTop: '10px' }}>
             <button
@@ -285,7 +294,7 @@ export const MoleculeSearch: React.FC = () => {
                   scene: !!sceneBridge.getScene(),
                   moleculeManager: !!sceneBridge.getMoleculeManager(),
                   globalScene: !!(window as any).threeScene,
-                  globalManager: !!(window as any).moleculeManager
+                  globalManager: !!(window as any).moleculeManager,
                 });
               }}
               style={{
@@ -295,7 +304,7 @@ export const MoleculeSearch: React.FC = () => {
                 color: '#fff',
                 border: '1px solid #555',
                 borderRadius: '3px',
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
             >
               Debug Scene Status

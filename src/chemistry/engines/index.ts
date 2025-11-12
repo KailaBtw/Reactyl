@@ -1,17 +1,16 @@
 /**
  * Ironclad Engines Module
- * 
+ *
  * Exports only the essential, production-ready engine components.
  * No duplicated functionality - just the core StructureEngine system.
  */
 
-export { StructureEngine } from './structureEngine';
-export { ReactionHandler } from './reactionHandler';
-export { ReactionRegistry } from './reactionRegistry';
 export { SN2ReactionHandler } from './handlers/sn2ReactionHandler';
-
 // Type exports
 export type { MolecularStructure, TransitionState } from './reactionHandler';
+export { ReactionHandler } from './reactionHandler';
+export { ReactionRegistry } from './reactionRegistry';
+export { StructureEngine } from './structureEngine';
 
 /**
  * Quick initialization function for easy setup

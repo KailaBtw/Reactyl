@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 
 describe('Physics Integration Tests', () => {
@@ -7,10 +7,14 @@ describe('Physics Integration Tests', () => {
   let orchestrator: ReactionOrchestrator;
   const moleculeStore: Record<string, any> = {};
   const moleculeManager: any = {
-    addMolecule: vi.fn((name: string, mol: any) => { moleculeStore[name] = mol; }),
+    addMolecule: vi.fn((name: string, mol: any) => {
+      moleculeStore[name] = mol;
+    }),
     getAllMolecules: vi.fn().mockReturnValue([]),
     getMolecule: vi.fn((name: string) => moleculeStore[name]),
-    clearAllMolecules: vi.fn(() => { Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]); })
+    clearAllMolecules: vi.fn(() => {
+      Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]);
+    }),
   };
 
   beforeEach(() => {
@@ -63,25 +67,27 @@ describe('Physics Integration Tests', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { 
-          quaternion: new THREE.Quaternion(),
-          position: new THREE.Vector3(position.x, position.y, position.z)
-        }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: {
+            quaternion: new THREE.Quaternion(),
+            position: new THREE.Vector3(position.x, position.y, position.z),
+          },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(params);
@@ -93,7 +99,7 @@ describe('Physics Integration Tests', () => {
 
     expect(substrate).toBeTruthy();
     expect(nucleophile).toBeTruthy();
-    
+
     // Physics bodies may not be created in test environment
     if (substrate?.physicsBody) {
       expect(substrate.physicsBody.quaternion).toBeInstanceOf(THREE.Quaternion);
@@ -109,25 +115,27 @@ describe('Physics Integration Tests', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { 
-          quaternion: new THREE.Quaternion(),
-          position: new THREE.Vector3(position.x, position.y, position.z)
-        }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: {
+            quaternion: new THREE.Quaternion(),
+            position: new THREE.Vector3(position.x, position.y, position.z),
+          },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(params);
@@ -139,7 +147,7 @@ describe('Physics Integration Tests', () => {
 
     expect(substrate).toBeTruthy();
     expect(nucleophile).toBeTruthy();
-    
+
     // Check position sync only if physics bodies exist
     if (substrate?.physicsBody && substrate?.group) {
       expect(substrate.physicsBody.position.equals(substrate.group.position)).toBe(true);
@@ -155,25 +163,27 @@ describe('Physics Integration Tests', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { 
-          quaternion: new THREE.Quaternion(),
-          position: new THREE.Vector3(position.x, position.y, position.z)
-        }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: {
+            quaternion: new THREE.Quaternion(),
+            position: new THREE.Vector3(position.x, position.y, position.z),
+          },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(params);
@@ -212,13 +222,13 @@ describe('Physics Integration Tests', () => {
     // Act - Multiple pause/resume cycles
     physicsEngine.pause();
     expect(physicsEngine.isSimulationPaused()).toBe(true);
-    
+
     physicsEngine.resume();
     expect(physicsEngine.isSimulationPaused()).toBe(false);
-    
+
     physicsEngine.pause();
     expect(physicsEngine.isSimulationPaused()).toBe(true);
-    
+
     physicsEngine.resume();
     expect(physicsEngine.isSimulationPaused()).toBe(false);
 

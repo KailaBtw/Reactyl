@@ -38,7 +38,6 @@ export const TopBar: React.FC = () => {
     });
   };
 
-
   const handleTimeScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateUIState({ timeScale: parseFloat(e.target.value) });
   };
@@ -54,13 +53,16 @@ export const TopBar: React.FC = () => {
     }
   };
 
-
   return (
     <div className="top-bar">
       <h1>Reactyl</h1>
 
       <div className="control-group" style={{ marginLeft: 'auto', gap: '6px' }}>
-        <button className="pill-btn" onClick={handlePlayPause} title={uiState.isPlaying ? 'Pause' : 'Play'}>
+        <button
+          className="pill-btn"
+          onClick={handlePlayPause}
+          title={uiState.isPlaying ? 'Pause' : 'Play'}
+        >
           {uiState.isPlaying ? 'Pause' : 'Play'}
         </button>
         <button className="pill-btn" onClick={handleReset} title="Reset">
@@ -69,7 +71,6 @@ export const TopBar: React.FC = () => {
       </div>
 
       <div className="top-bar-controls">
-
         <div className="control-group">
           <label>Time Scale:</label>
           <input
@@ -107,7 +108,6 @@ export const TopBar: React.FC = () => {
             Show Stats
           </label>
         </div>
-
 
         <div className="control-group">
           <label>

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SN2MechanismAnimation } from '../../src/animations/SN2MechanismAnimation';
 import { physicsEngine } from '../../src/physics/cannonPhysicsEngine';
 import { createMockMolecule } from '../fixtures/mockMolecules';
@@ -26,7 +26,9 @@ describe('Rotation lock after SN2 (integration)', () => {
     // Run instant SN2
     sn2.animate(substrate, nucleophile, {});
 
-    const body = physicsEngine.getPhysicsBody((window as any).moleculeManager.getMolecule('Substrate')) as any;
+    const body = physicsEngine.getPhysicsBody(
+      (window as any).moleculeManager.getMolecule('Substrate')
+    ) as any;
     expect(body).toBeTruthy();
     // angular velocity should be zeroed by lockSubstrateRotation
     expect(body.angularVelocity.x).toBeCloseTo(0, 6);
@@ -40,15 +42,3 @@ describe('Rotation lock after SN2 (integration)', () => {
     expect(body.quaternion.w).toBeCloseTo(q.w, 6);
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-

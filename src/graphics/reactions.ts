@@ -1,7 +1,7 @@
 import * as THREE from 'three';
+import { createAtomMesh, getAtomConfig } from '../config/atomConfig';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
-import { createAtomMesh, getAtomConfig } from '../config/atomConfig';
 
 /**
  * Minimal Reaction Graphics System
@@ -101,8 +101,8 @@ export class ReactionGraphics {
       if (a === leavingGroupIndex && atoms[b]?.type === 'C') return b;
       if (b === leavingGroupIndex && atoms[a]?.type === 'C') return a;
     }
-      return -1;
-    }
+    return -1;
+  }
 
   // Find atom mesh tagged with userData.atomIndex (set by moleculeDrawer)
   private findAtomMesh(molecule: MoleculeGroup, atomIndex: number): THREE.Mesh | undefined {
@@ -144,20 +144,25 @@ export class ReactionGraphics {
   /**
    * Add OH group to substrate
    */
-  private addOHGroup(molecule: MoleculeGroup, carbonIndex: number, oPos: THREE.Vector3, hPos: THREE.Vector3): void {
+  private addOHGroup(
+    molecule: MoleculeGroup,
+    carbonIndex: number,
+    oPos: THREE.Vector3,
+    hPos: THREE.Vector3
+  ): void {
     log('➕ Adding OH group');
 
     // Add O atom
     molecule.molObject?.atoms?.push({
       type: 'O',
-      position: { x: oPos.x.toFixed(3), y: oPos.y.toFixed(3), z: oPos.z.toFixed(3) }
+      position: { x: oPos.x.toFixed(3), y: oPos.y.toFixed(3), z: oPos.z.toFixed(3) },
     } as any);
     const oIndex = (molecule.molObject?.atoms?.length || 1) - 1;
 
     // Add H atom
     molecule.molObject?.atoms?.push({
       type: 'H',
-      position: { x: hPos.x.toFixed(3), y: hPos.y.toFixed(3), z: hPos.z.toFixed(3) }
+      position: { x: hPos.x.toFixed(3), y: hPos.y.toFixed(3), z: hPos.z.toFixed(3) },
     } as any);
     const hIndex = (molecule.molObject?.atoms?.length || 1) - 1;
 
@@ -183,8 +188,8 @@ export class ReactionGraphics {
     if (!molecule.group) return;
 
     // Find and remove the atom mesh
-    const atomMeshes = molecule.group.children.filter(child => 
-      child.userData?.atomIndex === atomIndex
+    const atomMeshes = molecule.group.children.filter(
+      child => child.userData?.atomIndex === atomIndex
     );
 
     atomMeshes.forEach(mesh => {
@@ -203,7 +208,11 @@ export class ReactionGraphics {
     // Reassign contiguous atomIndex tags to remaining atom meshes
     let nextIndex = 0;
     molecule.group.children.forEach(child => {
-      if ((child as any).userData && (child as any).userData.atomIndex !== undefined && (child as any).userData.type !== 'bond') {
+      if (
+        (child as any).userData &&
+        (child as any).userData.atomIndex !== undefined &&
+        (child as any).userData.type !== 'bond'
+      ) {
         (child as any).userData.atomIndex = nextIndex++;
       }
     });
@@ -212,12 +221,16 @@ export class ReactionGraphics {
   /**
    * Add atom to visual representation
    */
-  private addAtomVisual(molecule: MoleculeGroup, position: THREE.Vector3, elementType: string): void {
+  private addAtomVisual(
+    molecule: MoleculeGroup,
+    position: THREE.Vector3,
+    elementType: string
+  ): void {
     if (!molecule.group) return;
 
     const atomMesh = createAtomMesh(elementType, position);
     atomMesh.userData = { atomIndex: molecule.group.children.length };
-    
+
     molecule.group.add(atomMesh);
   }
 
@@ -229,7 +242,7 @@ export class ReactionGraphics {
 
     const atom1Mesh = this.findAtomMesh(molecule, atomIndex1);
     const atom2Mesh = this.findAtomMesh(molecule, atomIndex2);
-    
+
     if (!atom1Mesh || !atom2Mesh) return;
 
     // Get atom types from molecular data to determine radii
@@ -239,39 +252,39 @@ export class ReactionGraphics {
     const atom2Radius = getAtomConfig(atom2Type).radius;
 
     const centerDistance = atom1Mesh.position.distanceTo(atom2Mesh.position);
-    
+
     // Calculate bond length (distance between atom surfaces, not centers)
     const bondLength = Math.max(0.1, centerDistance - atom1Radius - atom2Radius);
-    
+
     // Create cylinder geometry for the bond
-          const cylinderGeometry = new THREE.CylinderGeometry(
+    const cylinderGeometry = new THREE.CylinderGeometry(
       0.05, // radius
       0.05, // radius
       bondLength, // height (surface to surface)
       8 // segments
     );
-    
+
     // Center the cylinder and orient it
-          cylinderGeometry.computeBoundingBox();
-          cylinderGeometry.computeBoundingSphere();
-          cylinderGeometry.translate(0, bondLength / 2, 0);
-          cylinderGeometry.rotateX(Math.PI / 2);
-          
+    cylinderGeometry.computeBoundingBox();
+    cylinderGeometry.computeBoundingSphere();
+    cylinderGeometry.translate(0, bondLength / 2, 0);
+    cylinderGeometry.rotateX(Math.PI / 2);
+
     // Create material and mesh
     const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const bondMesh = new THREE.Mesh(cylinderGeometry, material);
-    
+
     // Position the bond between the atom surfaces (not centers)
     const direction = atom2Mesh.position.clone().sub(atom1Mesh.position).normalize();
     const bondStart = atom1Mesh.position.clone().add(direction.clone().multiplyScalar(atom1Radius));
     const bondEnd = atom2Mesh.position.clone().sub(direction.clone().multiplyScalar(atom2Radius));
-    
+
     bondMesh.position.copy(bondStart);
     bondMesh.lookAt(bondEnd);
-    
+
     // Tag as bond
     bondMesh.userData = { type: 'bond' };
-    
+
     molecule.group.add(bondMesh);
   }
 
@@ -286,9 +299,9 @@ export class ReactionGraphics {
     molecule.group.traverse((child: any) => {
       if (child.material) {
         originalMaterials.push(child.material);
-        child.material = new THREE.MeshStandardMaterial({ 
+        child.material = new THREE.MeshStandardMaterial({
           color: 0xffff00, // Yellow flash
-          emissive: 0x444400 
+          emissive: 0x444400,
         });
       }
     });

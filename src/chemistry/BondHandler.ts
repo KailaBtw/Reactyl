@@ -1,15 +1,22 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 
 interface HasGroup {
   group: THREE.Group;
 }
 
 export class BondHandler {
-  static findBond(molecule: HasGroup, atomAIndex: number, atomBIndex: number): THREE.Object3D | null {
+  static findBond(
+    molecule: HasGroup,
+    atomAIndex: number,
+    atomBIndex: number
+  ): THREE.Object3D | null {
     for (const child of molecule.group.children) {
       const ud = (child as any).userData;
       if (ud && ud.type === 'bond') {
-        if ((ud.a === atomAIndex && ud.b === atomBIndex) || (ud.a === atomBIndex && ud.b === atomAIndex)) {
+        if (
+          (ud.a === atomAIndex && ud.b === atomBIndex) ||
+          (ud.a === atomBIndex && ud.b === atomAIndex)
+        ) {
           return child;
         }
       }
@@ -18,12 +25,17 @@ export class BondHandler {
   }
 
   static hideBond(molecule: HasGroup, atomAIndex: number, atomBIndex: number): void {
-    const bond = this.findBond(molecule, atomAIndex, atomBIndex);
+    const bond = BondHandler.findBond(molecule, atomAIndex, atomBIndex);
     if (bond) bond.visible = false;
   }
 
-  static showBond(molecule: HasGroup, atomAIndex: number, atomBIndex: number, colorHex?: number): void {
-    const bond = this.findBond(molecule, atomAIndex, atomBIndex);
+  static showBond(
+    molecule: HasGroup,
+    atomAIndex: number,
+    atomBIndex: number,
+    colorHex?: number
+  ): void {
+    const bond = BondHandler.findBond(molecule, atomAIndex, atomBIndex);
     if (bond) {
       bond.visible = true;
       if (colorHex && (bond as any).material) {
@@ -32,7 +44,11 @@ export class BondHandler {
     }
   }
 
-  static detachAtomToScene(molecule: HasGroup, atomIndex: number, scene: THREE.Scene): THREE.Object3D | null {
+  static detachAtomToScene(
+    molecule: HasGroup,
+    atomIndex: number,
+    scene: THREE.Scene
+  ): THREE.Object3D | null {
     for (const child of molecule.group.children) {
       const ud = (child as any).userData;
       if (ud && ud.atomIndex === atomIndex) {
@@ -44,6 +60,3 @@ export class BondHandler {
     return null;
   }
 }
-
-
-

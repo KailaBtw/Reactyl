@@ -3,7 +3,7 @@ import { log } from '../utils/debug';
 /**
  * Event Types for Reaction System
  */
-export type ReactionEventType = 
+export type ReactionEventType =
   | 'molecule-loaded'
   | 'molecule-oriented'
   | 'physics-configured'
@@ -110,7 +110,7 @@ export interface ErrorOccurredEvent {
 /**
  * Union type for all event data
  */
-export type ReactionEventData = 
+export type ReactionEventData =
   | MoleculeLoadedEvent
   | MoleculeOrientedEvent
   | PhysicsConfiguredEvent
@@ -129,7 +129,7 @@ export type ReactionEventHandler = (event: ReactionEventData) => void;
 
 /**
  * Reaction Event Bus
- * 
+ *
  * Centralized event system for clean communication between all reaction-related systems.
  * This replaces direct method calls with event-driven architecture for better decoupling.
  */
@@ -138,13 +138,13 @@ export class ReactionEventBus {
   private eventHistory: ReactionEventData[] = [];
   private maxHistorySize: number = 100;
   private isDebugMode: boolean = false;
-  
+
   constructor(debugMode: boolean = false) {
     this.isDebugMode = debugMode;
     this.initializeEventTypes();
     log('📡 ReactionEventBus initialized');
   }
-  
+
   /**
    * Initialize all event types with empty handler arrays
    */
@@ -159,14 +159,14 @@ export class ReactionEventBus {
       'reaction-completed',
       'simulation-paused',
       'simulation-resumed',
-      'error-occurred'
+      'error-occurred',
     ];
-    
+
     eventTypes.forEach(eventType => {
       this.handlers.set(eventType, []);
     });
   }
-  
+
   /**
    * Register an event handler for a specific event type
    */
@@ -174,12 +174,12 @@ export class ReactionEventBus {
     const handlers = this.handlers.get(eventType) || [];
     handlers.push(handler);
     this.handlers.set(eventType, handlers);
-    
+
     if (this.isDebugMode) {
       log(`📡 Registered handler for ${eventType}`);
     }
   }
-  
+
   /**
    * Remove an event handler
    */
@@ -189,27 +189,27 @@ export class ReactionEventBus {
     if (index > -1) {
       handlers.splice(index, 1);
       this.handlers.set(eventType, handlers);
-      
+
       if (this.isDebugMode) {
         log(`📡 Removed handler for ${eventType}`);
       }
     }
   }
-  
+
   /**
    * Emit an event to all registered handlers
    */
   emit(event: ReactionEventData): void {
     const handlers = this.handlers.get(event.type) || [];
-    
+
     // Add to event history
     this.addToHistory(event);
-    
+
     // Log event in debug mode
     if (this.isDebugMode) {
       // log(`📡 Emitting ${event.type}:`, event.data); // Hidden for now
     }
-    
+
     // Call all handlers
     handlers.forEach(handler => {
       try {
@@ -221,39 +221,39 @@ export class ReactionEventBus {
           data: {
             error: String(error),
             context: `Handler for ${event.type}`,
-            timestamp: Date.now()
-          }
+            timestamp: Date.now(),
+          },
         });
       }
     });
   }
-  
+
   /**
    * Add event to history with size limit
    */
   private addToHistory(event: ReactionEventData): void {
     this.eventHistory.push(event);
-    
+
     // Maintain history size limit
     if (this.eventHistory.length > this.maxHistorySize) {
       this.eventHistory.shift();
     }
   }
-  
+
   /**
    * Get event history
    */
   getHistory(): ReactionEventData[] {
     return [...this.eventHistory];
   }
-  
+
   /**
    * Get events of a specific type from history
    */
   getEventsByType(eventType: ReactionEventType): ReactionEventData[] {
     return this.eventHistory.filter(event => event.type === eventType);
   }
-  
+
   /**
    * Clear event history
    */
@@ -261,21 +261,21 @@ export class ReactionEventBus {
     this.eventHistory = [];
     log('📡 Event history cleared');
   }
-  
+
   /**
    * Get number of registered handlers for an event type
    */
   getHandlerCount(eventType: ReactionEventType): number {
     return this.handlers.get(eventType)?.length || 0;
   }
-  
+
   /**
    * Get all registered event types
    */
   getRegisteredEventTypes(): ReactionEventType[] {
     return Array.from(this.handlers.keys());
   }
-  
+
   /**
    * Enable or disable debug mode
    */
@@ -283,7 +283,7 @@ export class ReactionEventBus {
     this.isDebugMode = enabled;
     log(`📡 Debug mode ${enabled ? 'enabled' : 'disabled'}`);
   }
-  
+
   /**
    * Create a one-time event listener
    */
@@ -292,10 +292,10 @@ export class ReactionEventBus {
       handler(event);
       this.off(eventType, onceHandler);
     };
-    
+
     this.on(eventType, onceHandler);
   }
-  
+
   /**
    * Wait for a specific event to occur
    */
@@ -304,114 +304,131 @@ export class ReactionEventBus {
       const timeoutId = setTimeout(() => {
         reject(new Error(`Timeout waiting for ${eventType}`));
       }, timeout);
-      
-      this.once(eventType, (event) => {
+
+      this.once(eventType, event => {
         clearTimeout(timeoutId);
         resolve(event);
       });
     });
   }
-  
+
   /**
    * Emit a molecule loaded event
    */
-  emitMoleculeLoaded(molecule: { name: string; cid: string; position: { x: number; y: number; z: number } }): void {
+  emitMoleculeLoaded(molecule: {
+    name: string;
+    cid: string;
+    position: { x: number; y: number; z: number };
+  }): void {
     this.emit({
       type: 'molecule-loaded',
-      data: { molecule }
+      data: { molecule },
     });
   }
-  
+
   /**
    * Emit a molecule oriented event
    */
-  emitMoleculeOriented(reactionType: string, substrateRotation: { x: number; y: number; z: number }, nucleophileRotation: { x: number; y: number; z: number }): void {
+  emitMoleculeOriented(
+    reactionType: string,
+    substrateRotation: { x: number; y: number; z: number },
+    nucleophileRotation: { x: number; y: number; z: number }
+  ): void {
     this.emit({
       type: 'molecule-oriented',
-      data: { reactionType, substrateRotation, nucleophileRotation }
+      data: { reactionType, substrateRotation, nucleophileRotation },
     });
   }
-  
+
   /**
    * Emit a physics configured event
    */
-  emitPhysicsConfigured(approachAngle: number, relativeVelocity: number, impactParameter: number): void {
+  emitPhysicsConfigured(
+    approachAngle: number,
+    relativeVelocity: number,
+    impactParameter: number
+  ): void {
     this.emit({
       type: 'physics-configured',
-      data: { approachAngle, relativeVelocity, impactParameter }
+      data: { approachAngle, relativeVelocity, impactParameter },
     });
   }
-  
+
   /**
    * Emit a collision detected event
    */
-  emitCollisionDetected(collisionEnergy: number, approachAngle: number, reactionProbability: number, compatibilityFactor: number): void {
+  emitCollisionDetected(
+    collisionEnergy: number,
+    approachAngle: number,
+    reactionProbability: number,
+    compatibilityFactor: number
+  ): void {
     this.emit({
       type: 'collision-detected',
-      data: { collisionEnergy, approachAngle, reactionProbability, compatibilityFactor }
+      data: { collisionEnergy, approachAngle, reactionProbability, compatibilityFactor },
     });
   }
-  
+
   /**
    * Emit a reaction started event
    */
   emitReactionStarted(reactionType: string, substrate: string, nucleophile: string): void {
     this.emit({
       type: 'reaction-started',
-      data: { reactionType, substrate, nucleophile }
+      data: { reactionType, substrate, nucleophile },
     });
   }
-  
+
   /**
    * Emit a reaction progress event
    */
   emitReactionProgress(progress: number, currentStep: string): void {
     this.emit({
       type: 'reaction-progress',
-      data: { progress, currentStep }
+      data: { progress, currentStep },
     });
   }
-  
+
   /**
    * Emit a reaction completed event
    */
   emitReactionCompleted(reactionType: string, success: boolean, products: string[]): void {
     this.emit({
       type: 'reaction-completed',
-      data: { reactionType, success, products }
+      data: { reactionType, success, products },
     });
   }
-  
+
   /**
    * Emit a simulation paused event
    */
   emitSimulationPaused(reason: string): void {
     this.emit({
       type: 'simulation-paused',
-      data: { reason, timestamp: Date.now() }
+      data: { reason, timestamp: Date.now() },
     });
   }
-  
+
   /**
    * Emit a simulation resumed event
    */
   emitSimulationResumed(): void {
     this.emit({
       type: 'simulation-resumed',
-      data: { timestamp: Date.now() }
+      data: { timestamp: Date.now() },
     });
   }
-  
+
   /**
    * Emit an error occurred event
    */
   emitErrorOccurred(error: string, context: string): void {
     this.emit({
       type: 'error-occurred',
-      data: { error, context, timestamp: Date.now() }
+      data: { error, context, timestamp: Date.now() },
     });
   }
-  
+
   /**
    * Clean up all handlers and history
    */
@@ -426,9 +443,3 @@ export class ReactionEventBus {
  * Global event bus instance
  */
 export const reactionEventBus = new ReactionEventBus(true); // Enable debug mode by default
-
-
-
-
-
-

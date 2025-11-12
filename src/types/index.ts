@@ -89,7 +89,7 @@ export interface MoleculeManager {
     targetPosition: THREE.Vector3,
     speed?: number
   ) => void;
-  clearAllMolecules: () => void;
+  clearAllMolecules: (disposePhysics?: (molecule: MoleculeGroup) => void | Promise<void>) => void;
 }
 
 // Spatial Grid Types
@@ -201,7 +201,7 @@ export interface ReactionAnimationStep {
 
 export interface EnvironmentParameters {
   temperature: number; // in Kelvin
-  pressure: number; // in atm
+  pressure: number; // in atm (not applicable for solution-phase reactions)
   solvent: 'polar' | 'nonpolar' | 'protic' | 'aprotic';
   catalyst: string | null;
   collisionEnergy: number; // in kJ/mol

@@ -1,6 +1,6 @@
 /**
  * Reaction Configuration System
- * 
+ *
  * Data-driven configuration for different reaction types.
  * This replaces hardcoded behavior with configurable parameters.
  */
@@ -53,27 +53,28 @@ export interface ReactionTypeConfig {
 export const REACTION_CONFIG: { [key: string]: ReactionTypeConfig } = {
   sn2: {
     name: 'SN2 - Bimolecular Nucleophilic Substitution',
-    description: 'Nucleophile attacks from the backside, causing simultaneous bond formation and breaking',
+    description:
+      'Nucleophile attacks from the backside, causing simultaneous bond formation and breaking',
     physics: {
       velocity: 20.0,
       damping: 0.95,
       mass: 1.0,
       restitution: 0.3,
-      friction: 0.1
+      friction: 0.1,
     },
     orientation: {
       method: 'backside-attack',
       optimalApproachAngle: 180,
       tolerance: 10,
       rotationAxis: 'y',
-      rotationAngle: -Math.PI // -180 degrees
+      rotationAngle: -Math.PI, // -180 degrees
     },
     collision: {
       detectionRadius: 2.0,
       energyThreshold: 80, // kJ/mol
       orientationWeight: 0.4,
       temperatureWeight: 0.3,
-      compatibilityWeight: 0.3
+      compatibilityWeight: 0.3,
     },
     visual: {
       showTrajectories: false,
@@ -81,33 +82,33 @@ export const REACTION_CONFIG: { [key: string]: ReactionTypeConfig } = {
       showBondChanges: true,
       animationSpeed: 1.0,
       pauseAfterReaction: true,
-      pauseDuration: 2000
-    }
+      pauseDuration: 2000,
+    },
   },
-  
+
   sn1: {
     name: 'SN1 - Unimolecular Nucleophilic Substitution',
     description: 'Substrate dissociates first, then nucleophile attacks the carbocation',
     physics: {
       velocity: 15.0,
-      damping: 0.90,
+      damping: 0.9,
       mass: 1.0,
       restitution: 0.2,
-      friction: 0.05
+      friction: 0.05,
     },
     orientation: {
       method: 'front-attack',
       optimalApproachAngle: 0,
       tolerance: 15,
       rotationAxis: 'y',
-      rotationAngle: 0
+      rotationAngle: 0,
     },
     collision: {
       detectionRadius: 1.5,
       energyThreshold: 100, // kJ/mol
       orientationWeight: 0.2,
       temperatureWeight: 0.5,
-      compatibilityWeight: 0.3
+      compatibilityWeight: 0.3,
     },
     visual: {
       showTrajectories: true,
@@ -115,10 +116,10 @@ export const REACTION_CONFIG: { [key: string]: ReactionTypeConfig } = {
       showBondChanges: true,
       animationSpeed: 0.8,
       pauseAfterReaction: true,
-      pauseDuration: 3000
-    }
+      pauseDuration: 3000,
+    },
   },
-  
+
   e2: {
     name: 'E2 - Bimolecular Elimination',
     description: 'Base abstracts proton while leaving group departs simultaneously',
@@ -127,21 +128,21 @@ export const REACTION_CONFIG: { [key: string]: ReactionTypeConfig } = {
       damping: 0.92,
       mass: 1.0,
       restitution: 0.25,
-      friction: 0.08
+      friction: 0.08,
     },
     orientation: {
       method: 'anti-coplanar',
       optimalApproachAngle: 180,
       tolerance: 20,
       rotationAxis: 'z',
-      rotationAngle: Math.PI / 2 // 90 degrees
+      rotationAngle: Math.PI / 2, // 90 degrees
     },
     collision: {
       detectionRadius: 2.5,
       energyThreshold: 120, // kJ/mol
       orientationWeight: 0.5,
       temperatureWeight: 0.3,
-      compatibilityWeight: 0.2
+      compatibilityWeight: 0.2,
     },
     visual: {
       showTrajectories: true,
@@ -149,10 +150,10 @@ export const REACTION_CONFIG: { [key: string]: ReactionTypeConfig } = {
       showBondChanges: true,
       animationSpeed: 1.2,
       pauseAfterReaction: true,
-      pauseDuration: 2500
-    }
+      pauseDuration: 2500,
+    },
   },
-  
+
   e1: {
     name: 'E1 - Unimolecular Elimination',
     description: 'Substrate dissociates first, then base abstracts proton',
@@ -161,21 +162,21 @@ export const REACTION_CONFIG: { [key: string]: ReactionTypeConfig } = {
       damping: 0.88,
       mass: 1.0,
       restitution: 0.15,
-      friction: 0.03
+      friction: 0.03,
     },
     orientation: {
       method: 'generic',
       optimalApproachAngle: 90,
       tolerance: 30,
       rotationAxis: 'y',
-      rotationAngle: 0
+      rotationAngle: 0,
     },
     collision: {
       detectionRadius: 1.8,
       energyThreshold: 150, // kJ/mol
       orientationWeight: 0.1,
       temperatureWeight: 0.6,
-      compatibilityWeight: 0.3
+      compatibilityWeight: 0.3,
     },
     visual: {
       showTrajectories: true,
@@ -183,9 +184,9 @@ export const REACTION_CONFIG: { [key: string]: ReactionTypeConfig } = {
       showBondChanges: true,
       animationSpeed: 0.6,
       pauseAfterReaction: true,
-      pauseDuration: 4000
-    }
-  }
+      pauseDuration: 4000,
+    },
+  },
 };
 
 /**
@@ -272,11 +273,14 @@ export function getVisualSettings(reactionType: string): VisualSettings {
 /**
  * Update configuration for a reaction type
  */
-export function updateReactionConfig(reactionType: string, updates: Partial<ReactionTypeConfig>): void {
+export function updateReactionConfig(
+  reactionType: string,
+  updates: Partial<ReactionTypeConfig>
+): void {
   if (!isReactionTypeSupported(reactionType)) {
     throw new Error(`Cannot update unsupported reaction type: ${reactionType}`);
   }
-  
+
   const currentConfig = getReactionConfig(reactionType);
   const updatedConfig = { ...currentConfig, ...updates };
   REACTION_CONFIG[reactionType.toLowerCase()] = updatedConfig;
@@ -285,10 +289,7 @@ export function updateReactionConfig(reactionType: string, updates: Partial<Reac
 /**
  * Create a custom reaction configuration
  */
-export function createCustomReactionConfig(
-  reactionType: string,
-  config: ReactionTypeConfig
-): void {
+export function createCustomReactionConfig(reactionType: string, config: ReactionTypeConfig): void {
   REACTION_CONFIG[reactionType.toLowerCase()] = config;
 }
 
@@ -299,7 +300,7 @@ export function resetReactionConfig(reactionType: string): void {
   if (!isReactionTypeSupported(reactionType)) {
     throw new Error(`Cannot reset unsupported reaction type: ${reactionType}`);
   }
-  
+
   // This would require storing the original config
   // For now, we'll just log a warning
   console.warn(`Reset not implemented for ${reactionType}`);
@@ -320,9 +321,3 @@ export function importConfigs(configs: { [key: string]: ReactionTypeConfig }): v
     REACTION_CONFIG[key] = configs[key];
   });
 }
-
-
-
-
-
-

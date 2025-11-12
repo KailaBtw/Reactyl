@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ReactionOrchestrator } from '../../systems/ReactionOrchestrator';
-import { ReactionRateSimulator } from '../../systems/ReactionRateSimulator';
+import { applyLighting } from '../../components/lightingControls';
 import { physicsEngine } from '../../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../../physics/collisionEventSystem';
 import { createMoleculeManager } from '../../services/moleculeManager';
 import { sceneBridge } from '../../services/SceneBridge';
-import { applyLighting } from '../../components/lightingControls';
-import { addObjectDebug, DEBUG_MODE, initFpsDebug, updateFpsDebug } from '../../utils/debug';
+import { ReactionOrchestrator } from '../../systems/ReactionOrchestrator';
+import { ReactionRateSimulator } from '../../systems/ReactionRateSimulator';
 import { CameraAnimator } from '../../utils/CameraAnimator';
+import { addObjectDebug, DEBUG_MODE, initFpsDebug, updateFpsDebug } from '../../utils/debug';
 import type { UIState } from '../App';
 
 // Demo functions are now handled by the chemistry reaction system
@@ -27,8 +27,7 @@ export class ThreeJSBridge {
   // FPS tracking
   private lastFrameTime: number = 0;
 
-  constructor() {
-  }
+  constructor() {}
 
   initializeScene(container: HTMLElement): THREE.Scene {
     // Only create new scene if one doesn't exist (preserve user's work)
@@ -92,7 +91,7 @@ export class ThreeJSBridge {
       });
 
       container.appendChild(this.renderer.domElement);
-      
+
       // Handle window resize to update renderer and camera
       const handleResize = () => {
         if (!this.renderer || !this.camera || !container) return;
@@ -104,17 +103,17 @@ export class ThreeJSBridge {
           this.renderer.setSize(width, height);
         }
       };
-      
+
       // Initial resize
       handleResize();
-      
+
       // Watch for container size changes
       const resizeObserver = new ResizeObserver(handleResize);
       resizeObserver.observe(container);
-      
+
       // Also listen to window resize as fallback
       window.addEventListener('resize', handleResize);
-      
+
       // Store cleanup function
       (this.renderer.domElement as any).__cleanupResize = () => {
         resizeObserver.disconnect();
@@ -181,7 +180,7 @@ export class ThreeJSBridge {
     if (!this.reactionOrchestrator) {
       try {
         if (this.scene && this.moleculeManager) {
-        this.reactionOrchestrator = new ReactionOrchestrator(this.scene, this.moleculeManager);
+          this.reactionOrchestrator = new ReactionOrchestrator(this.scene, this.moleculeManager);
           (window as any).reactionOrchestrator = this.reactionOrchestrator;
         }
       } catch (error) {
@@ -193,12 +192,12 @@ export class ThreeJSBridge {
     if (!this.reactionRateSimulator) {
       try {
         if (this.scene && this.moleculeManager) {
-        this.reactionRateSimulator = new ReactionRateSimulator(
-          this.scene,
-          physicsEngine,
-          this.moleculeManager
-        );
-        (window as any).reactionRateSimulator = this.reactionRateSimulator;
+          this.reactionRateSimulator = new ReactionRateSimulator(
+            this.scene,
+            physicsEngine,
+            this.moleculeManager
+          );
+          (window as any).reactionRateSimulator = this.reactionRateSimulator;
         }
       } catch (error) {
         console.error('❌ Reaction rate simulator failed to initialize:', error);
@@ -230,15 +229,14 @@ export class ThreeJSBridge {
     (window as any).renderer = this.renderer;
     (window as any).moleculeManager = this.moleculeManager;
     (window as any).threeJSBridge = this;
-    
+
     // (removed legacy quick test exposure)
 
     // Unified system: no chemistry mode toggles
 
-    
     // Log available test functions
     // (trimmed test function enumeration for production)
-    
+
     return this.scene;
   }
 
@@ -254,8 +252,10 @@ export class ThreeJSBridge {
     // Don't pause if a reaction is in progress
     if (!previousState || previousState.isPlaying !== uiState.isPlaying) {
       const reactionOrchestrator = this.reactionOrchestrator;
-      const isReactionInProgress = (reactionOrchestrator && reactionOrchestrator.isReactionInProgress()) || uiState.reactionInProgress;
-      
+      const isReactionInProgress =
+        (reactionOrchestrator && reactionOrchestrator.isReactionInProgress()) ||
+        uiState.reactionInProgress;
+
       if (uiState.isPlaying) {
         physicsEngine.resume();
       } else if (!isReactionInProgress) {
@@ -317,9 +317,7 @@ export class ThreeJSBridge {
 
     // Calculate actual deltaTime for this frame
     const currentTime = performance.now();
-    const deltaTime = this.lastFrameTime > 0 
-      ? (currentTime - this.lastFrameTime) / 1000 
-      : 1 / 60; // Default to 60 FPS on first frame
+    const deltaTime = this.lastFrameTime > 0 ? (currentTime - this.lastFrameTime) / 1000 : 1 / 60; // Default to 60 FPS on first frame
     this.lastFrameTime = currentTime;
 
     // Update FPS meter if showStats is enabled
@@ -334,15 +332,15 @@ export class ThreeJSBridge {
     }
 
     // Update controls if they exist (only if needed)
-      if (this.controls) {
-        this.controls.update();
-      }
+    if (this.controls) {
+      this.controls.update();
+    }
 
     // Step the physics engine (only if not paused)
     const isPaused = physicsEngine.isSimulationPaused();
     if (!isPaused) {
       const physicsDeltaTime = 1 / 60; // Fixed timestep for physics stability
-      physicsEngine.step(physicsDeltaTime);
+      physicsEngine.step(physicsDeltaTime); // Now handles async worker internally
 
       // Update rate simulation if active (handles boundary collisions)
       if (this.reactionRateSimulator) {
@@ -353,7 +351,7 @@ export class ThreeJSBridge {
     }
 
     // Render the scene
-      this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
   }
 
   getScene(): THREE.Scene | null {
@@ -377,16 +375,18 @@ export class ThreeJSBridge {
   async startReactionAnimation(): Promise<void> {
     // Ensure scene is initialized first
     if (!this.scene || !this.moleculeManager) {
-      console.warn('Scene or molecule manager not initialized yet. Please wait for initialization.');
+      console.warn(
+        'Scene or molecule manager not initialized yet. Please wait for initialization.'
+      );
       return;
     }
-    
+
     // Check if rate simulation is active - if so, don't start single reaction
     const currentUIState = (window as any).uiState;
     if (currentUIState?.simulationMode === 'rate' && currentUIState?.isPlaying) {
       return;
     }
-    
+
     // Ensure reaction orchestrator is initialized
     if (!this.reactionOrchestrator) {
       try {
@@ -406,21 +406,27 @@ export class ThreeJSBridge {
       temperature: 1200,
       substrateMolecule: 'demo_Methyl_bromide',
       nucleophileMolecule: 'demo_Hydroxide_ion',
-      reactionType: 'sn2'
+      reactionType: 'sn2',
     };
 
     // (removed verbose UI state debug log)
 
     // Map UI molecule selections to actual molecule data
     const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
-      'demo_Methyl_bromide': { cid: '6323', name: 'Methyl bromide' },
-      'demo_Hydroxide_ion': { cid: '961', name: 'Hydroxide ion' },
-      'demo_Methanol': { cid: '887', name: 'Methanol' },
-      'demo_Water': { cid: '962', name: 'Water' }
+      demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
+      demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
+      demo_Methanol: { cid: '887', name: 'Methanol' },
+      demo_Water: { cid: '962', name: 'Water' },
     };
 
-    const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || { cid: '6323', name: 'Methyl bromide' };
-    const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || { cid: '961', name: 'Hydroxide ion' };
+    const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
+      cid: '6323',
+      name: 'Methyl bromide',
+    };
+    const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
+      cid: '961',
+      name: 'Hydroxide ion',
+    };
 
     // (removed verbose mapped molecules debug log)
 
@@ -477,15 +483,16 @@ export class ThreeJSBridge {
     temperature: number,
     reactionType: string,
     substrateData: any,
-    nucleophileData: any,
-    pressure: number = 1.0
+    nucleophileData: any
   ): Promise<void> {
     // Ensure scene is initialized first
     if (!this.scene || !this.moleculeManager) {
-      console.warn('Scene or molecule manager not initialized yet. Please wait for initialization.');
+      console.warn(
+        'Scene or molecule manager not initialized yet. Please wait for initialization.'
+      );
       return;
     }
-    
+
     // Ensure reaction rate simulator is initialized
     if (!this.reactionRateSimulator) {
       try {
@@ -497,23 +504,21 @@ export class ThreeJSBridge {
         (window as any).reactionRateSimulator = this.reactionRateSimulator;
       } catch (error) {
         console.error('Failed to initialize reaction rate simulator:', error);
-      return;
+        return;
       }
     }
 
     try {
       // Ensure physics engine is running
       physicsEngine.resume();
-      
+
       await this.reactionRateSimulator.initializeSimulation(
         substrateData,
         nucleophileData,
         particleCount,
         temperature,
-        reactionType,
-        pressure
+        reactionType
       );
-      
     } catch (error) {
       console.error('Failed to start rate simulation:', error);
     }
@@ -534,20 +539,42 @@ export class ThreeJSBridge {
       remainingReactants: 100,
       productsFormed: 0,
       collisionCount: 0,
-      elapsedTime: 0
+      elapsedTime: 0,
     };
   }
 
   stopRateSimulation(): void {
     if (this.reactionRateSimulator) {
+      // Hide container visualization
+      this.reactionRateSimulator.hideContainer();
+      // Clear all rate simulation molecules
       this.reactionRateSimulator.clear();
+    }
+    // Also clear all molecules from manager (catches any untracked molecules)
+    // Visual cleanup is automatic, physics cleanup happens async
+    if (this.moleculeManager) {
+      this.moleculeManager.clearAllMolecules(
+        // Dispose physics body callback (called async after visual cleanup)
+        molecule => {
+          if (molecule.hasPhysics && molecule.physicsBody && physicsEngine) {
+            physicsEngine.removeMolecule(molecule);
+          }
+        }
+      );
+    }
+    // Clear physics bodies (in case any weren't removed)
+    if (physicsEngine) {
+      physicsEngine.clearAllBodies();
     }
   }
 
   /**
    * Adjust concentration of running rate simulation
    */
-  async adjustRateSimulationConcentration(targetParticleCount: number, temperature?: number): Promise<void> {
+  async adjustRateSimulationConcentration(
+    targetParticleCount: number,
+    temperature?: number
+  ): Promise<void> {
     if (this.reactionRateSimulator) {
       await this.reactionRateSimulator.adjustConcentration(targetParticleCount, temperature);
     }
@@ -563,16 +590,11 @@ export class ThreeJSBridge {
   }
 
   /**
-   * Update pressure for running rate simulation
-   * Pressure affects collision frequency: Rate ∝ P² for bimolecular reactions
+   * @deprecated Pressure effects removed - reactions are in solution phase where pressure has negligible effect
+   * This method is kept for API compatibility but does nothing.
    */
-  updateRateSimulationPressure(pressure: number): void {
-    // collisionEventSystem is already imported at the top
-    collisionEventSystem.setPressure(pressure);
-    // Store pressure in simulator for future reference
-    if (this.reactionRateSimulator) {
-      (this.reactionRateSimulator as any).pressure = pressure;
-    }
+  updateRateSimulationPressure(_pressure: number): void {
+    // No-op: Pressure doesn't affect solution-phase reactions
   }
 
   /**
@@ -598,8 +620,8 @@ export class ThreeJSBridge {
     // Rotated 90 degrees left and 15 degrees up
     const targetDistance = 57;
     const azimuth = Math.PI / 2; // 90 degrees (left)
-    const elevation = 15 * Math.PI / 180; // +15 degrees (up)
-    
+    const elevation = (15 * Math.PI) / 180; // +15 degrees (up)
+
     // Use CameraAnimator's spherical coordinate method
     this.cameraAnimator.animateToSpherical(
       targetDistance,
@@ -679,7 +701,6 @@ export class ThreeJSBridge {
   }
 
   private forceReinitialize(container: HTMLElement) {
-
     // Clean up everything
     this.dispose();
 
@@ -689,32 +710,36 @@ export class ThreeJSBridge {
     });
   }
 
-
   /**
    * Clear all molecules and reset the scene without disposing the entire bridge
+   * Uses O(1) clearAllMolecules - visual cleanup is automatic, physics cleanup is async
    */
   clear(): void {
     // Clear all molecules from molecule manager
+    // Visual objects are automatically disposed, physics bodies are disposed async
     if (this.moleculeManager) {
-      this.moleculeManager.clearAllMolecules();
+      this.moleculeManager.clearAllMolecules(
+        // Dispose physics body callback (called async after visual cleanup)
+        molecule => {
+          if (molecule.hasPhysics && molecule.physicsBody && physicsEngine) {
+            physicsEngine.removeMolecule(molecule);
+          }
+        }
+      );
     }
-    
-    // Clear all physics bodies
-    if (physicsEngine) {
-      physicsEngine.clearAllBodies();
-    }
-    
+
     // Clear scene of all objects (but keep lighting and camera)
     if (this.scene) {
       // Remove all children except lighting and camera helpers
-      const childrenToRemove = this.scene.children.filter(child => 
-        child.type !== 'DirectionalLight' && 
-        child.type !== 'AmbientLight' && 
-        child.type !== 'HemisphereLight' &&
-        child.type !== 'GridHelper' &&
-        child.type !== 'AxesHelper'
+      const childrenToRemove = this.scene.children.filter(
+        child =>
+          child.type !== 'DirectionalLight' &&
+          child.type !== 'AmbientLight' &&
+          child.type !== 'HemisphereLight' &&
+          child.type !== 'GridHelper' &&
+          child.type !== 'AxesHelper'
       );
-      
+
       childrenToRemove.forEach(child => {
         this.scene!.remove(child);
         // Dispose of geometries and materials if it's a mesh
@@ -731,9 +756,8 @@ export class ThreeJSBridge {
           });
         }
       });
-      
     }
-    
+
     // Ensure orchestrator flags are reset so a new run can start
     if (this.reactionOrchestrator) {
       try {
@@ -742,7 +766,7 @@ export class ThreeJSBridge {
         // no-op, best-effort
       }
     }
-    
+
     // Reset collision system state
     if (collisionEventSystem) {
       collisionEventSystem.resetReactionState();
@@ -754,7 +778,7 @@ export class ThreeJSBridge {
     if (this.renderer && (this.renderer.domElement as any).__cleanupResize) {
       (this.renderer.domElement as any).__cleanupResize();
     }
-    
+
     // Dispose controls
     if (this.controls) {
       this.controls.dispose();
@@ -776,7 +800,6 @@ export class ThreeJSBridge {
 
     // Clear camera
     this.camera = null;
-
   }
 
   setBackgroundColor(color: string): void {

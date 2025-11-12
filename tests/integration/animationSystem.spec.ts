@@ -1,29 +1,29 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the animation manager
-vi.mock('../../src/animations/ReactionAnimationManager', async (orig) => {
+vi.mock('../../src/animations/ReactionAnimationManager', async orig => {
   const actual = await (orig as any)();
   return {
     ...actual,
     reactionAnimationManager: {
       ...actual.reactionAnimationManager,
-      animateSN2Reaction: vi.fn().mockReturnValue({ 
+      animateSN2Reaction: vi.fn().mockReturnValue({
         run: vi.fn(),
         onComplete: vi.fn(),
-        onStart: vi.fn()
+        onStart: vi.fn(),
       }),
-      animateSN1Reaction: vi.fn().mockReturnValue({ 
+      animateSN1Reaction: vi.fn().mockReturnValue({
         run: vi.fn(),
         onComplete: vi.fn(),
-        onStart: vi.fn()
+        onStart: vi.fn(),
       }),
-      animateE2Reaction: vi.fn().mockReturnValue({ 
+      animateE2Reaction: vi.fn().mockReturnValue({
         run: vi.fn(),
         onComplete: vi.fn(),
-        onStart: vi.fn()
-      })
-    }
+        onStart: vi.fn(),
+      }),
+    },
   };
 });
 
@@ -35,27 +35,32 @@ describe('Animation System Integration', () => {
 
   it('SN2 animation is triggered with correct parameters', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const substrate = {
       name: 'Methyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Hydroxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
     const animation = reactionAnimationManager.animateSN2Reaction(substrate, nucleophile);
 
     // Assert
-    expect(reactionAnimationManager.animateSN2Reaction).toHaveBeenCalledWith(substrate, nucleophile);
+    expect(reactionAnimationManager.animateSN2Reaction).toHaveBeenCalledWith(
+      substrate,
+      nucleophile
+    );
     expect(animation).toBeDefined();
     expect(animation.run).toBeDefined();
     expect(animation.onComplete).toBeDefined();
@@ -64,47 +69,54 @@ describe('Animation System Integration', () => {
 
   it('SN1 animation is triggered with correct parameters', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const substrate = {
       name: 'Tert-butyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Water',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
     const animation = reactionAnimationManager.animateSN1Reaction(substrate, nucleophile);
 
     // Assert
-    expect(reactionAnimationManager.animateSN1Reaction).toHaveBeenCalledWith(substrate, nucleophile);
+    expect(reactionAnimationManager.animateSN1Reaction).toHaveBeenCalledWith(
+      substrate,
+      nucleophile
+    );
     expect(animation).toBeDefined();
     expect(animation.run).toBeDefined();
   });
 
   it('E2 animation is triggered with correct parameters', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const substrate = {
       name: 'Ethyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Ethoxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
@@ -118,20 +130,22 @@ describe('Animation System Integration', () => {
 
   it('animation callbacks are properly handled', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const substrate = {
       name: 'Methyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Hydroxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const onStart = vi.fn();
@@ -139,7 +153,7 @@ describe('Animation System Integration', () => {
 
     // Act
     const animation = reactionAnimationManager.animateSN2Reaction(substrate, nucleophile);
-    
+
     // Simulate callback execution
     if (animation.onStart) animation.onStart();
     if (animation.onComplete) animation.onComplete();
@@ -151,25 +165,27 @@ describe('Animation System Integration', () => {
 
   it('animation system handles multiple concurrent animations', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const molecules = Array.from({ length: 3 }, (_, i) => ({
       substrate: {
         name: `Substrate${i}`,
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
+        physicsBody: { quaternion: new THREE.Quaternion() },
       },
       nucleophile: {
         name: `Nucleophile${i}`,
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      }
+        physicsBody: { quaternion: new THREE.Quaternion() },
+      },
     }));
 
     // Act - Start multiple animations
-    const animations = molecules.map(({ substrate, nucleophile }) => 
+    const animations = molecules.map(({ substrate, nucleophile }) =>
       reactionAnimationManager.animateSN2Reaction(substrate, nucleophile)
     );
 
@@ -186,33 +202,40 @@ describe('Animation System Integration', () => {
 
   it('animation system handles invalid molecules gracefully', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const invalidSubstrate = null;
     const invalidNucleophile = undefined;
 
     // Act & Assert - Should handle invalid molecules without crashing
     expect(() => {
-      reactionAnimationManager.animateSN2Reaction(invalidSubstrate as any, invalidNucleophile as any);
+      reactionAnimationManager.animateSN2Reaction(
+        invalidSubstrate as any,
+        invalidNucleophile as any
+      );
     }).not.toThrow();
   });
 
   it('animation system maintains state consistency', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const substrate = {
       name: 'Methyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Hydroxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
@@ -228,20 +251,22 @@ describe('Animation System Integration', () => {
 
   it('animation system handles different reaction types correctly', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const substrate = {
       name: 'Substrate',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Nucleophile',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
@@ -255,27 +280,35 @@ describe('Animation System Integration', () => {
     expect(e2Animation).toBeDefined();
 
     // Verify correct methods were called
-    expect(reactionAnimationManager.animateSN2Reaction).toHaveBeenCalledWith(substrate, nucleophile);
-    expect(reactionAnimationManager.animateSN1Reaction).toHaveBeenCalledWith(substrate, nucleophile);
+    expect(reactionAnimationManager.animateSN2Reaction).toHaveBeenCalledWith(
+      substrate,
+      nucleophile
+    );
+    expect(reactionAnimationManager.animateSN1Reaction).toHaveBeenCalledWith(
+      substrate,
+      nucleophile
+    );
     expect(reactionAnimationManager.animateE2Reaction).toHaveBeenCalledWith(substrate, nucleophile);
   });
 
   it('animation system handles molecules with complex structures', async () => {
     // Arrange
-    const { reactionAnimationManager } = await import('../../src/animations/ReactionAnimationManager');
-    
+    const { reactionAnimationManager } = await import(
+      '../../src/animations/ReactionAnimationManager'
+    );
+
     const substrate = {
       name: 'Complex substrate',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Complex nucleophile',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Add complex structure to molecules
@@ -297,6 +330,9 @@ describe('Animation System Integration', () => {
     // Assert - Should handle complex molecules
     expect(animation).toBeDefined();
     expect(animation.run).toBeDefined();
-    expect(reactionAnimationManager.animateSN2Reaction).toHaveBeenCalledWith(substrate, nucleophile);
+    expect(reactionAnimationManager.animateSN2Reaction).toHaveBeenCalledWith(
+      substrate,
+      nucleophile
+    );
   });
 });

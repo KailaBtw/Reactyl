@@ -1,6 +1,6 @@
-import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import { reactionEventBus } from '../../src/events/ReactionEventBus';
 import { getReactionConfig } from '../../src/config/reactionSettings';
+import { reactionEventBus } from '../../src/events/ReactionEventBus';
+import type { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 import { log } from '../../src/utils/debug';
 
 /**
@@ -24,16 +24,16 @@ export class UnifiedSystemTest {
     try {
       // Test 1: Configuration system
       this.testConfigurationSystem();
-      
+
       // Test 2: Event system
       this.testEventSystem();
-      
+
       // Test 3: State management
       this.testStateManagement();
-      
+
       // Test 4: System integration
       await this.testSystemIntegration();
-      
+
       log('✅ All unified system tests completed');
       return this.testResults;
     } catch (error) {
@@ -47,20 +47,20 @@ export class UnifiedSystemTest {
    */
   private testConfigurationSystem(): void {
     log('🧪 Testing configuration system...');
-    
+
     try {
       // Test getting reaction config
       const sn2Config = getReactionConfig('sn2');
       this.testResults['config-sn2'] = sn2Config.name.includes('SN2');
-      
+
       // Test getting available reaction types
       const availableTypes = Object.keys(getReactionConfig('sn2'));
       this.testResults['config-available-types'] = availableTypes.length > 0;
-      
+
       // Test getting optimal approach angle
       const approachAngle = getReactionConfig('sn2').orientation.optimalApproachAngle;
       this.testResults['config-approach-angle'] = approachAngle === 180;
-      
+
       log('✅ Configuration system test passed');
     } catch (error) {
       log(`❌ Configuration system test failed: ${error}`);
@@ -73,22 +73,22 @@ export class UnifiedSystemTest {
    */
   private testEventSystem(): void {
     log('🧪 Testing event system...');
-    
+
     try {
       let eventReceived = false;
-      
+
       // Register event handler
-      reactionEventBus.on('reaction-started', (event) => {
+      reactionEventBus.on('reaction-started', event => {
         eventReceived = true;
         log(`📡 Received event: ${event.type}`);
       });
-      
+
       // Emit test event
       reactionEventBus.emitReactionStarted('sn2', 'Methyl bromide', 'Hydroxide ion');
-      
+
       // Check if event was received
       this.testResults['event-system'] = eventReceived;
-      
+
       log('✅ Event system test passed');
     } catch (error) {
       log(`❌ Event system test failed: ${error}`);
@@ -101,33 +101,33 @@ export class UnifiedSystemTest {
    */
   private testStateManagement(): void {
     log('🧪 Testing state management...');
-    
+
     try {
       // Test that state interface is properly defined
       const testState = {
         molecules: {
           substrate: null,
-          nucleophile: null
+          nucleophile: null,
         },
         physics: {
           velocities: [],
           orientations: [],
-          isSimulationActive: false
+          isSimulationActive: false,
         },
         reaction: {
           type: 'sn2',
           progress: 0,
           approachAngle: 180,
-          isInProgress: false
+          isInProgress: false,
         },
         visual: {
           needsUpdate: false,
-          lastUpdateTime: 0
-        }
+          lastUpdateTime: 0,
+        },
       };
-      
+
       this.testResults['state-management'] = testState.reaction.type === 'sn2';
-      
+
       log('✅ State management test passed');
     } catch (error) {
       log(`❌ State management test failed: ${error}`);
@@ -140,15 +140,15 @@ export class UnifiedSystemTest {
    */
   private async testSystemIntegration(): Promise<void> {
     log('🧪 Testing system integration...');
-    
+
     try {
       // This would require a full Three.js scene setup
       // For now, we'll just test that the classes can be instantiated
-      
+
       // Test that ReactionOrchestrator can be created (without scene)
       // Note: This will fail without proper Three.js setup, but we can test the interface
       this.testResults['system-integration'] = true;
-      
+
       log('✅ System integration test passed');
     } catch (error) {
       log(`❌ System integration test failed: ${error}`);
@@ -170,7 +170,7 @@ export class UnifiedSystemTest {
     const results = this.getTestResults();
     const passed = Object.values(results).filter(Boolean).length;
     const total = Object.keys(results).length;
-    
+
     return `Tests: ${passed}/${total} passed`;
   }
 
@@ -190,14 +190,14 @@ export class UnifiedSystemTest {
  */
 export async function runUnifiedSystemTests(): Promise<void> {
   const test = new UnifiedSystemTest();
-  
+
   try {
     const results = await test.runAllTests();
     const summary = test.getTestSummary();
-    
+
     log(`🎯 Test Results: ${summary}`);
     log('📊 Detailed Results:', results);
-    
+
     // Check if all tests passed
     const allPassed = Object.values(results).every(Boolean);
     if (allPassed) {
@@ -205,14 +205,7 @@ export async function runUnifiedSystemTests(): Promise<void> {
     } else {
       log('⚠️ Some unified system tests failed');
     }
-    
   } finally {
     test.dispose();
   }
 }
-
-
-
-
-
-

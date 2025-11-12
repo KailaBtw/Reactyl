@@ -20,7 +20,7 @@ export const RightSidebar: React.FC = () => {
           </div>
         </div>
         <div className="cp-actions">
-          <button 
+          <button
             className="collapse-btn"
             onClick={() => setIsCollapsed(!isCollapsed)}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -53,7 +53,10 @@ export const RightSidebar: React.FC = () => {
 
       {!isCollapsed && (
         <div className="tab-content cp-content">
-          <TabbedSearch externalActiveTab={activeTab} onExternalTabChange={(t: TabId) => setActiveTab(t)} />
+          <TabbedSearch
+            externalActiveTab={activeTab}
+            onExternalTabChange={(t: TabId) => setActiveTab(t)}
+          />
         </div>
       )}
     </div>

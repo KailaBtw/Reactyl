@@ -1,22 +1,22 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import { ReactionDemoCoordinator } from '../demo/reactionDemoCoordinator';
 import type { MoleculeManager } from '../types';
 import { log } from '../utils/debug';
 
 /**
  * Enhanced Reaction Demo
- * 
+ *
  * A clean wrapper around the ReactionDemoCoordinator that uses the proper
  * StructureEngine architecture instead of the old placeholder system.
  */
 export class EnhancedReactionDemo {
   private demoCoordinator: ReactionDemoCoordinator;
-  
+
   constructor(scene: THREE.Scene) {
     this.demoCoordinator = new ReactionDemoCoordinator(scene);
     log('🚀 EnhancedReactionDemo initialized');
   }
-  
+
   /**
    * Run enhanced SN2 demo using the proper StructureEngine architecture
    */

@@ -1,6 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { orientSN2Backside, orientSN1, orientE2, getOrientationStrategy } from '../../src/config/moleculePositioning';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  getOrientationStrategy,
+  orientE2,
+  orientSN1,
+  orientSN2Backside,
+} from '../../src/config/moleculePositioning';
 
 describe('Molecule Orientation Integration', () => {
   beforeEach(() => {
@@ -14,14 +19,14 @@ describe('Molecule Orientation Integration', () => {
       name: 'Methyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Hydroxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Position molecules for collision
@@ -47,28 +52,28 @@ describe('Molecule Orientation Integration', () => {
       name: 'Methyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophileSN2 = {
       name: 'Hydroxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const substrateSN1 = {
       name: 'Tert-butyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophileSN1 = {
       name: 'Water',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
@@ -86,14 +91,14 @@ describe('Molecule Orientation Integration', () => {
       name: 'Ethyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Ethoxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
@@ -104,14 +109,14 @@ describe('Molecule Orientation Integration', () => {
       name: 'Methyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophileSN2 = {
       name: 'Hydroxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     orientSN2Backside(substrateSN2, nucleophileSN2);
@@ -125,28 +130,28 @@ describe('Molecule Orientation Integration', () => {
       name: 'Substrate1',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile1 = {
       name: 'Nucleophile1',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const substrate2 = {
       name: 'Substrate2',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile2 = {
       name: 'Nucleophile2',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act - Apply same orientation twice
@@ -164,7 +169,7 @@ describe('Molecule Orientation Integration', () => {
       { substrate: [0, 0, 0], nucleophile: [0, 0, -5] },
       { substrate: [5, 0, 0], nucleophile: [0, 0, 0] },
       { substrate: [0, 5, 0], nucleophile: [0, 0, 0] },
-      { substrate: [-5, 0, 0], nucleophile: [0, 0, 0] }
+      { substrate: [-5, 0, 0], nucleophile: [0, 0, 0] },
     ];
 
     testPositions.forEach(({ substrate: subPos, nucleophile: nucPos }) => {
@@ -172,14 +177,14 @@ describe('Molecule Orientation Integration', () => {
         name: 'Substrate',
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
+        physicsBody: { quaternion: new THREE.Quaternion() },
       };
 
       const nucleophile = {
         name: 'Nucleophile',
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
+        physicsBody: { quaternion: new THREE.Quaternion() },
       };
 
       substrate.group.position.set(subPos[0], subPos[1], subPos[2]);
@@ -204,14 +209,14 @@ describe('Molecule Orientation Integration', () => {
       name: 'Substrate',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Nucleophile',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act
@@ -245,14 +250,14 @@ describe('Molecule Orientation Integration', () => {
       name: 'Substrate',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Nucleophile',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Set initial rotations
@@ -278,14 +283,14 @@ describe('Molecule Orientation Integration', () => {
       name: 'Substrate',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Nucleophile',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act - Apply orientation multiple times

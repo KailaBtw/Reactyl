@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { orientSN2Backside } from '../../src/config/moleculePositioning';
 import { createCollisionEvent } from '../../src/physics/collisionEventSystem';
 import { computeKinematics } from '../../src/physics/encounterPlanner';
@@ -16,14 +16,14 @@ describe('Performance Tests', () => {
       name: 'Substrate',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Nucleophile',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act & Measure
@@ -43,14 +43,14 @@ describe('Performance Tests', () => {
         name: `Substrate${i}`,
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
+        physicsBody: { quaternion: new THREE.Quaternion() },
       },
       nucleophile: {
         name: `Nucleophile${i}`,
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      }
+        physicsBody: { quaternion: new THREE.Quaternion() },
+      },
     }));
 
     // Act & Measure
@@ -98,9 +98,11 @@ describe('Performance Tests', () => {
   it('collision event creation is efficient', () => {
     // Arrange - Test our actual collision event creation function
     const molecules = Array.from({ length: 100 }, () => ({
-      group: { position: new THREE.Vector3(Math.random() * 100, Math.random() * 100, Math.random() * 100) },
+      group: {
+        position: new THREE.Vector3(Math.random() * 100, Math.random() * 100, Math.random() * 100),
+      },
       velocity: new THREE.Vector3(Math.random() * 10, Math.random() * 10, Math.random() * 10),
-      name: 'TestMolecule'
+      name: 'TestMolecule',
     }));
 
     // Act & Measure
@@ -123,7 +125,7 @@ describe('Performance Tests', () => {
     // Arrange - Test our actual kinematics computation function
     const testParams = Array.from({ length: 100 }, () => ({
       approachAngle: Math.random() * 360,
-      relativeVelocity: Math.random() * 10
+      relativeVelocity: Math.random() * 10,
     }));
 
     // Act & Measure
@@ -147,7 +149,7 @@ describe('Performance Tests', () => {
     const molecules = Array.from({ length: moleculeCount }, (_, i) => {
       const group = new THREE.Group();
       group.position.set(i, 0, 0);
-      
+
       // Add some atoms
       for (let j = 0; j < 5; j++) {
         const atom = new THREE.Mesh();
@@ -160,7 +162,7 @@ describe('Performance Tests', () => {
         group,
         rotation: new THREE.Euler(),
         velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
+        physicsBody: { quaternion: new THREE.Quaternion() },
       };
     });
 
@@ -188,14 +190,14 @@ describe('Performance Tests', () => {
         name: `Substrate${i}`,
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
+        physicsBody: { quaternion: new THREE.Quaternion() },
       };
 
       const nucleophile = {
         name: `Nucleophile${i}`,
         group: new THREE.Group(),
         rotation: new THREE.Euler(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
+        physicsBody: { quaternion: new THREE.Quaternion() },
       };
 
       orientSN2Backside(substrate, nucleophile);
@@ -204,7 +206,7 @@ describe('Performance Tests', () => {
     // Assert - Memory usage should not grow excessively
     const finalMemory = (performance as any).memory?.usedJSHeapSize || 0;
     const memoryGrowth = finalMemory - initialMemory;
-    
+
     // Allow for some memory growth but not excessive
     expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024); // 50MB
   });
@@ -220,14 +222,14 @@ describe('Performance Tests', () => {
           name: `Substrate${i}`,
           group: new THREE.Group(),
           rotation: new THREE.Euler(),
-          physicsBody: { quaternion: new THREE.Quaternion() }
+          physicsBody: { quaternion: new THREE.Quaternion() },
         },
         nucleophile: {
           name: `Nucleophile${i}`,
           group: new THREE.Group(),
           rotation: new THREE.Euler(),
-          physicsBody: { quaternion: new THREE.Quaternion() }
-        }
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        },
       }));
 
       // Act & Measure

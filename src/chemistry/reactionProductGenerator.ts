@@ -1,9 +1,9 @@
 import * as THREE from 'three';
+import { applyProductOrientation, getAttackModeConfig } from '../config/attackModes';
 import { createMoleculeGroup } from '../services/moleculeManager';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
 import type { ReactionResult } from './reactionDetector';
-import { getAttackModeConfig, applyProductOrientation } from '../config/attackModes';
 
 /**
  * Interface for reaction product definitions
@@ -255,7 +255,7 @@ export class ReactionProductGenerator {
       const uiState = (window as any).uiState;
       const currentReactionType = reactionType || uiState?.reactionType || 'sn2';
       const currentApproachAngle = uiState?.approachAngle || 180;
-      
+
       // Determine attack mode from approach angle
       let currentAttackMode: string;
       if (Math.abs(currentApproachAngle % 180) === 90) {
@@ -265,10 +265,12 @@ export class ReactionProductGenerator {
       } else {
         currentAttackMode = 'backside';
       }
-      
+
       const config = getAttackModeConfig(currentReactionType, currentAttackMode as any);
       applyProductOrientation(product.group, config.productYaw);
-      log(`Applied product orientation: ${(config.productYaw * 180 / Math.PI).toFixed(1)}° for ${currentReactionType} ${currentAttackMode} (angle: ${currentApproachAngle}°)`);
+      log(
+        `Applied product orientation: ${((config.productYaw * 180) / Math.PI).toFixed(1)}° for ${currentReactionType} ${currentAttackMode} (angle: ${currentApproachAngle}°)`
+      );
     } catch (error) {
       log(`Failed to apply product orientation: ${error}`);
     }

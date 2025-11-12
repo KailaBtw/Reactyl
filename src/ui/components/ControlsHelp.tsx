@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 
 interface ControlsHelpProps {
   isOpen: boolean;
@@ -7,9 +7,11 @@ interface ControlsHelpProps {
 
 export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) => {
   return (
-    <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-2xl z-40 transition-all duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+    <div
+      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-2xl z-40 transition-all duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
+    >
       {/* Toggle Button */}
-      <button 
+      <button
         className="w-full flex items-center justify-center gap-3 px-5 py-3 bg-white border-0 cursor-pointer text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors"
         onClick={onToggle}
       >
@@ -21,7 +23,9 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
       </button>
 
       {/* Collapsible Content */}
-      <div className={`overflow-hidden transition-all duration-300 bg-gray-50 ${isOpen ? 'max-h-[80vh] opacity-100' : 'max-h-0 opacity-0'}`}>
+      <div
+        className={`overflow-hidden transition-all duration-300 bg-gray-50 ${isOpen ? 'max-h-[80vh] opacity-100' : 'max-h-0 opacity-0'}`}
+      >
         <div className="overflow-y-auto max-h-[75vh]">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 p-5 max-w-6xl mx-auto">
             {/* Mouse Controls */}
@@ -42,17 +46,13 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
                   <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono font-semibold text-center">
                     Right Click + Drag
                   </span>
-                  <span className="text-sm text-gray-600 leading-relaxed">
-                    Pan the view around
-                  </span>
+                  <span className="text-sm text-gray-600 leading-relaxed">Pan the view around</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono font-semibold text-center">
                     Scroll Wheel
                   </span>
-                  <span className="text-sm text-gray-600 leading-relaxed">
-                    Zoom in/out
-                  </span>
+                  <span className="text-sm text-gray-600 leading-relaxed">Zoom in/out</span>
                 </div>
               </div>
             </div>
@@ -75,9 +75,7 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
                   <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono font-semibold text-center">
                     R
                   </span>
-                  <span className="text-sm text-gray-600 leading-relaxed">
-                    Reset simulation
-                  </span>
+                  <span className="text-sm text-gray-600 leading-relaxed">Reset simulation</span>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono font-semibold text-center">
@@ -105,13 +103,16 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
               </h4>
               <div className="space-y-2">
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Substrate:</strong> The molecule being attacked (e.g., CH₃Br)
+                  <strong className="text-gray-800">Substrate:</strong> The molecule being attacked
+                  (e.g., CH₃Br)
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Nucleophile:</strong> The attacking species (e.g., OH⁻)
+                  <strong className="text-gray-800">Nucleophile:</strong> The attacking species
+                  (e.g., OH⁻)
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Reaction Type:</strong> Choose SN2, SN1, or E2 mechanism
+                  <strong className="text-gray-800">Reaction Type:</strong> Choose SN2, SN1, or E2
+                  mechanism
                 </div>
               </div>
             </div>
@@ -123,16 +124,20 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
               </h4>
               <div className="space-y-2">
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Backside SN2:</strong> Nucleophile approaches from behind (180°)
+                  <strong className="text-gray-800">Backside SN2:</strong> Nucleophile approaches
+                  from behind (180°)
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Front Attack:</strong> Direct frontal approach (0°)
+                  <strong className="text-gray-800">Front Attack:</strong> Direct frontal approach
+                  (0°)
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Side Attack:</strong> Perpendicular approach (90°)
+                  <strong className="text-gray-800">Side Attack:</strong> Perpendicular approach
+                  (90°)
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Impact Parameter:</strong> Lateral offset distance
+                  <strong className="text-gray-800">Impact Parameter:</strong> Lateral offset
+                  distance
                 </div>
               </div>
             </div>
@@ -144,10 +149,12 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
               </h4>
               <div className="space-y-2">
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Activation Energy:</strong> Energy barrier to overcome
+                  <strong className="text-gray-800">Activation Energy:</strong> Energy barrier to
+                  overcome
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Reaction Progress:</strong> How far along the reaction is
+                  <strong className="text-gray-800">Reaction Progress:</strong> How far along the
+                  reaction is
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
                   <strong className="text-gray-800">Transition State:</strong> Highest energy point
@@ -165,13 +172,16 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
               </h4>
               <div className="space-y-2">
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Background:</strong> Change 3D scene background color
+                  <strong className="text-gray-800">Background:</strong> Change 3D scene background
+                  color
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Molecule Colors:</strong> Standard CPK coloring scheme
+                  <strong className="text-gray-800">Molecule Colors:</strong> Standard CPK coloring
+                  scheme
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Speed Control:</strong> Adjust simulation playback speed
+                  <strong className="text-gray-800">Speed Control:</strong> Adjust simulation
+                  playback speed
                 </div>
               </div>
             </div>
@@ -183,7 +193,8 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
               </h4>
               <div className="space-y-2">
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Distance:</strong> Separation between molecules (Å)
+                  <strong className="text-gray-800">Distance:</strong> Separation between molecules
+                  (Å)
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
                   <strong className="text-gray-800">Velocity:</strong> Relative approach speed (m/s)
@@ -222,16 +233,19 @@ export const ControlsHelp: React.FC<ControlsHelpProps> = ({ isOpen, onToggle }) 
               </h4>
               <div className="space-y-2">
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">No collision:</strong> Check attack mode and impact parameter
+                  <strong className="text-gray-800">No collision:</strong> Check attack mode and
+                  impact parameter
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Slow performance:</strong> Reduce simulation speed
+                  <strong className="text-gray-800">Slow performance:</strong> Reduce simulation
+                  speed
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
                   <strong className="text-gray-800">Molecules stuck:</strong> Reset the simulation
                 </div>
                 <div className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Can't see molecules:</strong> Try different background color
+                  <strong className="text-gray-800">Can't see molecules:</strong> Try different
+                  background color
                 </div>
               </div>
             </div>

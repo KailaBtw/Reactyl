@@ -1,9 +1,10 @@
 import * as THREE from 'three';
+import { physicsEngine } from '../physics/cannonPhysicsEngine';
 import { molFileToJSON } from '../services/data/molFileToJSON';
 import { MolToPhysicsConverter } from '../services/data/molToPhysics';
-import { physicsEngine } from '../physics/cannonPhysicsEngine';
 import type { MoleculeManager, Position } from '../types';
 import { log } from '../utils/debug';
+
 // RotationController removed - using physics engine for rotation
 
 interface MolObject {
@@ -295,7 +296,7 @@ export function drawMolecule(
 
   // Don't set automatic velocities - let the physics configuration handle this
   // moleculeManager.setMoleculeVelocity(name, targetPosition, 4); // REMOVED - interferes with physics config
-  
+
   // Initialize with zero velocity - physics configuration will set proper velocities
   // IMPORTANT: Don't overwrite if velocity is already set (e.g., by MoleculeSpawner)
   // But since molecule is just created, velocity will be zero, so set it
@@ -304,7 +305,7 @@ export function drawMolecule(
   // Ensure physics body exists
   try {
     const props = (molecule as any).molecularProperties;
-    
+
     if (!molecule.hasPhysics && props) {
       const success = physicsEngine.addMolecule(molecule, props);
       if (success) {
@@ -312,7 +313,7 @@ export function drawMolecule(
         molecule.physicsBody = physicsEngine.getPhysicsBody(molecule);
       }
     }
-    
+
     // Set velocity on physics body to current molecule velocity (zero for now)
     // MoleculeSpawner will set proper velocity after this function returns
     if (molecule.hasPhysics) {

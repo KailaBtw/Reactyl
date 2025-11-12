@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 
 interface ThemeSelectorProps {
   currentTheme: string;
@@ -9,7 +9,7 @@ interface ThemeSelectorProps {
 export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   currentTheme,
   onThemeChange,
-  className = ''
+  className = '',
 }) => {
   const themes = [
     { id: 'light', name: 'Light', color: '#f8fafc' },
@@ -21,28 +21,26 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <label className="block text-sm font-medium text-gray-700">
-        Theme
-      </label>
+      <label className="block text-sm font-medium text-gray-700">Theme</label>
       <div className="flex gap-2">
-        {themes.map((theme) => (
+        {themes.map(theme => (
           <label key={theme.id} className="relative cursor-pointer group">
             <input
               type="radio"
               name="theme"
               value={theme.id}
               checked={currentTheme === theme.id}
-              onChange={(e) => onThemeChange(e.target.value)}
+              onChange={e => onThemeChange(e.target.value)}
               className="sr-only"
             />
             <div className="flex flex-col items-center gap-1">
               {/* Theme Cube */}
-              <div 
+              <div
                 className={`w-8 h-8 rounded-lg border-2 transition-all duration-200 ${
-                  currentTheme === theme.id 
-                    ? 'border-blue-500 shadow-md scale-110' 
+                  currentTheme === theme.id
+                    ? 'border-blue-500 shadow-md scale-110'
                     : 'border-gray-300 hover:border-gray-400 hover:scale-105'
-                }`} 
+                }`}
                 style={{ backgroundColor: theme.color }}
               >
                 {currentTheme === theme.id && (
@@ -52,11 +50,13 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                 )}
               </div>
               {/* Theme Label */}
-              <span className={`text-xs font-medium transition-colors ${
-                currentTheme === theme.id 
-                  ? 'text-blue-600' 
-                  : 'text-gray-600 group-hover:text-gray-800'
-              }`}>
+              <span
+                className={`text-xs font-medium transition-colors ${
+                  currentTheme === theme.id
+                    ? 'text-blue-600'
+                    : 'text-gray-600 group-hover:text-gray-800'
+                }`}
+              >
                 {theme.name}
               </span>
             </div>

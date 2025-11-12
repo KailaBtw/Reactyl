@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 
 describe('ReactionOrchestrator - Molecule Loading Retry', () => {
@@ -24,7 +24,9 @@ describe('ReactionOrchestrator - Molecule Loading Retry', () => {
   });
 
   it('retries molecule loading up to maxRetries and throws on failure', async () => {
-    const loadSpy = vi.spyOn(orchestrator as any, 'loadMolecule').mockRejectedValue(new Error('Network'));
+    const loadSpy = vi
+      .spyOn(orchestrator as any, 'loadMolecule')
+      .mockRejectedValue(new Error('Network'));
 
     await expect(
       (orchestrator as any).loadMoleculesWithOrientation({
@@ -39,5 +41,3 @@ describe('ReactionOrchestrator - Molecule Loading Retry', () => {
     expect(loadSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
   });
 });
-
-

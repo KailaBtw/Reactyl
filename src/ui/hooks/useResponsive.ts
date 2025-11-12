@@ -41,7 +41,7 @@ export const useResponsive = (): ResponsiveConfig => {
   const isMedium = width >= 768 && width < 1024;
   const isLarge = width >= 1024 && width < 1440;
   const isXLarge = width >= 1440;
-  
+
   // Mobile devices use tabbed interface now, no separate reaction bar needed
   const isVerticallyConstrained = height < 700;
   const needsReactionBar = false; // Disabled - mobile uses same tabbed interface
@@ -59,28 +59,28 @@ export const useResponsive = (): ResponsiveConfig => {
       return {
         flex: '1 1 100%',
         minWidth: '200px',
-        maxWidth: '100%'
+        maxWidth: '100%',
       };
     }
     if (isMedium) {
       return {
         flex: '0 1 250px',
         minWidth: '220px',
-        maxWidth: '300px'
+        maxWidth: '300px',
       };
     }
     if (isLarge) {
       return {
         flex: '0 1 280px',
         minWidth: '260px',
-        maxWidth: '320px'
+        maxWidth: '320px',
       };
     }
     // XLarge
     return {
       flex: '0 1 320px',
       minWidth: '300px',
-      maxWidth: '400px'
+      maxWidth: '400px',
     };
   };
 
@@ -114,33 +114,33 @@ export const useResponsive = (): ResponsiveConfig => {
         height: isSmall ? '28px' : '32px', // Ultra-narrow with stats
         transition: {
           duration: 0.3,
-          ease: 'easeInOut'
-        }
+          ease: 'easeInOut',
+        },
       },
       expanded: {
         height: isSmall ? '140px' : '160px', // Much narrower, compress UI
         transition: {
           duration: 0.3,
-          ease: 'easeInOut'
-        }
-      }
+          ease: 'easeInOut',
+        },
+      },
     },
     content: {
       hidden: {
         opacity: 0,
         y: 10,
         transition: {
-          duration: 0.2
-        }
+          duration: 0.2,
+        },
       },
       visible: {
         opacity: 1,
         y: 0,
         transition: {
           duration: 0.3,
-          delay: 0.1
-        }
-      }
+          delay: 0.1,
+        },
+      },
     },
     infoPanel: {
       hidden: {
@@ -148,8 +148,8 @@ export const useResponsive = (): ResponsiveConfig => {
         scale: 0.95,
         y: isSmall ? 20 : 10,
         transition: {
-          duration: 0.2
-        }
+          duration: 0.2,
+        },
       },
       visible: {
         opacity: 1,
@@ -157,10 +157,10 @@ export const useResponsive = (): ResponsiveConfig => {
         y: 0,
         transition: {
           duration: 0.3,
-          ease: 'easeOut'
-        }
-      }
-    }
+          ease: 'easeOut',
+        },
+      },
+    },
   });
 
   return {
@@ -177,6 +177,6 @@ export const useResponsive = (): ResponsiveConfig => {
     statsGridWidth: getStatsGridWidth(),
     contentGap: getContentGap(),
     contentPadding: getContentPadding(),
-    animationVariants: getAnimationVariants()
+    animationVariants: getAnimationVariants(),
   };
 };

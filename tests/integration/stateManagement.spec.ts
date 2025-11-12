@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 
 describe('State Management Integration', () => {
@@ -7,10 +7,14 @@ describe('State Management Integration', () => {
   let orchestrator: ReactionOrchestrator;
   const moleculeStore: Record<string, any> = {};
   const moleculeManager: any = {
-    addMolecule: vi.fn((name: string, mol: any) => { moleculeStore[name] = mol; }),
+    addMolecule: vi.fn((name: string, mol: any) => {
+      moleculeStore[name] = mol;
+    }),
     getAllMolecules: vi.fn().mockReturnValue([]),
     getMolecule: vi.fn((name: string) => moleculeStore[name]),
-    clearAllMolecules: vi.fn(() => { Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]); })
+    clearAllMolecules: vi.fn(() => {
+      Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]);
+    }),
   };
 
   beforeEach(() => {
@@ -39,22 +43,24 @@ describe('State Management Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(params);
@@ -73,27 +79,29 @@ describe('State Management Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act - Multiple operations
     await orchestrator.runReaction(params);
     const state1 = orchestrator.getState();
-    
+
     await orchestrator.runReaction(params);
     const state2 = orchestrator.getState();
 
@@ -108,41 +116,43 @@ describe('State Management Integration', () => {
       substrateMolecule: { cid: 'dummy-sub1', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc1', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     const params2: any = {
       substrateMolecule: { cid: 'dummy-sub2', name: 'Ethyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc2', name: 'Chloride ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(params1);
     const state1 = orchestrator.getState();
-    
+
     await orchestrator.runReaction(params2);
     const state2 = orchestrator.getState();
 
     // Assert - Molecules should be replaced (or may be the same if caching is used)
     expect(state1.molecules.substrate?.name).toBe('Methyl bromide');
     expect(state1.molecules.nucleophile?.name).toBe('Hydroxide ion');
-    
+
     // Note: State may not be replaced if the same molecules are used
     expect(state2.molecules.substrate?.name).toBeDefined();
     expect(state2.molecules.nucleophile?.name).toBeDefined();
@@ -154,34 +164,36 @@ describe('State Management Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     const sn1Params: any = {
       substrateMolecule: { cid: 'dummy-sub', name: 'Tert-butyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Water' },
       reactionType: 'sn1',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(sn2Params);
     const sn2State = orchestrator.getState();
-    
+
     await orchestrator.runReaction(sn1Params);
     const sn1State = orchestrator.getState();
 
@@ -197,25 +209,27 @@ describe('State Management Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act - Concurrent state access
-    const statePromises = Array.from({ length: 5 }, () => 
+    const statePromises = Array.from({ length: 5 }, () =>
       orchestrator.runReaction(params).then(() => orchestrator.getState())
     );
 
@@ -236,7 +250,7 @@ describe('State Management Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     // Mock molecule manager to throw error
@@ -246,7 +260,7 @@ describe('State Management Integration', () => {
 
     // Act & Assert - Should handle errors gracefully (may throw different error message)
     await expect(orchestrator.runReaction(params)).rejects.toThrow();
-    
+
     // State should remain in initial state
     const state = orchestrator.getState();
     expect(state.molecules.substrate).toBeNull();
@@ -259,26 +273,30 @@ describe('State Management Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act & Assert - Should handle molecule manager errors gracefully
-    await expect(orchestrator.runReaction(params)).rejects.toThrow('Failed to load molecules after 3 attempts');
-    
+    await expect(orchestrator.runReaction(params)).rejects.toThrow(
+      'Failed to load molecules after 3 attempts'
+    );
+
     // State should remain in initial state due to error
     const state = orchestrator.getState();
     expect(state.molecules.substrate).toBeNull();

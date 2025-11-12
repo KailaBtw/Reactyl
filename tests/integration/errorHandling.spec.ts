@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import { orientSN2Backside } from '../../src/config/moleculePositioning';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactionDetector } from '../../src/chemistry/reactionDetector';
+import { orientSN2Backside } from '../../src/config/moleculePositioning';
+import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 
 describe('Error Handling Integration', () => {
   let scene: THREE.Scene;
@@ -10,10 +10,14 @@ describe('Error Handling Integration', () => {
   let reactionDetector: ReactionDetector;
   const moleculeStore: Record<string, any> = {};
   const moleculeManager: any = {
-    addMolecule: vi.fn((name: string, mol: any) => { moleculeStore[name] = mol; }),
+    addMolecule: vi.fn((name: string, mol: any) => {
+      moleculeStore[name] = mol;
+    }),
     getAllMolecules: vi.fn().mockReturnValue([]),
     getMolecule: vi.fn((name: string) => moleculeStore[name]),
-    clearAllMolecules: vi.fn(() => { Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]); })
+    clearAllMolecules: vi.fn(() => {
+      Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]);
+    }),
   };
 
   beforeEach(() => {
@@ -46,12 +50,12 @@ describe('Error Handling Integration', () => {
   it('handles molecules with missing properties in orientation', () => {
     // Arrange - Incomplete molecule objects
     const incompleteSubstrate = {
-      name: 'Incomplete Substrate'
+      name: 'Incomplete Substrate',
       // Missing group, rotation, physicsBody
     };
 
     const incompleteNucleophile = {
-      name: 'Incomplete Nucleophile'
+      name: 'Incomplete Nucleophile',
       // Missing group, rotation, physicsBody
     };
 
@@ -71,7 +75,7 @@ describe('Error Handling Integration', () => {
     const invalidCollisionData = {
       collisionEnergy: NaN,
       approachAngle: Infinity,
-      relativeVelocity: null
+      relativeVelocity: null,
     };
 
     const reactionType: any = {
@@ -82,9 +86,9 @@ describe('Error Handling Integration', () => {
       optimalAngle: 180,
       requiredFeatures: { substrate: [], nucleophile: [] },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-80 / (8.314 * T / 1000)),
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-80 / ((8.314 * T) / 1000)),
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     const substrate: any = { molecularProperties: { totalMass: 95 } };
@@ -107,7 +111,7 @@ describe('Error Handling Integration', () => {
     const collisionData = {
       collisionEnergy: 100,
       approachAngle: 180,
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
 
     const invalidReactionType = null;
@@ -137,27 +141,29 @@ describe('Error Handling Integration', () => {
       substrateMolecule: { cid: 'invalid-cid', name: 'Invalid molecule' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Valid nucleophile' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     // Mock loadMolecule to fail for substrate
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (cid: string, name: string, position: any) => {
-      if (cid === 'invalid-cid') {
-        throw new Error('Failed to load molecule');
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (cid: string, name: string, position: any) => {
+        if (cid === 'invalid-cid') {
+          throw new Error('Failed to load molecule');
+        }
+
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
       }
-      
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    );
 
     // Act & Assert - Should handle loading failure gracefully
     await expect(orchestrator.runReaction(params)).rejects.toThrow('Failed to load molecule');
@@ -228,22 +234,24 @@ describe('Error Handling Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act - Concurrent operations
     const promises = Array.from({ length: 10 }, () => orchestrator.runReaction(params));
@@ -264,7 +272,12 @@ describe('Error Handling Integration', () => {
       }).not.toThrow();
 
       expect(() => {
-        const quaternion = new THREE.Quaternion(value as any, value as any, value as any, value as any);
+        const quaternion = new THREE.Quaternion(
+          value as any,
+          value as any,
+          value as any,
+          value as any
+        );
         quaternion.length();
       }).not.toThrow();
     });
@@ -276,14 +289,16 @@ describe('Error Handling Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     // Mock loadMolecule to simulate network timeout
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      throw new Error('Network timeout');
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        throw new Error('Network timeout');
+      }
+    );
 
     // Act & Assert - Should handle async errors gracefully
     await expect(orchestrator.runReaction(params)).rejects.toThrow('Network timeout');
@@ -295,22 +310,24 @@ describe('Error Handling Integration', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        rotation: new THREE.Euler(),
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          rotation: new THREE.Euler(),
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(params);

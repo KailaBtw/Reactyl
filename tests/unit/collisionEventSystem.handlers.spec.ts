@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { collisionEventSystem } from '../../src/physics/collisionEventSystem';
 
 describe('collisionEventSystem handler management', () => {
@@ -17,5 +17,3 @@ describe('collisionEventSystem handler management', () => {
     expect(collisionEventSystem.getStats().totalHandlers).toBe(0);
   });
 });
-
-

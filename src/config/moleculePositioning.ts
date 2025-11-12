@@ -1,11 +1,19 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import { getAttackModeConfig, lookAtThenYaw as lookAtThenYawFromConfig } from './attackModes';
 
 export interface MoleculeLike {
   group: THREE.Group;
   rotation: THREE.Euler;
   // Optional physics body with a quaternion compatible with Three.js (has x,y,z,w and optionally set())
-  physicsBody?: { quaternion: { x: number; y: number; z: number; w: number; set?: (x: number, y: number, z: number, w: number) => void } };
+  physicsBody?: {
+    quaternion: {
+      x: number;
+      y: number;
+      z: number;
+      w: number;
+      set?: (x: number, y: number, z: number, w: number) => void;
+    };
+  };
 }
 
 export type OrientationStrategy = (substrate: MoleculeLike, nucleophile: MoleculeLike) => void;
@@ -18,7 +26,10 @@ function syncPhysicsQuaternion(entity: MoleculeLike): void {
   if (typeof pq.set === 'function') {
     pq.set(gq.x, gq.y, gq.z, gq.w);
   } else {
-    pq.x = gq.x; pq.y = gq.y; pq.z = gq.z; pq.w = gq.w;
+    pq.x = gq.x;
+    pq.y = gq.y;
+    pq.z = gq.z;
+    pq.w = gq.w;
   }
 }
 
@@ -27,7 +38,7 @@ const lookAtThenYaw = lookAtThenYawFromConfig;
 
 export const orientSN2Backside: OrientationStrategy = (substrate, nucleophile) => {
   const cfg = getAttackModeConfig('sn2', 'backside');
-  
+
   // 1) Aim nucleophile toward substrate electrophile center
   lookAtThenYaw(nucleophile.group, substrate.group.position, cfg.nucleophileYaw);
   nucleophile.rotation.copy(nucleophile.group.rotation);
@@ -76,7 +87,10 @@ export function getOrientationStrategy(reactionType: string): OrientationStrateg
 }
 
 // New nested selection API: reaction type outer, attack mode inner
-export function getOrientationStrategyWithMode(reactionType: string, attackMode: AttackMode): OrientationStrategy {
+export function getOrientationStrategyWithMode(
+  reactionType: string,
+  attackMode: AttackMode
+): OrientationStrategy {
   const type = reactionType.toLowerCase();
   const mode = attackMode.toLowerCase() as AttackMode;
 
@@ -103,5 +117,3 @@ export function getOrientationStrategyWithMode(reactionType: string, attackMode:
   if (type === 'e2') return orientE2;
   return orientSN1;
 }
-
-

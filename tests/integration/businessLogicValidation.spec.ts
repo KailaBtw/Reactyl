@@ -1,18 +1,22 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { orientSN2Backside } from '../../src/config/moleculePositioning';
 import { createCollisionEvent } from '../../src/physics/collisionEventSystem';
+import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
 
 describe('Business Logic Validation', () => {
   let scene: THREE.Scene;
   let orchestrator: ReactionOrchestrator;
   const moleculeStore: Record<string, any> = {};
   const moleculeManager: any = {
-    addMolecule: vi.fn((name: string, mol: any) => { moleculeStore[name] = mol; }),
+    addMolecule: vi.fn((name: string, mol: any) => {
+      moleculeStore[name] = mol;
+    }),
     getAllMolecules: vi.fn().mockReturnValue([]),
     getMolecule: vi.fn((name: string) => moleculeStore[name]),
-    clearAllMolecules: vi.fn(() => { Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]); })
+    clearAllMolecules: vi.fn(() => {
+      Object.keys(moleculeStore).forEach(k => delete moleculeStore[k]);
+    }),
   };
 
   beforeEach(() => {
@@ -27,11 +31,11 @@ describe('Business Logic Validation', () => {
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
       velocity: new THREE.Vector3(0, 0, 0),
-      physicsBody: { 
+      physicsBody: {
         quaternion: new THREE.Quaternion(),
-        velocity: { x: 0, y: 0, z: 0 }
+        velocity: { x: 0, y: 0, z: 0 },
       },
-      molecularProperties: { totalMass: 95 }
+      molecularProperties: { totalMass: 95 },
     };
 
     const nucleophile = {
@@ -39,11 +43,11 @@ describe('Business Logic Validation', () => {
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
       velocity: new THREE.Vector3(0, 0, 0),
-      physicsBody: { 
+      physicsBody: {
         quaternion: new THREE.Quaternion(),
-        velocity: { x: 0, y: 0, z: 0 }
+        velocity: { x: 0, y: 0, z: 0 },
       },
-      molecularProperties: { totalMass: 17 }
+      molecularProperties: { totalMass: 17 },
     };
 
     // Position molecules for collision
@@ -55,7 +59,7 @@ describe('Business Logic Validation', () => {
 
     // Use our actual collision event system to calculate approach angle
     const collisionEvent = createCollisionEvent(substrate, nucleophile);
-    
+
     // For SN2 backside attack, collision normal should point from substrate to nucleophile
     // This indicates proper alignment for backside attack
     expect(collisionEvent.collisionNormal.z).toBeCloseTo(-1, 1); // Should point toward nucleophile
@@ -68,14 +72,14 @@ describe('Business Logic Validation', () => {
       name: 'Substrate',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile = {
       name: 'Nucleophile',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act - Apply orientation
@@ -84,7 +88,7 @@ describe('Business Logic Validation', () => {
     // Assert - Physics body quaternion should match Three.js quaternion
     const substrateVisualQuat = substrate.group.quaternion.clone();
     const substratePhysicsQuat = substrate.physicsBody.quaternion.clone();
-    
+
     const nucleophileVisualQuat = nucleophile.group.quaternion.clone();
     const nucleophilePhysicsQuat = nucleophile.physicsBody.quaternion.clone();
 
@@ -106,22 +110,24 @@ describe('Business Logic Validation', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Methyl bromide' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Hydroxide ion' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     // Mock loadMolecule to create molecules
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act
     await orchestrator.runReaction(params);
@@ -144,22 +150,24 @@ describe('Business Logic Validation', () => {
       substrateMolecule: { cid: 'dummy-sub', name: 'Substrate' },
       nucleophileMolecule: { cid: 'dummy-nuc', name: 'Nucleophile' },
       reactionType: 'sn2',
-      relativeVelocity: 5
+      relativeVelocity: 5,
     };
 
     // Mock loadMolecule
-    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
-      const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { 
-        name, 
-        group, 
-        velocity: new THREE.Vector3(),
-        physicsBody: { quaternion: new THREE.Quaternion() }
-      };
-      moleculeManager.addMolecule(name, molecule);
-      return molecule;
-    });
+    vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(
+      async (_cid: string, name: string, position: any) => {
+        const group = new THREE.Group();
+        group.position.set(position.x, position.y, position.z);
+        const molecule: any = {
+          name,
+          group,
+          velocity: new THREE.Vector3(),
+          physicsBody: { quaternion: new THREE.Quaternion() },
+        };
+        moleculeManager.addMolecule(name, molecule);
+        return molecule;
+      }
+    );
 
     // Act - Run complete reaction flow
     await orchestrator.runReaction(params);
@@ -172,14 +180,14 @@ describe('Business Logic Validation', () => {
       moleculeA: state.molecules.substrate,
       moleculeB: state.molecules.nucleophile,
       relativeVelocity: new THREE.Vector3(0, 0, 5),
-      reactionResult: { 
-        occurs: true, 
-        probability: 1, 
-        reactionType: { key: 'sn2' }, 
-        substrate: state.molecules.substrate, 
-        nucleophile: state.molecules.nucleophile 
+      reactionResult: {
+        occurs: true,
+        probability: 1,
+        reactionType: { key: 'sn2' },
+        substrate: state.molecules.substrate,
+        nucleophile: state.molecules.nucleophile,
       },
-      collisionData: { approachAngle: 180 }
+      collisionData: { approachAngle: 180 },
     };
 
     // Trigger collision handling
@@ -191,7 +199,7 @@ describe('Business Logic Validation', () => {
     const finalState = orchestrator.getState();
     expect(finalState.molecules.substrate).toBeTruthy();
     expect(finalState.molecules.nucleophile).toBeTruthy();
-    
+
     // Verify molecules are the same instances (no null/undefined replacement)
     expect(finalState.molecules.substrate).toBe(state.molecules.substrate);
     expect(finalState.molecules.nucleophile).toBe(state.molecules.nucleophile);
@@ -203,28 +211,28 @@ describe('Business Logic Validation', () => {
       name: 'Substrate1',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile1 = {
       name: 'Nucleophile1',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const substrate2 = {
       name: 'Substrate2',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     const nucleophile2 = {
       name: 'Nucleophile2',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      physicsBody: { quaternion: new THREE.Quaternion() }
+      physicsBody: { quaternion: new THREE.Quaternion() },
     };
 
     // Act - Apply same orientation twice

@@ -1,19 +1,19 @@
 /**
  * Physics Encounter Planner
- * 
+ *
  * Business logic for planning and executing molecular encounters.
  * Uses configuration from config/physics/settings.ts
  */
 
 import * as THREE from 'three';
-import type { CannonPhysicsEngine } from './cannonPhysicsEngine';
-import type { MoleculeManager } from '../types';
-import { 
-  getDefaultSpawnDistance, 
-  getDefaultRelativeVelocity, 
+import {
   getDefaultImpactParameter,
-  type PhysicsConfig 
+  getDefaultRelativeVelocity,
+  getDefaultSpawnDistance,
+  type PhysicsConfig,
 } from '../config/physicsSettings';
+import type { MoleculeManager } from '../types';
+import type { CannonPhysicsEngine } from './cannonPhysicsEngine';
 
 export interface MoleculeKinematics {
   velocity: THREE.Vector3;
@@ -47,12 +47,15 @@ export interface EncounterParams extends PhysicsParams {
  */
 export function computeKinematics(params: PhysicsParams): ReactionKinematics {
   const approachAngleRad = (params.approachAngle * Math.PI) / 180;
-  const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), approachAngleRad);
+  const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(
+    new THREE.Vector3(0, 1, 0),
+    approachAngleRad
+  );
 
   // Both molecules should move toward each other for a proper collision
   // Split the relative velocity between them (conservation of momentum)
   const halfVelocity = params.relativeVelocity / 2;
-  
+
   const substrateVelocity = direction.clone().multiplyScalar(halfVelocity);
   const nucleophileVelocity = direction.clone().negate().multiplyScalar(halfVelocity);
 
@@ -92,8 +95,12 @@ export function computeSpawnPositions(params: SpawnParams): {
 } {
   const spawnDistance = params.spawnDistance ?? getDefaultSpawnDistance();
   const yawRad = (params.approachAngle * Math.PI) / 180;
-  const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
-  const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
+  const direction = new THREE.Vector3(0, 0, 1)
+    .applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad)
+    .normalize();
+  const right = new THREE.Vector3(1, 0, 0)
+    .applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad)
+    .normalize();
 
   const substratePosition = new THREE.Vector3(0, 0, 0);
   // Place nucleophile behind along -direction, with lateral impact offset
@@ -139,8 +146,12 @@ export function computeEncounter(params: EncounterParams): {
 } {
   const distance = params.spawnDistance ?? getDefaultSpawnDistance();
   const yawRad = (params.approachAngle * Math.PI) / 180;
-  const d = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
-  const r = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad).normalize();
+  const d = new THREE.Vector3(0, 0, 1)
+    .applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad)
+    .normalize();
+  const r = new THREE.Vector3(1, 0, 0)
+    .applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad)
+    .normalize();
   const center = new THREE.Vector3(0, 0, 0);
 
   if (params.mode === 'perpendicular') {
@@ -155,13 +166,19 @@ export function computeEncounter(params: EncounterParams): {
 
   // Inline (backside/inline) default: nucleophile behind substrate along -d with lateral impact offset
   const substratePosition = center.clone();
-  const nucleophilePosition = d.clone().multiplyScalar(-distance).add(r.clone().multiplyScalar(params.impactParameter));
+  const nucleophilePosition = d
+    .clone()
+    .multiplyScalar(-distance)
+    .add(r.clone().multiplyScalar(params.impactParameter));
   const substrateVelocity = new THREE.Vector3(0, 0, 0);
   // Velocity toward substrate (origin) from nucleophile position is +d scaled
   const nucleophileVelocity = d.clone().multiplyScalar(params.relativeVelocity);
-  
-  console.log(`Computed encounter - relativeVelocity: ${params.relativeVelocity}, nucleophileVelocity:`, nucleophileVelocity);
-  
+
+  console.log(
+    `Computed encounter - relativeVelocity: ${params.relativeVelocity}, nucleophileVelocity:`,
+    nucleophileVelocity
+  );
+
   return { substratePosition, nucleophilePosition, substrateVelocity, nucleophileVelocity };
 }
 
@@ -188,24 +205,29 @@ export function applyEncounter(
   // Velocities
   const substrateObj = moleculeManager.getMolecule(substrateName);
   const nucleophileObj = moleculeManager.getMolecule(nucleophileName);
-  
+
   // Override: Force UI velocity directly with visual scaling for educational display
   const uiState = (window as any).uiState;
   if (uiState && uiState.relativeVelocity) {
     // Visual education scaling: Scale down for visible, educational movement
     const visualScale = 0.1; // Scale down by 10x for visual education
     const scaledVelocity = uiState.relativeVelocity * visualScale;
-    
-    console.log(`Visual override: UI velocity ${uiState.relativeVelocity} m/s scaled to ${scaledVelocity} m/s for education`);
-    
+
+    console.log(
+      `Visual override: UI velocity ${uiState.relativeVelocity} m/s scaled to ${scaledVelocity} m/s for education`
+    );
+
     // Create velocity vectors based on scaled UI velocity
     const approachAngleRad = (uiState.approachAngle * Math.PI) / 180;
-    const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), approachAngleRad);
-    
+    const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      approachAngleRad
+    );
+
     // Substrate stays still, nucleophile moves toward it at educational speed
     const substrateVelocity = new THREE.Vector3(0, 0, 0);
     const nucleophileVelocity = direction.clone().multiplyScalar(scaledVelocity);
-    
+
     if (substrateObj) {
       physicsEngine.setVelocity(substrateObj as any, substrateVelocity);
       console.log(`Override substrate velocity:`, substrateVelocity);

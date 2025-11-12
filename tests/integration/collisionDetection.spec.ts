@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
-import { collisionEventSystem, createCollisionEvent } from '../../src/physics/collisionEventSystem';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactionDetector } from '../../src/chemistry/reactionDetector';
+import { collisionEventSystem, createCollisionEvent } from '../../src/physics/collisionEventSystem';
 
 describe('Collision Detection Integration', () => {
   let reactionDetector: ReactionDetector;
@@ -15,17 +15,17 @@ describe('Collision Detection Integration', () => {
     const substrate = {
       group: { position: new THREE.Vector3(0, 0, 0), quaternion: new THREE.Quaternion() },
       velocity: new THREE.Vector3(0, 0, 0),
-      name: 'Substrate'
+      name: 'Substrate',
     };
     const nucleophile = {
       group: { position: new THREE.Vector3(0, 0, -5), quaternion: new THREE.Quaternion() }, // Coming from -Z direction
       velocity: new THREE.Vector3(0, 0, 5),
-      name: 'Nucleophile'
+      name: 'Nucleophile',
     };
-    
+
     // Act - use our actual collision event system to calculate approach angle
     const collisionEvent = createCollisionEvent(substrate as any, nucleophile as any);
-    
+
     // Assert - collision normal should point from substrate to nucleophile (backside attack)
     expect(collisionEvent.collisionNormal.z).toBeCloseTo(-1, 1); // Should point toward nucleophile
     expect(collisionEvent.collisionPoint.z).toBeCloseTo(-2.5, 1); // Midpoint between molecules
@@ -36,12 +36,12 @@ describe('Collision Detection Integration', () => {
     const substrate: any = {
       name: 'Substrate',
       group: new THREE.Group(),
-      molecularProperties: { totalMass: 50 }
+      molecularProperties: { totalMass: 50 },
     };
     const nucleophile: any = {
-      name: 'Nucleophile', 
+      name: 'Nucleophile',
       group: new THREE.Group(),
-      molecularProperties: { totalMass: 17 }
+      molecularProperties: { totalMass: 17 },
     };
 
     const reactionType: any = {
@@ -52,39 +52,51 @@ describe('Collision Detection Integration', () => {
       optimalAngle: 180,
       requiredFeatures: {
         substrate: [],
-        nucleophile: []
+        nucleophile: [],
       },
       probabilityFactors: {
-        temperature: (T: number) => Math.exp(-80 / (8.314 * T / 1000)), // Arrhenius
-        orientation: (angle: number) => Math.cos((angle - 180) * Math.PI / 180)
-      }
+        temperature: (T: number) => Math.exp(-80 / ((8.314 * T) / 1000)), // Arrhenius
+        orientation: (angle: number) => Math.cos(((angle - 180) * Math.PI) / 180),
+      },
     };
 
     // Act - test different approach angles with proper collision data
     const optimalCollision = {
       collisionEnergy: 100,
       approachAngle: 180, // Perfect backside attack
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
     const poorCollision = {
       collisionEnergy: 100,
-      approachAngle: 90,  // Side attack
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      approachAngle: 90, // Side attack
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
     const badCollision = {
       collisionEnergy: 100,
-      approachAngle: 0,   // Front attack
-      relativeVelocity: new THREE.Vector3(0, 0, 5)
+      approachAngle: 0, // Front attack
+      relativeVelocity: new THREE.Vector3(0, 0, 5),
     };
 
     const optimalResult = reactionDetector.detectReaction(
-      optimalCollision, reactionType, 298, substrate, nucleophile
+      optimalCollision,
+      reactionType,
+      298,
+      substrate,
+      nucleophile
     );
     const poorResult = reactionDetector.detectReaction(
-      poorCollision, reactionType, 298, substrate, nucleophile
+      poorCollision,
+      reactionType,
+      298,
+      substrate,
+      nucleophile
     );
     const badResult = reactionDetector.detectReaction(
-      badCollision, reactionType, 298, substrate, nucleophile
+      badCollision,
+      reactionType,
+      298,
+      substrate,
+      nucleophile
     );
 
     // Assert - better angles should have higher probabilities
@@ -97,16 +109,18 @@ describe('Collision Detection Integration', () => {
     const substrate: any = {
       name: 'Substrate',
       group: new THREE.Group(),
-      molecularProperties: { totalMass: 50 }
+      molecularProperties: { totalMass: 50 },
     };
     const nucleophile: any = {
       name: 'Nucleophile',
-      group: new THREE.Group(), 
-      molecularProperties: { totalMass: 17 }
+      group: new THREE.Group(),
+      molecularProperties: { totalMass: 17 },
     };
 
     let capturedEvent: any = null;
-    const handler = vi.fn((event: any) => { capturedEvent = event; });
+    const handler = vi.fn((event: any) => {
+      capturedEvent = event;
+    });
     collisionEventSystem.registerHandler(handler);
 
     // Act
@@ -116,7 +130,7 @@ describe('Collision Detection Integration', () => {
       moleculeA: substrate,
       moleculeB: nucleophile,
       relativeVelocity: new THREE.Vector3(0, 0, 5),
-      collisionData: { approachAngle: 180 }
+      collisionData: { approachAngle: 180 },
     };
 
     collisionEventSystem.emitCollision(event);
@@ -134,11 +148,11 @@ describe('Collision Detection Integration', () => {
     // Arrange
     const substrate: any = {
       name: 'Substrate',
-      molecularProperties: { totalMass: 50 }
+      molecularProperties: { totalMass: 50 },
     };
     const nucleophile: any = {
       name: 'Nucleophile',
-      molecularProperties: { totalMass: 17 }
+      molecularProperties: { totalMass: 17 },
     };
 
     const relativeVelocity = new THREE.Vector3(0, 0, 5); // 5 m/s

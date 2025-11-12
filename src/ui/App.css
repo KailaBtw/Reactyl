@@ -234,47 +234,111 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 8px;
-  background: linear-gradient(135deg, rgba(74,144,226,0.25) 0%, rgba(53,122,189,0.2) 100%);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.25) 0%, rgba(53, 122, 189, 0.2) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.cp-left { display: flex; align-items: center; gap: 10px; }
-.cp-emblem { font-size: 14px; }
-.cp-title-wrap { display: flex; flex-direction: column; }
-.cp-title { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .3px; }
-.cp-subtitle { font-size: 10px; color: #cfcfcf; opacity: .8; }
+.cp-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cp-emblem {
+  font-size: 14px;
+}
+.cp-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+.cp-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+.cp-subtitle {
+  font-size: 10px;
+  color: #cfcfcf;
+  opacity: 0.8;
+}
 
 /* Integrated tabs under header */
-.cp-tabs { display: flex; background: #222; border-bottom: 1px solid #1a1a1a; }
-.cp-tab { flex:1; padding: 7px 8px; color:#999; background:transparent; border:none; border-bottom:2px solid transparent; font-size:10px; text-transform:uppercase; letter-spacing:.3px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; }
-.cp-tab:hover { background: rgba(74,144,226,.1); color:#ccc; }
-.cp-tab.active { color:#4a90e2; border-bottom-color:#4a90e2; font-weight:600; }
-.cp-tab-icon { font-size:14px; filter:grayscale(100%); }
-.cp-tab.active .cp-tab-icon { filter:grayscale(0%); }
+.cp-tabs {
+  display: flex;
+  background: #222;
+  border-bottom: 1px solid #1a1a1a;
+}
+.cp-tab {
+  flex: 1;
+  padding: 7px 8px;
+  color: #999;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.cp-tab:hover {
+  background: rgba(74, 144, 226, 0.1);
+  color: #ccc;
+}
+.cp-tab.active {
+  color: #4a90e2;
+  border-bottom-color: #4a90e2;
+  font-weight: 600;
+}
+.cp-tab-icon {
+  font-size: 14px;
+  filter: grayscale(100%);
+}
+.cp-tab.active .cp-tab-icon {
+  filter: grayscale(0%);
+}
 
-.cp-content { padding: 6px 4px 8px; }
+.cp-content {
+  padding: 6px 4px 8px;
+}
 
 /* Card soft borders */
-.tabbed-search .form-group > div, .tabbed-search .form-group { border-color: rgba(255,255,255,0.08) !important; }
-.sidebar-card { 
-  margin: 8px 0; 
-  margin-left: 6px; 
-  margin-right: 0; 
-  background-color: rgba(40,40,40,0.35); 
-  border: 1px solid rgba(255,255,255,0.08); 
-  border-radius: 8px; 
+.tabbed-search .form-group > div,
+.tabbed-search .form-group {
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
-.sidebar-card__header { 
-  padding: 10px 12px; 
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  display: flex; align-items: center; justify-content: space-between;
+.sidebar-card {
+  margin: 8px 0;
+  margin-left: 6px;
+  margin-right: 0;
+  background-color: rgba(40, 40, 40, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
 }
-.sidebar-card__title { font-size: 12px; font-weight: 700; color: #e0e0e0; letter-spacing: .3px; }
-.sidebar-card__content { padding: 12px; }
-
+.sidebar-card__header {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e0e0e0;
+  letter-spacing: 0.3px;
+}
+.sidebar-card__content {
+  padding: 12px;
+}
 
 /* Asymmetric card margins: tighter left, minimal right */
-.tabbed-search .form-group { margin: 8px 0; }
+.tabbed-search .form-group {
+  margin: 8px 0;
+}
 
 /* Make inner cards align perfectly to left edge, and tighten right edge */
 .tabbed-search > div > .form-group,
@@ -284,8 +348,19 @@
 }
 
 /* Header quick action pill buttons */
-.pill-btn { background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius: 999px; padding: 3px 8px; font-size: 10px; cursor:pointer; margin-right:6px; }
-.pill-btn:hover { background: rgba(255,255,255,0.2); }
+.pill-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  margin-right: 6px;
+}
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
 
 /* Legacy Right Sidebar (for backwards compatibility) */
 .right-sidebar {
@@ -373,7 +448,9 @@
   font-size: 14px;
   padding: 2px 6px;
   border-radius: 4px;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -426,7 +503,9 @@
   outline: none;
   border-color: #4a90e2;
   background-color: rgba(0, 0, 0, 0.4);
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15), inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 0 0 3px rgba(74, 144, 226, 0.15),
+    inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .form-select {
@@ -456,7 +535,9 @@
   outline: none;
   border-color: #4a90e2;
   background-color: rgba(0, 0, 0, 0.4);
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15), inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 0 0 3px rgba(74, 144, 226, 0.15),
+    inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .form-range {
@@ -657,7 +738,7 @@ input:checked + .toggle-slider:before {
     width: 320px;
     min-width: 320px;
   }
-  
+
   .right-sidebar {
     width: 280px;
     min-width: 260px;
@@ -669,16 +750,16 @@ input:checked + .toggle-slider:before {
     width: 300px;
     min-width: 300px;
   }
-  
+
   .right-sidebar {
     width: 260px;
     min-width: 240px;
   }
-  
+
   .sidebar-title {
     font-size: 16px;
   }
-  
+
   .tab-label {
     font-size: 11px;
   }
@@ -698,16 +779,16 @@ input:checked + .toggle-slider:before {
     flex-shrink: 0;
     max-height: 50vh;
   }
-  
+
   .modern-sidebar.collapsed {
     max-height: 60px;
   }
-  
+
   .modern-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
   }
-  
+
   .right-sidebar {
     width: 100%;
     height: 180px;
@@ -727,15 +808,15 @@ input:checked + .toggle-slider:before {
   .sidebar-header {
     padding: 15px;
   }
-  
+
   .sidebar-title {
     font-size: 15px;
   }
-  
+
   .tab-content {
     padding: 12px;
   }
-  
+
   .right-sidebar {
     height: 160px;
   }
@@ -808,4 +889,3 @@ input:checked + .toggle-slider:before {
 .bottom-bar .bottom-bar-content > div {
   transition: background-color 0.2s ease;
 }
-

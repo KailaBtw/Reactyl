@@ -58,7 +58,12 @@ export const DebugControls: React.FC = () => {
   const handleRefreshMolecules = () => {
     console.log('Refreshing molecule list...');
     updateUIState({
-      availableMolecules: ['demo_Methyl_bromide', 'demo_Hydroxide_ion', 'demo_Methanol', 'demo_Water'],
+      availableMolecules: [
+        'demo_Methyl_bromide',
+        'demo_Hydroxide_ion',
+        'demo_Methanol',
+        'demo_Water',
+      ],
       substrateMolecule: 'demo_Methyl_bromide',
       nucleophileMolecule: 'demo_Hydroxide_ion',
     });

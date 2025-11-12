@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
 
 function quatAlmostEqual(a: THREE.Quaternion, b: THREE.Quaternion, eps = 1e-7): boolean {
   return (
@@ -74,5 +74,3 @@ describe('Object3D.lookAt determinism', () => {
     expect(quatAlmostEqual(a.quaternion, b.quaternion)).toBe(true);
   });
 });
-
-

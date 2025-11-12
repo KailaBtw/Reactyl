@@ -3,10 +3,10 @@
  * Provides the interface that all reaction types must implement
  */
 
-import type { 
-  ReactionConditions, 
-  ReactionSite, 
-  ReactionPathway 
+import type {
+  ReactionConditions,
+  ReactionPathway,
+  ReactionSite,
 } from '../types/enhanced-molecular';
 
 // Forward declaration - will be defined in structureEngine.ts
@@ -32,20 +32,20 @@ export interface TransitionState {
 export abstract class ReactionHandler {
   abstract readonly reactionType: string;
   abstract readonly description: string;
-  
+
   /**
    * Identify potential reaction sites in molecules
    */
   abstract identifyReactionSites(structures: MolecularStructure[]): ReactionSite[];
-  
+
   /**
    * Orient molecules for optimal reaction geometry
    */
   abstract orientMolecules(
-    structures: MolecularStructure[], 
+    structures: MolecularStructure[],
     conditions?: ReactionConditions
   ): Promise<void>;
-  
+
   /**
    * Calculate transition state geometry
    */
@@ -54,7 +54,7 @@ export abstract class ReactionHandler {
     products: MolecularStructure[],
     conditions?: ReactionConditions
   ): Promise<TransitionState>;
-  
+
   /**
    * Generate reaction pathway
    */
@@ -63,7 +63,7 @@ export abstract class ReactionHandler {
     products: MolecularStructure[],
     conditions?: ReactionConditions
   ): Promise<ReactionPathway>;
-  
+
   /**
    * Validate if reaction is feasible
    */
@@ -71,16 +71,16 @@ export abstract class ReactionHandler {
     reactants: MolecularStructure[],
     conditions?: ReactionConditions
   ): { feasible: boolean; reason?: string; confidence: number };
-  
+
   /**
    * Get optimal reaction conditions
    */
   abstract getOptimalConditions(reactants: MolecularStructure[]): ReactionConditions;
-  
+
   // ===================================================================
   // Helper methods that subclasses can use
   // ===================================================================
-  
+
   /**
    * Find atoms of specific element type
    */
@@ -90,34 +90,32 @@ export abstract class ReactionHandler {
       .filter(({ atom }) => atom.element === element)
       .map(({ index }) => index);
   }
-  
+
   /**
    * Calculate distance between two atoms
    */
   protected calculateAtomDistance(
-    structure: MolecularStructure, 
-    atomA: number, 
+    structure: MolecularStructure,
+    atomA: number,
     atomB: number
   ): number {
     const posA = structure.atoms[atomA].position;
     const posB = structure.atoms[atomB].position;
-    
+
     const dx = posA.x - posB.x;
     const dy = posA.y - posB.y;
     const dz = posA.z - posB.z;
-    
+
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
-  
+
   /**
    * Find bonds connected to an atom
    */
   protected findConnectedBonds(structure: MolecularStructure, atomIndex: number): any[] {
-    return structure.bonds.filter(bond => 
-      bond.atomA === atomIndex || bond.atomB === atomIndex
-    );
+    return structure.bonds.filter(bond => bond.atomA === atomIndex || bond.atomB === atomIndex);
   }
-  
+
   /**
    * Simple animation utility for moving molecules
    */
@@ -126,44 +124,44 @@ export abstract class ReactionHandler {
     targetPosition: { x: number; y: number; z: number },
     duration: number
   ): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const startPosition = {
         x: mesh.position.x,
         y: mesh.position.y,
-        z: mesh.position.z
+        z: mesh.position.z,
       };
-      
+
       const startTime = Date.now();
-      
+
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         // Smooth easing function
         const easedProgress = this.easeInOutCubic(progress);
-        
+
         mesh.position.x = startPosition.x + (targetPosition.x - startPosition.x) * easedProgress;
         mesh.position.y = startPosition.y + (targetPosition.y - startPosition.y) * easedProgress;
         mesh.position.z = startPosition.z + (targetPosition.z - startPosition.z) * easedProgress;
-        
+
         if (progress < 1) {
           requestAnimationFrame(animate);
         } else {
           resolve();
         }
       };
-      
+
       animate();
     });
   }
-  
+
   /**
    * Smooth easing function
    */
   protected easeInOutCubic(t: number): number {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
   }
-  
+
   /**
    * Generate a simple MD5-like hash for caching
    */
@@ -171,7 +169,7 @@ export abstract class ReactionHandler {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(16);

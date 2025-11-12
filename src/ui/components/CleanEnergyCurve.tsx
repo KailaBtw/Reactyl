@@ -1,11 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ThermodynamicData {
-  reactantEnergy: number;      // kJ/mol
-  productEnergy: number;       // kJ/mol  
-  activationEnergy: number;    // kJ/mol (Ea)
-  reactionProgress: number;    // 0-1 (current position along reaction coordinate)
-  temperature: number;         // Kelvin
+  reactantEnergy: number; // kJ/mol
+  productEnergy: number; // kJ/mol
+  activationEnergy: number; // kJ/mol (Ea)
+  reactionProgress: number; // 0-1 (current position along reaction coordinate)
+  temperature: number; // Kelvin
 }
 
 interface CleanEnergyCurveProps {
@@ -19,52 +20,59 @@ export const CleanEnergyCurve: React.FC<CleanEnergyCurveProps> = ({
   data,
   isAnimating,
   width = 500,
-  height = 160
+  height = 160,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
   const { reactantEnergy, productEnergy, activationEnergy, reactionProgress } = data;
-  
+
   // Calculate transition state energy
   const transitionStateEnergy = reactantEnergy + activationEnergy;
-  
+
   // Set up coordinate system with minimal margins
   const margin = { top: 20, right: 20, bottom: 30, left: 40 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  
+
   // Energy scale with minimal padding
   const minEnergy = Math.min(reactantEnergy, productEnergy) - 10;
   const maxEnergy = transitionStateEnergy + 10;
   const energyRange = maxEnergy - minEnergy;
-  
+
   // Scale functions
   const xScale = (reactionCoord: number) => margin.left + reactionCoord * plotWidth;
-  const yScale = (energy: number) => margin.top + plotHeight - ((energy - minEnergy) / energyRange) * plotHeight;
+  const yScale = (energy: number) =>
+    margin.top + plotHeight - ((energy - minEnergy) / energyRange) * plotHeight;
 
   // Generate clean activation energy curve
   const generateCleanCurve = () => {
     const points: [number, number][] = [];
     const numPoints = 100;
-    
+
     for (let i = 0; i <= numPoints; i++) {
       const xi = i / numPoints;
       let energy: number;
-      
+
       if (xi <= 0.5) {
         const t = xi * 2;
-        energy = reactantEnergy + (transitionStateEnergy - reactantEnergy) * 
-                 (1 - Math.exp(-3 * t)) * Math.exp(-0.8 * (1 - t));
+        energy =
+          reactantEnergy +
+          (transitionStateEnergy - reactantEnergy) *
+            (1 - Math.exp(-3 * t)) *
+            Math.exp(-0.8 * (1 - t));
       } else {
         const t = (xi - 0.5) * 2;
-        energy = transitionStateEnergy - (transitionStateEnergy - productEnergy) * 
-                 (1 - Math.exp(-3 * t)) * Math.exp(-0.8 * (1 - t));
+        energy =
+          transitionStateEnergy -
+          (transitionStateEnergy - productEnergy) *
+            (1 - Math.exp(-3 * t)) *
+            Math.exp(-0.8 * (1 - t));
       }
-      
+
       points.push([xScale(xi), yScale(energy)]);
     }
-    
+
     return points;
   };
 
@@ -99,11 +107,11 @@ export const CleanEnergyCurve: React.FC<CleanEnergyCurveProps> = ({
         {/* Subtle background grid */}
         <defs>
           <pattern id="subtleGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f9fafb" strokeWidth="0.5"/>
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f9fafb" strokeWidth="0.5" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#subtleGrid)" />
-        
+
         {/* Clean axes */}
         <g className="axes">
           <line
@@ -135,16 +143,51 @@ export const CleanEnergyCurve: React.FC<CleanEnergyCurveProps> = ({
 
         {/* Minimal markers - no overlapping labels */}
         <g className="state-markers">
-          <circle cx={reactantX} cy={reactantY} r="3" fill="#3b82f6" stroke="white" strokeWidth="1"/>
-          <circle cx={transitionX} cy={transitionY} r="3" fill="#dc2626" stroke="white" strokeWidth="1"/>
-          <circle cx={productX} cy={productY} r="3" fill="#059669" stroke="white" strokeWidth="1"/>
+          <circle
+            cx={reactantX}
+            cy={reactantY}
+            r="3"
+            fill="#3b82f6"
+            stroke="white"
+            strokeWidth="1"
+          />
+          <circle
+            cx={transitionX}
+            cy={transitionY}
+            r="3"
+            fill="#dc2626"
+            stroke="white"
+            strokeWidth="1"
+          />
+          <circle cx={productX} cy={productY} r="3" fill="#059669" stroke="white" strokeWidth="1" />
         </g>
 
         {/* Clean labels - no arrows, no clutter */}
         <g className="clean-labels">
-          <text x={reactantX} y={reactantY + 15} textAnchor="middle" className="text-xs fill-blue-600 font-medium">R</text>
-          <text x={transitionX} y={transitionY - 8} textAnchor="middle" className="text-xs fill-red-600 font-medium">TS‡</text>
-          <text x={productX} y={productY + 15} textAnchor="middle" className="text-xs fill-green-600 font-medium">P</text>
+          <text
+            x={reactantX}
+            y={reactantY + 15}
+            textAnchor="middle"
+            className="text-xs fill-blue-600 font-medium"
+          >
+            R
+          </text>
+          <text
+            x={transitionX}
+            y={transitionY - 8}
+            textAnchor="middle"
+            className="text-xs fill-red-600 font-medium"
+          >
+            TS‡
+          </text>
+          <text
+            x={productX}
+            y={productY + 15}
+            textAnchor="middle"
+            className="text-xs fill-green-600 font-medium"
+          >
+            P
+          </text>
         </g>
 
         {/* Animated reaction ball */}
@@ -154,7 +197,7 @@ export const CleanEnergyCurve: React.FC<CleanEnergyCurveProps> = ({
           fill="#f59e0b"
           stroke="#ffffff"
           strokeWidth="1.5"
-          opacity={isAnimating ? "1" : "0"}
+          opacity={isAnimating ? '1' : '0'}
           className={`transition-opacity duration-300 ${isAnimating ? 'animate-pulse' : ''}`}
         />
 

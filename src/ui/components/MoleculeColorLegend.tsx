@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import type React from 'react';
+import { useState } from 'react';
 import { ATOM_CONFIGS } from '../../config/atomConfig';
 import { extractElementsFromMolecules } from '../utils/moleculeElementExtractor';
 
@@ -10,48 +11,115 @@ interface MoleculeColorLegendProps {
   selectedMolecules?: string[]; // Optional: molecules selected in dropdowns
 }
 
-export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({ 
-  className = '', 
-  theme = 'blue', 
+export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({
+  className = '',
+  theme = 'blue',
   themeClasses,
-  selectedMolecules = []
+  selectedMolecules = [],
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Default elements to always show: H, C, O, N, Cl
   const DEFAULT_ELEMENTS = ['H', 'C', 'O', 'N', 'Cl'];
-  
+
   // Get all available element colors
   const getAllMoleculeColors = () => {
     return [
-      { element: 'H', color: `#${ATOM_CONFIGS.H.color.toString(16).padStart(6, '0')}`, name: 'Hydrogen' },
-      { element: 'C', color: `#${ATOM_CONFIGS.C.color.toString(16).padStart(6, '0')}`, name: 'Carbon' },
-      { element: 'O', color: `#${ATOM_CONFIGS.O.color.toString(16).padStart(6, '0')}`, name: 'Oxygen' },
-      { element: 'N', color: `#${ATOM_CONFIGS.N.color.toString(16).padStart(6, '0')}`, name: 'Nitrogen' },
-      { element: 'Cl', color: `#${ATOM_CONFIGS.Cl.color.toString(16).padStart(6, '0')}`, name: 'Chlorine' },
-      { element: 'Br', color: `#${ATOM_CONFIGS.Br.color.toString(16).padStart(6, '0')}`, name: 'Bromine' },
-      { element: 'I', color: `#${ATOM_CONFIGS.I.color.toString(16).padStart(6, '0')}`, name: 'Iodine' },
-      { element: 'F', color: `#${ATOM_CONFIGS.F.color.toString(16).padStart(6, '0')}`, name: 'Fluorine' },
-      { element: 'S', color: `#${ATOM_CONFIGS.S.color.toString(16).padStart(6, '0')}`, name: 'Sulfur' },
-      { element: 'P', color: `#${ATOM_CONFIGS.P.color.toString(16).padStart(6, '0')}`, name: 'Phosphorus' },
-      { element: 'Si', color: `#${ATOM_CONFIGS.Si.color.toString(16).padStart(6, '0')}`, name: 'Silicon' },
-      { element: 'B', color: `#${ATOM_CONFIGS.B.color.toString(16).padStart(6, '0')}`, name: 'Boron' },
-      { element: 'Li', color: `#${ATOM_CONFIGS.Li.color.toString(16).padStart(6, '0')}`, name: 'Lithium' },
-      { element: 'Na', color: `#${ATOM_CONFIGS.Na.color.toString(16).padStart(6, '0')}`, name: 'Sodium' },
-      { element: 'K', color: `#${ATOM_CONFIGS.K.color.toString(16).padStart(6, '0')}`, name: 'Potassium' },
-      { element: 'Mg', color: `#${ATOM_CONFIGS.Mg.color.toString(16).padStart(6, '0')}`, name: 'Magnesium' },
-      { element: 'Ca', color: `#${ATOM_CONFIGS.Ca.color.toString(16).padStart(6, '0')}`, name: 'Calcium' },
+      {
+        element: 'H',
+        color: `#${ATOM_CONFIGS.H.color.toString(16).padStart(6, '0')}`,
+        name: 'Hydrogen',
+      },
+      {
+        element: 'C',
+        color: `#${ATOM_CONFIGS.C.color.toString(16).padStart(6, '0')}`,
+        name: 'Carbon',
+      },
+      {
+        element: 'O',
+        color: `#${ATOM_CONFIGS.O.color.toString(16).padStart(6, '0')}`,
+        name: 'Oxygen',
+      },
+      {
+        element: 'N',
+        color: `#${ATOM_CONFIGS.N.color.toString(16).padStart(6, '0')}`,
+        name: 'Nitrogen',
+      },
+      {
+        element: 'Cl',
+        color: `#${ATOM_CONFIGS.Cl.color.toString(16).padStart(6, '0')}`,
+        name: 'Chlorine',
+      },
+      {
+        element: 'Br',
+        color: `#${ATOM_CONFIGS.Br.color.toString(16).padStart(6, '0')}`,
+        name: 'Bromine',
+      },
+      {
+        element: 'I',
+        color: `#${ATOM_CONFIGS.I.color.toString(16).padStart(6, '0')}`,
+        name: 'Iodine',
+      },
+      {
+        element: 'F',
+        color: `#${ATOM_CONFIGS.F.color.toString(16).padStart(6, '0')}`,
+        name: 'Fluorine',
+      },
+      {
+        element: 'S',
+        color: `#${ATOM_CONFIGS.S.color.toString(16).padStart(6, '0')}`,
+        name: 'Sulfur',
+      },
+      {
+        element: 'P',
+        color: `#${ATOM_CONFIGS.P.color.toString(16).padStart(6, '0')}`,
+        name: 'Phosphorus',
+      },
+      {
+        element: 'Si',
+        color: `#${ATOM_CONFIGS.Si.color.toString(16).padStart(6, '0')}`,
+        name: 'Silicon',
+      },
+      {
+        element: 'B',
+        color: `#${ATOM_CONFIGS.B.color.toString(16).padStart(6, '0')}`,
+        name: 'Boron',
+      },
+      {
+        element: 'Li',
+        color: `#${ATOM_CONFIGS.Li.color.toString(16).padStart(6, '0')}`,
+        name: 'Lithium',
+      },
+      {
+        element: 'Na',
+        color: `#${ATOM_CONFIGS.Na.color.toString(16).padStart(6, '0')}`,
+        name: 'Sodium',
+      },
+      {
+        element: 'K',
+        color: `#${ATOM_CONFIGS.K.color.toString(16).padStart(6, '0')}`,
+        name: 'Potassium',
+      },
+      {
+        element: 'Mg',
+        color: `#${ATOM_CONFIGS.Mg.color.toString(16).padStart(6, '0')}`,
+        name: 'Magnesium',
+      },
+      {
+        element: 'Ca',
+        color: `#${ATOM_CONFIGS.Ca.color.toString(16).padStart(6, '0')}`,
+        name: 'Calcium',
+      },
     ];
   };
 
   // Get elements from selected molecules
-  const selectedElements = selectedMolecules.length > 0 
-    ? extractElementsFromMolecules(selectedMolecules)
-    : [];
-  
+  const selectedElements =
+    selectedMolecules.length > 0 ? extractElementsFromMolecules(selectedMolecules) : [];
+
   // Combine default elements with selected elements
   const elementsToShow = new Set([...DEFAULT_ELEMENTS, ...selectedElements]);
-  
+
   // Filter molecule colors to only show relevant elements
   const allColors = getAllMoleculeColors();
   const moleculeColors = allColors.filter(({ element }) => elementsToShow.has(element));
@@ -119,17 +187,24 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({
             ))}
             {!isExpanded && (
               <div className="flex items-center gap-2 mt-1">
-                <motion.svg 
-                  className={`w-3 h-3 ${themeClasses?.textSecondary || 'text-gray-500'}`} 
-                  fill="none" 
-                  stroke="currentColor" 
+                <motion.svg
+                  className={`w-3 h-3 ${themeClasses?.textSecondary || 'text-gray-500'}`}
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                   animate={{ rotate: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </motion.svg>
-                <span className={`text-xs ${themeClasses?.textSecondary || 'text-gray-500'}`}>More</span>
+                <span className={`text-xs ${themeClasses?.textSecondary || 'text-gray-500'}`}>
+                  More
+                </span>
               </div>
             )}
             {isExpanded && (
@@ -140,14 +215,15 @@ export const MoleculeColorLegend: React.FC<MoleculeColorLegendProps> = ({
                       className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0"
                       style={{ backgroundColor: color }}
                     />
-                    <span className={`text-xs font-bold ${themeClasses?.text || 'text-gray-700'}`}>{name}</span>
+                    <span className={`text-xs font-bold ${themeClasses?.text || 'text-gray-700'}`}>
+                      {name}
+                    </span>
                   </div>
                 ))}
               </>
             )}
           </div>
         </motion.div>
-
       </motion.div>
     </div>
   );

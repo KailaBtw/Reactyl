@@ -71,7 +71,8 @@ export class ReactionDetector {
       nucleophile,
     };
 
-    if(occurs) { // hide non-rxns
+    if (occurs) {
+      // hide non-rxns
       // Only log if reaction occurs or probability is significant
       if (occurs || probability > 0.01) {
         log(`Reaction: ${occurs ? 'YES' : 'NO'} ${(probability * 100).toFixed(1)}%`);
@@ -98,12 +99,12 @@ export class ReactionDetector {
 
   /**
    * Calculate orientation factor based on approach angle
-   * 
+   *
    * COLLISION THEORY: Molecules must collide in correct orientation
    * - SN2 reactions require backside attack (180° optimal)
    * - E2 reactions require anti-periplanar (180° optimal)
    * - SN1/E1 have no orientation requirement (optimal = 0, factor = 1.0)
-   * 
+   *
    * Uses Gaussian distribution: factor decreases as deviation from optimal increases
    * @param actual - Actual approach angle in degrees
    * @param optimal - Optimal angle for reaction (e.g., 180° for SN2)
@@ -114,7 +115,7 @@ export class ReactionDetector {
     if (optimal === 0) {
       return 1.0;
     }
-    
+
     // Gaussian distribution around optimal angle
     const deviation = Math.abs(actual - optimal);
     const sigma = 30; // degrees tolerance (standard deviation)
@@ -179,22 +180,27 @@ export class ReactionDetector {
 
   /**
    * Calculate collision energy from molecular masses and relative velocity
-   * 
+   *
    * Uses reduced mass and scales visualization speeds to real molecular speeds
    * based on temperature using Maxwell-Boltzmann distribution.
-   * 
+   *
    * @param mass1 - Mass of molecule 1 in AMU
-   * @param mass2 - Mass of molecule 2 in AMU  
+   * @param mass2 - Mass of molecule 2 in AMU
    * @param relativeVelocity - Relative velocity magnitude in m/s (visualization speed)
    * @param temperature - Current temperature in K (for proper scaling)
    * @returns Collision energy in kJ/mol
    */
-  calculateCollisionEnergy(mass1: number, mass2: number, relativeVelocity: number, temperature: number = 298): number {
+  calculateCollisionEnergy(
+    mass1: number,
+    mass2: number,
+    relativeVelocity: number,
+    temperature: number = 298
+  ): number {
     const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
     const BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
     const REFERENCE_TEMP = 298; // K
     const VISUALIZATION_BASE_SPEED = 12.0; // m/s at reference temp
-    
+
     // Scale visualization velocity to real molecular velocity using Maxwell-Boltzmann
     // Real molecular speeds: v_rms = sqrt(3kT/m)
     const avgMass = (mass1 + mass2) / 2;
@@ -203,13 +209,13 @@ export class ReactionDetector {
     const realVrms_at_ref = Math.sqrt((3 * BOLTZMANN_CONSTANT * REFERENCE_TEMP) / mass_kg);
     const velocityScaleFactor = realVrms_at_T / realVrms_at_ref;
     const realVelocity = relativeVelocity * velocityScaleFactor;
-    
+
     // Calculate collision energy using reduced mass
     const mass1_kg = mass1 * AMU_TO_KG;
     const mass2_kg = mass2 * AMU_TO_KG;
     const reducedMass_kg = (mass1_kg * mass2_kg) / (mass1_kg + mass2_kg);
     const kineticEnergy_J = 0.5 * reducedMass_kg * realVelocity ** 2;
-    
+
     // Convert to kJ/mol
     const energy_kJ_per_mol = (kineticEnergy_J * this.N_A) / 1000;
 
@@ -230,7 +236,6 @@ export class ReactionDetector {
     // For SN2 reactions, we want backside attack (180°)
     // For now, return a random angle for demonstration
     const angle = Math.random() * 360;
-
 
     return angle;
   }

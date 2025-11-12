@@ -120,26 +120,26 @@ app.get('/api/molecule/:cid', async (req: Request, res: Response) => {
 app.post('/api/save-structure', async (req: Request, res: Response) => {
   try {
     const { cid, enhancedData } = req.body;
-    
+
     if (!cid || !enhancedData) {
       return res.status(400).json({ success: false, error: 'CID and enhancedData are required' });
     }
-    
+
     console.log(`🔄 POST /api/save-structure - Saving enhanced structure ${cid}`);
-    
+
     const structuresDir = path.join(__dirname, 'public', 'cache', 'structures');
     await fs.mkdir(structuresDir, { recursive: true });
-    
+
     const structurePath = path.join(structuresDir, `${cid}.json`);
     await fs.writeFile(structurePath, JSON.stringify(enhancedData, null, 2));
-    
+
     console.log(`✅ Enhanced structure saved to: ${structurePath}`);
     res.json({ success: true, message: `Enhanced structure ${cid} saved successfully` });
   } catch (error) {
     console.error('❌ Error saving enhanced structure:', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -149,12 +149,12 @@ app.get('/api/structure/:cid', async (req: Request, res: Response) => {
   try {
     const { cid } = req.params;
     const structurePath = path.join(__dirname, 'public', 'cache', 'structures', `${cid}.json`);
-    
+
     console.log(`📖 GET /api/structure/${cid} - Reading from: ${structurePath}`);
-    
+
     const structureData = await fs.readFile(structurePath, 'utf-8');
     const parsed = JSON.parse(structureData);
-    
+
     console.log(`📖 Enhanced structure loaded: ${cid}`);
     res.json(parsed);
   } catch (error) {
@@ -171,26 +171,28 @@ app.get('/api/structure/:cid', async (req: Request, res: Response) => {
 app.post('/api/save-reaction', async (req: Request, res: Response) => {
   try {
     const { cacheKey, reactionData } = req.body;
-    
+
     if (!cacheKey || !reactionData) {
-      return res.status(400).json({ success: false, error: 'CacheKey and reactionData are required' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'CacheKey and reactionData are required' });
     }
-    
+
     console.log(`🔄 POST /api/save-reaction - Saving reaction ${cacheKey}`);
-    
+
     const reactionsDir = path.join(__dirname, 'public', 'cache', 'reactions');
     await fs.mkdir(reactionsDir, { recursive: true });
-    
+
     const reactionPath = path.join(reactionsDir, `${cacheKey}.json`);
     await fs.writeFile(reactionPath, JSON.stringify(reactionData, null, 2));
-    
+
     console.log(`✅ Reaction saved to: ${reactionPath}`);
     res.json({ success: true, message: `Reaction ${cacheKey} saved successfully` });
   } catch (error) {
     console.error('❌ Error saving reaction:', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -200,12 +202,12 @@ app.get('/api/reaction/:cacheKey', async (req: Request, res: Response) => {
   try {
     const { cacheKey } = req.params;
     const reactionPath = path.join(__dirname, 'public', 'cache', 'reactions', `${cacheKey}.json`);
-    
+
     console.log(`📖 GET /api/reaction/${cacheKey} - Reading from: ${reactionPath}`);
-    
+
     const reactionData = await fs.readFile(reactionPath, 'utf-8');
     const parsed = JSON.parse(reactionData);
-    
+
     console.log(`📖 Reaction loaded: ${cacheKey}`);
     res.json(parsed);
   } catch (error) {
@@ -219,15 +221,15 @@ app.get('/api/reactions', async (_req: Request, res: Response) => {
   try {
     const reactionsDir = path.join(__dirname, 'public', 'cache', 'reactions');
     console.log(`📖 GET /api/reactions - Reading from: ${reactionsDir}`);
-    
+
     try {
       const files = await fs.readdir(reactionsDir);
       const jsonFiles = files.filter(file => file.endsWith('.json'));
-      
+
       console.log(`📖 Found ${jsonFiles.length} reaction files`);
       res.json({
         reactions: jsonFiles.map(file => file.replace('.json', '')),
-        count: jsonFiles.length
+        count: jsonFiles.length,
       });
     } catch (_error) {
       // Directory doesn't exist yet

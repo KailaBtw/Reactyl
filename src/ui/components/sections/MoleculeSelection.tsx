@@ -1,7 +1,12 @@
-import React, { useEffect } from 'react';
-import { useUIState } from '../../context/UIStateContext';
+import type React from 'react';
+import { useEffect } from 'react';
 import { threeJSBridge } from '../../bridge/ThreeJSBridge';
-import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from '../../constants/availableMolecules';
+import {
+  AVAILABLE_MOLECULES,
+  DEFAULT_NUCLEOPHILE,
+  DEFAULT_SUBSTRATE,
+} from '../../constants/availableMolecules';
+import { useUIState } from '../../context/UIStateContext';
 
 export const MoleculeSelection: React.FC = () => {
   const { uiState, updateUIState } = useUIState();
@@ -11,12 +16,12 @@ export const MoleculeSelection: React.FC = () => {
     // Always update to the centralized list
     const targetMolecules = [...AVAILABLE_MOLECULES];
     const currentMolecules = uiState.availableMolecules;
-    
+
     // Check if we need to update
-    const needsUpdate = 
+    const needsUpdate =
       currentMolecules.length !== targetMolecules.length ||
       !targetMolecules.every(mol => currentMolecules.includes(mol));
-    
+
     if (needsUpdate) {
       updateUIState({
         availableMolecules: targetMolecules,

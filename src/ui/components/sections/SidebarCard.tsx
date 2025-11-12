@@ -15,14 +15,7 @@ export const SidebarCard: React.FC<SidebarCardProps> = ({ title, children, right
           {right && <div className="sidebar-card__right">{right}</div>}
         </div>
       )}
-      <div className="sidebar-card__content">
-        {children}
-      </div>
+      <div className="sidebar-card__content">{children}</div>
     </div>
   );
 };
-
-
-
-
-

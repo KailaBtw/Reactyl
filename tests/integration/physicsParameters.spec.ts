@@ -1,8 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { physicsEngine } from '../../src/physics/cannonPhysicsEngine';
 
-function createMockMolecule(name: string, position = new THREE.Vector3(), velocity = new THREE.Vector3()) {
+function createMockMolecule(
+  name: string,
+  position = new THREE.Vector3(),
+  velocity = new THREE.Vector3()
+) {
   const group = new THREE.Group();
   group.position.copy(position);
   return {
@@ -43,7 +47,11 @@ describe('Physics Parameters Integration', () => {
   });
 
   it('stepping advances positions based on velocity and timeScale', () => {
-    const mol = createMockMolecule('Stepper', new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0));
+    const mol = createMockMolecule(
+      'Stepper',
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(1, 0, 0)
+    );
     physicsEngine.addMolecule(mol, mol.molecularProperties);
 
     // With default time scale (1.0)
@@ -62,7 +70,11 @@ describe('Physics Parameters Integration', () => {
   });
 
   it('pause prevents stepping from updating positions', () => {
-    const mol = createMockMolecule('PauseMol', new THREE.Vector3(0, 0, 0), new THREE.Vector3(2, 0, 0));
+    const mol = createMockMolecule(
+      'PauseMol',
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(2, 0, 0)
+    );
     physicsEngine.addMolecule(mol, mol.molecularProperties);
     const before = physicsEngine.getPosition(mol)!;
     physicsEngine.pause();
@@ -72,5 +84,3 @@ describe('Physics Parameters Integration', () => {
     physicsEngine.resume();
   });
 });
-
-

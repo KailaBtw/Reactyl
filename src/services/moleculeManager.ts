@@ -151,11 +151,71 @@ export const createMoleculeManager = (): MoleculeManager => {
     },
     /**
      * Clears all molecules from the manager.
+     * Automatically disposes visual objects (scene groups, geometries, materials).
+     * Optionally disposes physics bodies asynchronously after visual cleanup.
      * This is useful for resetting the scene completely.
+     *
+     * @param disposePhysics - Optional async callback to dispose physics body for a molecule
+     *                         Called after visual cleanup completes
      */
-    clearAllMolecules: (): void => {
+    clearAllMolecules: (
+      disposePhysics?: (molecule: MoleculeGroup) => void | Promise<void>
+    ): void => {
+      const moleculesToDispose = Object.values(molecules);
+
+      // Step 1: Always dispose visual objects synchronously (immediate visual cleanup)
+      for (const molecule of moleculesToDispose) {
+        try {
+          if (molecule.group) {
+            // Remove from scene parent
+            molecule.group.parent?.remove(molecule.group);
+            // Dispose geometries and materials
+            molecule.group.traverse((child: any) => {
+              if (child.geometry) child.geometry.dispose();
+              if (child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach((mat: any) => mat.dispose());
+                } else {
+                  child.material.dispose();
+                }
+              }
+            });
+          }
+        } catch (error) {
+          console.warn(`Failed to dispose visual for molecule ${molecule.name}:`, error);
+        }
+      }
+
+      // Step 2: O(1) clear - create new empty object immediately (visuals are gone)
       molecules = {};
-      console.log('[MoleculeManager] All molecules cleared');
+
+      // Step 3: Dispose physics bodies asynchronously (non-blocking, happens after visual clear)
+      if (disposePhysics && moleculesToDispose.length > 0) {
+        // Use requestIdleCallback if available, otherwise setTimeout for next tick
+        const scheduleAsync = (callback: () => void) => {
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(callback, { timeout: 100 });
+          } else {
+            setTimeout(callback, 0);
+          }
+        };
+
+        scheduleAsync(() => {
+          for (const molecule of moleculesToDispose) {
+            try {
+              const result = disposePhysics(molecule);
+              // Handle promise if returned
+              if (result instanceof Promise) {
+                result.catch(error => {
+                  console.warn(`Failed to dispose physics for molecule ${molecule.name}:`, error);
+                });
+              }
+            } catch (error) {
+              console.warn(`Failed to dispose physics for molecule ${molecule.name}:`, error);
+            }
+          }
+        });
+      }
     },
   };
 };

@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import type React from 'react';
+import { useState } from 'react';
+import { sceneBridge } from '../../services/SceneBridge';
+import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
 import { useResponsive } from '../hooks/useResponsive';
-import { threeJSBridge } from '../bridge/ThreeJSBridge';
-import { sceneBridge } from '../../services/SceneBridge';
-import { SmartInfoBubble } from './common/SmartInfoBubble';
 import type { ReactionType } from './common/InfoBubbleContent';
+import { SmartInfoBubble } from './common/SmartInfoBubble';
 
-interface MobileReactionBarProps {}
+type MobileReactionBarProps = {};
 
 export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
   const { uiState, updateUIState } = useUIState();
@@ -30,7 +31,7 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
         await threeJSBridge.startReactionAnimation();
         updateUIState({
           reactionInProgress: true,
-          isPlaying: true
+          isPlaying: true,
         });
       } catch (error) {
         console.error('Error starting reaction animation:', error);
@@ -59,10 +60,10 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
     if (sn2ReactionSystem && sn2ReactionSystem.clearAllIntervals) {
       sn2ReactionSystem.clearAllIntervals();
     }
-    
+
     // Use the new clear method from ThreeJSBridge
     threeJSBridge.clear();
-    
+
     updateUIState({
       isPlaying: false,
       reactionInProgress: false,
@@ -74,7 +75,6 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
       // substrateMolecule: '',
       // nucleophileMolecule: ''
     });
-    
   };
 
   return (
@@ -82,11 +82,11 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 100, opacity: 0 }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 300, 
+      transition={{
+        type: 'spring',
+        stiffness: 300,
         damping: 30,
-        opacity: { duration: 0.2 }
+        opacity: { duration: 0.2 },
       }}
       style={{
         position: 'fixed',
@@ -97,11 +97,11 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
         borderTop: '3px solid #ffff00', // Yellow border for visibility
         zIndex: 1000,
         pointerEvents: 'auto',
-        boxShadow: '0 -4px 20px rgba(255, 0, 0, 0.5)' // Red glow
+        boxShadow: '0 -4px 20px rgba(255, 0, 0, 0.5)', // Red glow
       }}
     >
       {/* Header */}
-      <div 
+      <div
         className="mobile-reaction-header"
         style={{
           display: 'flex',
@@ -110,18 +110,16 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
           padding: '8px 16px',
           borderBottom: isExpanded ? '1px solid #333' : 'none',
           cursor: 'pointer',
-          userSelect: 'none'
+          userSelect: 'none',
         }}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>
-          Reactions
-        </span>
+        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Reactions</span>
         <span
-          style={{ 
+          style={{
             fontSize: '12px',
             transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s ease'
+            transition: 'transform 0.2s ease',
           }}
         >
           ▲
@@ -131,23 +129,23 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
       {/* Expandable Content */}
       <motion.div
         initial={false}
-        animate={{ 
+        animate={{
           height: isExpanded ? 'auto' : 0,
           opacity: isExpanded ? 1 : 0,
-          scale: isExpanded ? 1 : 0.95
+          scale: isExpanded ? 1 : 0.95,
         }}
-        transition={{ 
-          type: "spring",
+        transition={{
+          type: 'spring',
           stiffness: 400,
           damping: 25,
-          height: { duration: 0.3, ease: "easeOut" },
+          height: { duration: 0.3, ease: 'easeOut' },
           opacity: { duration: 0.2, delay: isExpanded ? 0.1 : 0 },
-          scale: { duration: 0.2, delay: isExpanded ? 0.1 : 0 }
+          scale: { duration: 0.2, delay: isExpanded ? 0.1 : 0 },
         }}
-        style={{ 
+        style={{
           overflow: 'hidden',
           pointerEvents: isExpanded ? 'auto' : 'none',
-          transformOrigin: 'top center'
+          transformOrigin: 'top center',
         }}
       >
         <div style={{ padding: isExpanded ? '16px' : '0 16px' }}>
@@ -155,12 +153,15 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
           <div className="form-group" style={{ marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <label style={{ fontSize: '14px', fontWeight: 'bold' }}>Reaction Type</label>
-              <SmartInfoBubble term="leaving_group" reactionType={uiState.reactionType as ReactionType} />
+              <SmartInfoBubble
+                term="leaving_group"
+                reactionType={uiState.reactionType as ReactionType}
+              />
             </div>
-            <select 
+            <select
               className="form-control"
               value={uiState.reactionType}
-              onChange={(e) => updateUIState({ reactionType: e.target.value as ReactionType })}
+              onChange={e => updateUIState({ reactionType: e.target.value as ReactionType })}
             >
               <option value="sn2">SN2 - Bimolecular Nucleophilic Substitution</option>
               <option value="sn1">SN1 - Unimolecular Nucleophilic Substitution</option>
@@ -170,19 +171,31 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
           </div>
 
           {/* Molecule Selection */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px',
+              marginBottom: '12px',
+            }}
+          >
             <div className="form-group">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}
+              >
                 <label style={{ fontSize: '14px', fontWeight: 'bold' }}>Substrate</label>
-                <SmartInfoBubble term="substrate" reactionType={uiState.reactionType as ReactionType} />
+                <SmartInfoBubble
+                  term="substrate"
+                  reactionType={uiState.reactionType as ReactionType}
+                />
               </div>
-              <select 
+              <select
                 className="form-control"
                 value={uiState.substrateMolecule}
-                onChange={(e) => updateUIState({ substrateMolecule: e.target.value })}
+                onChange={e => updateUIState({ substrateMolecule: e.target.value })}
               >
                 <option value="">Select substrate...</option>
-                {uiState.availableMolecules.map((mol) => (
+                {uiState.availableMolecules.map(mol => (
                   <option key={mol} value={mol}>
                     {mol}
                   </option>
@@ -191,22 +204,36 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
             </div>
 
             <div className="form-group">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}
+              >
                 <label style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                  {uiState.reactionType === 'e1' || uiState.reactionType === 'e2' ? 'Base' : 'Nucleophile'}
+                  {uiState.reactionType === 'e1' || uiState.reactionType === 'e2'
+                    ? 'Base'
+                    : 'Nucleophile'}
                 </label>
-                <SmartInfoBubble 
-                  term={uiState.reactionType === 'e1' || uiState.reactionType === 'e2' ? 'base' : 'nucleophile'} 
-                  reactionType={uiState.reactionType as ReactionType} 
+                <SmartInfoBubble
+                  term={
+                    uiState.reactionType === 'e1' || uiState.reactionType === 'e2'
+                      ? 'base'
+                      : 'nucleophile'
+                  }
+                  reactionType={uiState.reactionType as ReactionType}
                 />
               </div>
-              <select 
+              <select
                 className="form-control"
                 value={uiState.nucleophileMolecule}
-                onChange={(e) => updateUIState({ nucleophileMolecule: e.target.value })}
+                onChange={e => updateUIState({ nucleophileMolecule: e.target.value })}
               >
-                <option value="">Select {uiState.reactionType === 'e1' || uiState.reactionType === 'e2' ? 'base' : 'nucleophile'}...</option>
-                {uiState.availableMolecules.map((mol) => (
+                <option value="">
+                  Select{' '}
+                  {uiState.reactionType === 'e1' || uiState.reactionType === 'e2'
+                    ? 'base'
+                    : 'nucleophile'}
+                  ...
+                </option>
+                {uiState.availableMolecules.map(mol => (
                   <option key={mol} value={mol}>
                     {mol}
                   </option>
@@ -219,18 +246,24 @@ export const MobileReactionBar: React.FC<MobileReactionBarProps> = () => {
           <div className="form-group" style={{ display: 'flex', gap: '8px' }}>
             <button
               className={`btn ${
-                !uiState.reactionInProgress ? 'btn-success' : 
-                uiState.isPlaying ? 'btn-danger' : 'btn-success'
+                !uiState.reactionInProgress
+                  ? 'btn-success'
+                  : uiState.isPlaying
+                    ? 'btn-danger'
+                    : 'btn-success'
               }`}
               onClick={handleStartReaction}
               disabled={!uiState.substrateMolecule || !uiState.nucleophileMolecule}
               style={{ flex: 1 }}
             >
-              {!uiState.reactionInProgress ? 'Start Reaction' : 
-               uiState.isPlaying ? 'Pause' : 'Play'}
+              {!uiState.reactionInProgress
+                ? 'Start Reaction'
+                : uiState.isPlaying
+                  ? 'Pause'
+                  : 'Play'}
             </button>
-            <button 
-              className="btn btn-secondary" 
+            <button
+              className="btn btn-secondary"
               onClick={handleReset}
               style={{ flex: '0 0 auto' }}
             >

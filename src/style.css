@@ -9,7 +9,7 @@
     appearance: none;
     cursor: pointer;
   }
-  
+
   .slider::-webkit-slider-thumb {
     appearance: none;
     width: 1.25rem;
@@ -19,7 +19,7 @@
     cursor: pointer;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
-  
+
   .slider::-moz-range-thumb {
     width: 1.25rem;
     height: 1.25rem;

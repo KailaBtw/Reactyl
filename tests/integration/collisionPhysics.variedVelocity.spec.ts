@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { physicsEngine } from '../../src/physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../../src/physics/collisionEventSystem';
 
@@ -42,15 +42,3 @@ describe('Collision Physics across varied velocities (integration)', () => {
     expect(spy.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-

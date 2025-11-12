@@ -3,12 +3,15 @@
  * Coordinates multiple animations for chemical reactions
  */
 
-import { WaldenInversionAnimation, type WaldenInversionOptions } from './WaldenInversionAnimation';
-import { LeavingGroupDepartureAnimation, type LeavingGroupDepartureOptions } from './LeavingGroupDepartureAnimation';
-import { SN2MechanismAnimation, type SN2MechanismOptions } from './SN2MechanismAnimation';
-import { AnimationRunner } from './AnimationUtils';
-import { log } from '../utils/debug';
 import type { MoleculeState } from '../systems/ReactionOrchestrator';
+import { log } from '../utils/debug';
+import type { AnimationRunner } from './AnimationUtils';
+import {
+  LeavingGroupDepartureAnimation,
+  type LeavingGroupDepartureOptions,
+} from './LeavingGroupDepartureAnimation';
+import { SN2MechanismAnimation, type SN2MechanismOptions } from './SN2MechanismAnimation';
+import { WaldenInversionAnimation, type WaldenInversionOptions } from './WaldenInversionAnimation';
 
 export interface SN2AnimationSequenceOptions {
   waldenInversion?: WaldenInversionOptions;
@@ -43,10 +46,7 @@ export class ReactionAnimationManager {
     nucleophile: MoleculeState,
     options: SN2AnimationSequenceOptions = {}
   ): void {
-    const {
-      onComplete,
-      onStart
-    } = options;
+    const { onComplete, onStart } = options;
 
     log('🎬 Starting complete SN2 mechanism animation...');
     log(`🎬 Substrate: ${substrate.name}, Nucleophile: ${nucleophile.name}`);
@@ -65,7 +65,7 @@ export class ReactionAnimationManager {
         onComplete: () => {
           log('✅ SN2 fast sequence finished');
           onComplete?.();
-        }
+        },
       });
 
       this.currentAnimations.push(sn2Runner);
@@ -100,11 +100,11 @@ export class ReactionAnimationManager {
    */
   stopAllAnimations(): void {
     log('🛑 Stopping all reaction animations...');
-    
+
     this.waldenAnimation.stop();
     this.leavingGroupAnimation.stop();
     this.sn2MechanismAnimation.stop();
-    
+
     this.currentAnimations.forEach(runner => runner.stop());
     this.currentAnimations = [];
   }
@@ -113,10 +113,12 @@ export class ReactionAnimationManager {
    * Check if any animations are running
    */
   get isAnimating(): boolean {
-    return this.waldenAnimation.isRunning || 
-           this.leavingGroupAnimation.isRunning ||
-           this.sn2MechanismAnimation.isRunning ||
-           this.currentAnimations.some(runner => runner.running);
+    return (
+      this.waldenAnimation.isRunning ||
+      this.leavingGroupAnimation.isRunning ||
+      this.sn2MechanismAnimation.isRunning ||
+      this.currentAnimations.some(runner => runner.running)
+    );
   }
 
   /**
@@ -132,7 +134,7 @@ export class ReactionAnimationManager {
       waldenInversion: this.waldenAnimation.isRunning,
       leavingGroupDeparture: this.leavingGroupAnimation.isRunning,
       sn2Mechanism: this.sn2MechanismAnimation.isRunning,
-      totalAnimations: this.currentAnimations.length
+      totalAnimations: this.currentAnimations.length,
     };
   }
 }

@@ -10,8 +10,8 @@
 // Lower concentrations will have fewer molecules (with a minimum floor)
 // Using mantissa/exponent representation to avoid floating point precision errors
 const VOLUME_MANTISSA = 8.305; // Mantissa part
-const VOLUME_EXPONENT = -23;   // Exponent part (8.305e-23 L)
-const CONTAINER_VOLUME_LITERS = VOLUME_MANTISSA * Math.pow(10, VOLUME_EXPONENT);
+const VOLUME_EXPONENT = -23; // Exponent part (8.305e-23 L)
+const CONTAINER_VOLUME_LITERS = VOLUME_MANTISSA * 10 ** VOLUME_EXPONENT;
 const MIN_PAIRS = 5; // Minimum pairs to show at very low concentrations
 
 // No visualization scale - showing actual molecules in this tiny volume
@@ -27,17 +27,17 @@ export function concentrationToParticleCount(concentration: number): number {
   // High-precision calculation using mantissa/exponent to avoid floating point errors
   // Calculate as: concentration × (mantissa × 10^exponent) × Avogadro
   // Group constants: (mantissa × Avogadro) × concentration × 10^exponent
-  
+
   // Pre-compute mantissa × Avogadro for precision
   const mantissaTimesAvogadro = VOLUME_MANTISSA * AVOGADRO_NUMBER;
-  
+
   // Calculate: concentration × mantissa × Avogadro × 10^exponent
   // This avoids very small intermediate values
-  const molecules = concentration * mantissaTimesAvogadro * Math.pow(10, VOLUME_EXPONENT);
-  
+  const molecules = concentration * mantissaTimesAvogadro * 10 ** VOLUME_EXPONENT;
+
   // Round to nearest integer, with minimum floor for visibility
   const pairs = Math.max(MIN_PAIRS, Math.round(molecules));
-  
+
   return pairs;
 }
 
@@ -50,7 +50,7 @@ export function particleCountToConcentration(particleCount: number): number {
   // Reverse the calculation
   const moles = particleCount / AVOGADRO_NUMBER;
   const concentration = moles / CONTAINER_VOLUME_LITERS;
-  
+
   return Math.max(0.001, Math.min(10, concentration));
 }
 
@@ -60,4 +60,3 @@ export function particleCountToConcentration(particleCount: number): number {
 export function getContainerVolume(): number {
   return CONTAINER_VOLUME_LITERS;
 }
-

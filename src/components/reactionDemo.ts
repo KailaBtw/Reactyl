@@ -24,13 +24,13 @@ export class ReactionDemo {
   ];
 
   private readonly SN2_POSITIONS = {
-    substrate: { x: 0, y: 0, z: 0 },      // At origin
-    nucleophile: { x: 0, y: 0, z: -8 },   // Behind substrate for backside attack
+    substrate: { x: 0, y: 0, z: 0 }, // At origin
+    nucleophile: { x: 0, y: 0, z: -8 }, // Behind substrate for backside attack
   };
 
   private readonly SN2_VELOCITIES = {
-    substrate: { x: 0, y: 0, z: 0 },      // Stationary
-    nucleophile: { x: 0, y: 0, z: 2.0 },  // Approaching from behind
+    substrate: { x: 0, y: 0, z: 0 }, // Stationary
+    nucleophile: { x: 0, y: 0, z: 2.0 }, // Approaching from behind
   };
 
   constructor(scene: THREE.Scene) {
@@ -62,7 +62,7 @@ export class ReactionDemo {
     statusCallback: (status: string) => void
   ): Promise<void> {
     log('🎬 Loading SN2 demo molecules...');
-    
+
     this.clearExistingMolecules(moleculeManager, scene);
 
     try {
@@ -73,10 +73,16 @@ export class ReactionDemo {
       // Load substrate
       statusCallback(`Loading ${substrate.name}...`);
       await this.loadMolecule(substrate, moleculeManager, scene, this.SN2_POSITIONS.substrate, 0);
-      
+
       // Load nucleophile
       statusCallback(`Loading ${nucleophile.name}...`);
-      await this.loadMolecule(nucleophile, moleculeManager, scene, this.SN2_POSITIONS.nucleophile, 1);
+      await this.loadMolecule(
+        nucleophile,
+        moleculeManager,
+        scene,
+        this.SN2_POSITIONS.nucleophile,
+        1
+      );
 
       statusCallback('Demo molecules loaded!');
       log('🎉 SN2 demo molecules ready!');
@@ -101,7 +107,7 @@ export class ReactionDemo {
 
     // Draw the molecule
     drawMolecule(molecularData.mol3d || '', moleculeManager, scene, position, moleculeName);
-    
+
     // Get the molecule and configure it
     const molecule = moleculeManager.getMolecule(moleculeName);
     if (!molecule) {
@@ -110,7 +116,7 @@ export class ReactionDemo {
 
     // Configure molecule for SN2 reaction
     this.configureMoleculeForSN2(molecule, moleculeData, index);
-    
+
     log(`✅ Loaded ${moleculeData.name} at (${position.x}, ${position.y}, ${position.z})`);
   }
 
@@ -121,11 +127,19 @@ export class ReactionDemo {
     // Set velocity
     if (index === 0) {
       // Substrate - stationary
-      molecule.velocity.set(this.SN2_VELOCITIES.substrate.x, this.SN2_VELOCITIES.substrate.y, this.SN2_VELOCITIES.substrate.z);
+      molecule.velocity.set(
+        this.SN2_VELOCITIES.substrate.x,
+        this.SN2_VELOCITIES.substrate.y,
+        this.SN2_VELOCITIES.substrate.z
+      );
       this.orientSubstrateForSN2(molecule, moleculeData.leavingGroup);
     } else if (index === 1) {
       // Nucleophile - approaching from behind
-      molecule.velocity.set(this.SN2_VELOCITIES.nucleophile.x, this.SN2_VELOCITIES.nucleophile.y, this.SN2_VELOCITIES.nucleophile.z);
+      molecule.velocity.set(
+        this.SN2_VELOCITIES.nucleophile.x,
+        this.SN2_VELOCITIES.nucleophile.y,
+        this.SN2_VELOCITIES.nucleophile.z
+      );
       this.orientNucleophileForSN2(molecule);
     }
   }
@@ -139,7 +153,7 @@ export class ReactionDemo {
 
     const atoms = molecule.molObject.atoms;
     const leavingGroupIndex = atoms.findIndex((atom: any) => atom.type === leavingGroupType);
-    
+
     if (leavingGroupIndex === -1) {
       log(`⚠️ No ${leavingGroupType} leaving group found in substrate`);
       return;
@@ -155,10 +169,12 @@ export class ReactionDemo {
     // Rotate so leaving group points in positive Z direction (away from nucleophile)
     const currentDirection = leavingGroupPos.normalize();
     const targetDirection = new THREE.Vector3(0, 0, 1);
-    
+
     const rotationAxis = currentDirection.clone().cross(targetDirection).normalize();
-    const rotationAngle = Math.acos(Math.max(-1, Math.min(1, currentDirection.dot(targetDirection))));
-    
+    const rotationAngle = Math.acos(
+      Math.max(-1, Math.min(1, currentDirection.dot(targetDirection)))
+    );
+
     if (rotationAngle > 0.01) {
       molecule.group.rotateOnAxis(rotationAxis, rotationAngle);
       log(`🔄 Oriented substrate: ${leavingGroupType} leaving group points away from nucleophile`);
@@ -174,7 +190,7 @@ export class ReactionDemo {
 
     const atoms = molecule.molObject.atoms;
     const nucleophilicCenterIndex = atoms.findIndex((atom: any) => atom.type === 'O');
-    
+
     if (nucleophilicCenterIndex === -1) {
       log('⚠️ No O nucleophilic center found in nucleophile');
       return;
@@ -190,10 +206,12 @@ export class ReactionDemo {
     // Rotate so nucleophilic center points in negative Z direction (toward substrate)
     const currentDirection = nucleophilicPos.normalize();
     const targetDirection = new THREE.Vector3(0, 0, -1);
-    
+
     const rotationAxis = currentDirection.clone().cross(targetDirection).normalize();
-    const rotationAngle = Math.acos(Math.max(-1, Math.min(1, currentDirection.dot(targetDirection))));
-    
+    const rotationAngle = Math.acos(
+      Math.max(-1, Math.min(1, currentDirection.dot(targetDirection)))
+    );
+
     if (rotationAngle > 0.01) {
       molecule.group.rotateOnAxis(rotationAxis, rotationAngle);
       log('🔄 Oriented nucleophile: O nucleophilic center points toward substrate');
@@ -216,7 +234,7 @@ export class ReactionDemo {
     let molecules = moleculeManager.getAllMolecules();
     if (molecules.length < 2) {
       log('🔄 Auto-loading demo molecules...');
-      await this.loadDemoMolecules(moleculeManager, scene, (status) => {
+      await this.loadDemoMolecules(moleculeManager, scene, status => {
         log(`Auto-loading: ${status}`);
       });
       molecules = moleculeManager.getAllMolecules();
@@ -257,11 +275,15 @@ export class ReactionDemo {
     // Log positions
     const substratePos = substrate.group.position;
     const nucleophilePos = nucleophile.group.position;
-    
-    log(`📍 Substrate: (${substratePos.x.toFixed(2)}, ${substratePos.y.toFixed(2)}, ${substratePos.z.toFixed(2)})`);
-    log(`📍 Nucleophile: (${nucleophilePos.x.toFixed(2)}, ${nucleophilePos.y.toFixed(2)}, ${nucleophilePos.z.toFixed(2)})`);
+
+    log(
+      `📍 Substrate: (${substratePos.x.toFixed(2)}, ${substratePos.y.toFixed(2)}, ${substratePos.z.toFixed(2)})`
+    );
+    log(
+      `📍 Nucleophile: (${nucleophilePos.x.toFixed(2)}, ${nucleophilePos.y.toFixed(2)}, ${nucleophilePos.z.toFixed(2)})`
+    );
     log(`📍 Distance: ${substratePos.distanceTo(nucleophilePos).toFixed(2)}`);
-    
+
     if (nucleophilePos.z < substratePos.z) {
       log('✅ Proper SN2 backside attack geometry confirmed');
     } else {
@@ -281,7 +303,9 @@ export class ReactionDemo {
     reactionParams.impactParameter = 0.0; // Head-on collision
     reactionParams.relativeVelocity = 20.0; // High velocity
 
-    log(`🎯 Demo setup: ${reactionParams.substrateMolecule} + ${reactionParams.nucleophileMolecule}`);
+    log(
+      `🎯 Demo setup: ${reactionParams.substrateMolecule} + ${reactionParams.nucleophileMolecule}`
+    );
   }
 
   /**
@@ -361,15 +385,15 @@ export class ReactionDemo {
    */
   protected clearExistingMolecules(moleculeManager: MoleculeManager, scene: THREE.Scene): void {
     const existingMolecules = moleculeManager.getAllMolecules();
-    
+
     for (const mol of existingMolecules) {
       scene.remove(mol.group);
     }
-    
+
     if ('clearAllMolecules' in moleculeManager) {
       (moleculeManager as any).clearAllMolecules();
     }
-    
+
     log('🧹 Cleared existing molecules');
   }
 
@@ -380,7 +404,7 @@ export class ReactionDemo {
     return this.DEMO_MOLECULES.map(mol => ({
       cid: mol.cid,
       name: mol.name,
-      formula: mol.formula
+      formula: mol.formula,
     }));
   }
 

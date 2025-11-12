@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ColorPickerProps {
   color: string;
@@ -13,20 +14,44 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, onClo
   // Preset colors optimized for molecular visualization
   const presetColors = [
     // Dark themes (good for bright molecules)
-    '#000000', '#1a1a1a', '#2c2c2c', '#1e1e2e',
-    '#0f172a', '#1e293b', '#374151', '#111827',
-    
-    // Light themes (good for dark molecules)  
-    '#ffffff', '#f8f9fa', '#f1f3f4', '#e9ecef',
-    '#f0f0f0', '#f5f5f5', '#fafafa', '#ffffff',
-    
+    '#000000',
+    '#1a1a1a',
+    '#2c2c2c',
+    '#1e1e2e',
+    '#0f172a',
+    '#1e293b',
+    '#374151',
+    '#111827',
+
+    // Light themes (good for dark molecules)
+    '#ffffff',
+    '#f8f9fa',
+    '#f1f3f4',
+    '#e9ecef',
+    '#f0f0f0',
+    '#f5f5f5',
+    '#fafafa',
+    '#ffffff',
+
     // Professional colors
-    '#2c3e50', '#34495e', '#3498db', '#2980b9',
-    '#27ae60', '#16a085', '#8e44ad', '#9b59b6',
-    
+    '#2c3e50',
+    '#34495e',
+    '#3498db',
+    '#2980b9',
+    '#27ae60',
+    '#16a085',
+    '#8e44ad',
+    '#9b59b6',
+
     // Laboratory themes
-    '#f4f4f4', '#e8e8e8', '#d4d4d4', '#a0a0a0',
-    '#505050', '#404040', '#303030', '#202020'
+    '#f4f4f4',
+    '#e8e8e8',
+    '#d4d4d4',
+    '#a0a0a0',
+    '#505050',
+    '#404040',
+    '#303030',
+    '#202020',
   ];
 
   // Convert hex to HSL for color manipulation
@@ -37,15 +62,23 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, onClo
 
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
+    let h = 0,
+      s = 0,
+      l = (max + min) / 2;
 
     if (max !== min) {
       const d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
       switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
+        case r:
+          h = (g - b) / d + (g < b ? 6 : 0);
+          break;
+        case g:
+          h = (b - r) / d + 2;
+          break;
+        case b:
+          h = (r - g) / d + 4;
+          break;
       }
       h /= 6;
     }
@@ -61,9 +94,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, onClo
     const hue2rgb = (p: number, q: number, t: number) => {
       if (t < 0) t += 1;
       if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
       return p;
     };
 
@@ -73,9 +106,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, onClo
     } else {
       const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
       const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1/3);
+      r = hue2rgb(p, q, h + 1 / 3);
       g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1/3);
+      b = hue2rgb(p, q, h - 1 / 3);
     }
 
     const toHex = (c: number) => {
@@ -121,13 +154,13 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, onClo
   }, [onClose]);
 
   return (
-    <div 
+    <div
       ref={pickerRef}
       className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 animate-in"
     >
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-gray-800">Background Color</h4>
-        <button 
+        <button
           onClick={onClose}
           className="text-gray-400 hover:text-gray-600 text-lg leading-none"
         >
@@ -138,7 +171,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, onClo
       {/* Current Color Display */}
       <div className="mb-4">
         <div className="flex items-center gap-3">
-          <div 
+          <div
             className="w-12 h-8 border border-gray-300 rounded"
             style={{ backgroundColor: currentColor }}
           />
@@ -177,8 +210,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, onClo
               key={index}
               onClick={() => handlePresetColor(presetColor)}
               className={`w-6 h-6 rounded border-2 transition-all ${
-                currentColor === presetColor 
-                  ? 'border-blue-500 scale-110' 
+                currentColor === presetColor
+                  ? 'border-blue-500 scale-110'
                   : 'border-gray-300 hover:border-gray-400'
               }`}
               style={{ backgroundColor: presetColor }}

@@ -1,11 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ThermodynamicData {
-  reactantEnergy: number;      // kJ/mol
-  productEnergy: number;       // kJ/mol  
-  activationEnergy: number;    // kJ/mol (Ea)
-  reactionProgress: number;    // 0-1 (current position along reaction coordinate)
-  temperature: number;         // Kelvin
+  reactantEnergy: number; // kJ/mol
+  productEnergy: number; // kJ/mol
+  activationEnergy: number; // kJ/mol (Ea)
+  reactionProgress: number; // 0-1 (current position along reaction coordinate)
+  temperature: number; // Kelvin
 }
 
 interface ScientificEnergyCurveProps {
@@ -21,41 +22,42 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
   isAnimating,
   width = 500,
   height = 300,
-  showLabels = true
+  showLabels = true,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
   const { reactantEnergy, productEnergy, activationEnergy, reactionProgress } = data;
-  
+
   // Calculate transition state energy
   const transitionStateEnergy = reactantEnergy + activationEnergy;
   const deltaH = productEnergy - reactantEnergy;
-  
+
   // Set up coordinate system with proper margins to prevent overlap
   const margin = { top: 30, right: 50, bottom: 50, left: 60 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  
+
   // Energy scale with 20% padding above and below
   const minEnergy = Math.min(reactantEnergy, productEnergy) - 20;
   const maxEnergy = transitionStateEnergy + 20;
   const energyRange = maxEnergy - minEnergy;
-  
+
   // Scale functions
   const xScale = (reactionCoord: number) => margin.left + reactionCoord * plotWidth;
-  const yScale = (energy: number) => margin.top + plotHeight - ((energy - minEnergy) / energyRange) * plotHeight;
+  const yScale = (energy: number) =>
+    margin.top + plotHeight - ((energy - minEnergy) / energyRange) * plotHeight;
 
   // Generate activation energy curve
   // Uses simplified parabolic curve for educational clarity
   const generateActivationCurve = () => {
     const points: [number, number][] = [];
     const numPoints = 200;
-    
+
     for (let i = 0; i <= numPoints; i++) {
       const xi = i / numPoints; // reaction coordinate 0 to 1
       let energy: number;
-      
+
       if (xi <= 0.5) {
         // Reactants to transition state - parabolic rise to barrier
         const t = xi * 2; // normalize to 0-1 for this segment
@@ -67,10 +69,10 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
         const t = (xi - 0.5) * 2; // normalize to 0-1 for this segment
         energy = transitionStateEnergy - (transitionStateEnergy - productEnergy) * t;
       }
-      
+
       points.push([xScale(xi), yScale(energy)]);
     }
-    
+
     return points;
   };
 
@@ -103,10 +105,14 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
   // Generate grid lines
   const generateGridLines = () => {
     const gridLines = [];
-    
+
     // Horizontal grid lines (energy levels)
     const energyStep = 25; // kJ/mol
-    for (let energy = Math.ceil(minEnergy / energyStep) * energyStep; energy <= maxEnergy; energy += energyStep) {
+    for (
+      let energy = Math.ceil(minEnergy / energyStep) * energyStep;
+      energy <= maxEnergy;
+      energy += energyStep
+    ) {
       const y = yScale(energy);
       gridLines.push(
         <line
@@ -120,7 +126,7 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
         />
       );
     }
-    
+
     // Vertical grid lines (reaction coordinate)
     for (let i = 0; i <= 10; i++) {
       const x = xScale(i / 10);
@@ -136,7 +142,7 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
         />
       );
     }
-    
+
     return gridLines;
   };
 
@@ -145,7 +151,7 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
       <svg ref={svgRef} width={width} height={height} className="w-full">
         {/* Grid */}
         {generateGridLines()}
-        
+
         {/* Axes */}
         <g className="axes">
           {/* Y-axis */}
@@ -158,7 +164,7 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
           />
-          
+
           {/* X-axis */}
           <line
             x1={margin.left}
@@ -169,37 +175,16 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
           />
-          
+
           {/* Arrow markers */}
           <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="6"
-              markerHeight="4"
-              refX="6"
-              refY="2"
-              orient="auto"
-            >
+            <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
               <polygon points="0 0, 6 2, 0 4" fill="#374151" />
             </marker>
-            <marker
-              id="redarrow"
-              markerWidth="6"
-              markerHeight="4"
-              refX="6"
-              refY="2"
-              orient="auto"
-            >
+            <marker id="redarrow" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
               <polygon points="0 0, 6 2, 0 4" fill="#ef4444" />
             </marker>
-            <marker
-              id="bluearrow"
-              markerWidth="6"
-              markerHeight="4"
-              refX="6"
-              refY="2"
-              orient="auto"
-            >
+            <marker id="bluearrow" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
               <polygon points="0 0, 6 2, 0 4" fill="#3b82f6" />
             </marker>
           </defs>
@@ -217,13 +202,34 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
         {/* Key energy level lines */}
         <g className="energy-levels" strokeDasharray="3,3" opacity="0.7">
           {/* Reactant energy level */}
-          <line x1={margin.left} y1={reactantY} x2={reactantX + 50} y2={reactantY} stroke="#3b82f6" strokeWidth="1.5"/>
-          
+          <line
+            x1={margin.left}
+            y1={reactantY}
+            x2={reactantX + 50}
+            y2={reactantY}
+            stroke="#3b82f6"
+            strokeWidth="1.5"
+          />
+
           {/* Product energy level */}
-          <line x1={productX - 50} y1={productY} x2={margin.left + plotWidth} y2={productY} stroke="#10b981" strokeWidth="1.5"/>
-          
+          <line
+            x1={productX - 50}
+            y1={productY}
+            x2={margin.left + plotWidth}
+            y2={productY}
+            stroke="#10b981"
+            strokeWidth="1.5"
+          />
+
           {/* Transition state level */}
-          <line x1={transitionX - 30} y1={transitionY} x2={transitionX + 30} y2={transitionY} stroke="#ef4444" strokeWidth="1.5"/>
+          <line
+            x1={transitionX - 30}
+            y1={transitionY}
+            x2={transitionX + 30}
+            y2={transitionY}
+            stroke="#ef4444"
+            strokeWidth="1.5"
+          />
         </g>
 
         {/* Activation Energy Arrow (Ea) */}
@@ -255,7 +261,7 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
             y1={reactantY}
             x2={productX - 60}
             y2={productY}
-            stroke={deltaH < 0 ? "#10b981" : "#f59e0b"}
+            stroke={deltaH < 0 ? '#10b981' : '#f59e0b'}
             strokeWidth="2"
             markerEnd="url(#bluearrow)"
           />
@@ -266,27 +272,57 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
             textAnchor="start"
             dominantBaseline="middle"
           >
-            ΔH = {deltaH > 0 ? '+' : ''}{deltaH.toFixed(1)} kJ/mol
+            ΔH = {deltaH > 0 ? '+' : ''}
+            {deltaH.toFixed(1)} kJ/mol
           </text>
         </g>
 
         {/* State markers */}
         <g className="state-markers">
           {/* Reactants */}
-          <circle cx={reactantX} cy={reactantY} r="5" fill="#3b82f6" stroke="white" strokeWidth="2"/>
-          <text x={reactantX} y={margin.top + plotHeight + 20} textAnchor="middle" className="text-sm font-medium fill-blue-600">
+          <circle
+            cx={reactantX}
+            cy={reactantY}
+            r="5"
+            fill="#3b82f6"
+            stroke="white"
+            strokeWidth="2"
+          />
+          <text
+            x={reactantX}
+            y={margin.top + plotHeight + 20}
+            textAnchor="middle"
+            className="text-sm font-medium fill-blue-600"
+          >
             Reactants
           </text>
-          
+
           {/* Transition State */}
-          <circle cx={transitionX} cy={transitionY} r="5" fill="#ef4444" stroke="white" strokeWidth="2"/>
-          <text x={transitionX} y={transitionY - 15} textAnchor="middle" className="text-sm font-medium fill-red-600">
+          <circle
+            cx={transitionX}
+            cy={transitionY}
+            r="5"
+            fill="#ef4444"
+            stroke="white"
+            strokeWidth="2"
+          />
+          <text
+            x={transitionX}
+            y={transitionY - 15}
+            textAnchor="middle"
+            className="text-sm font-medium fill-red-600"
+          >
             Transition State‡
           </text>
-          
+
           {/* Products */}
-          <circle cx={productX} cy={productY} r="5" fill="#10b981" stroke="white" strokeWidth="2"/>
-          <text x={productX} y={margin.top + plotHeight + 20} textAnchor="middle" className="text-sm font-medium fill-green-600">
+          <circle cx={productX} cy={productY} r="5" fill="#10b981" stroke="white" strokeWidth="2" />
+          <text
+            x={productX}
+            y={margin.top + plotHeight + 20}
+            textAnchor="middle"
+            className="text-sm font-medium fill-green-600"
+          >
             Products
           </text>
         </g>
@@ -298,7 +334,7 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
           fill="#f59e0b"
           stroke="#ffffff"
           strokeWidth="2"
-          opacity={isAnimating ? "1" : "0"}
+          opacity={isAnimating ? '1' : '0'}
           className={`transition-opacity duration-300 ${isAnimating ? 'animate-pulse' : ''}`}
         />
 
@@ -318,13 +354,26 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
 
         {/* Energy scale ticks */}
         <g className="y-ticks">
-          {Array.from({length: Math.floor(energyRange / 25) + 1}, (_, i) => {
+          {Array.from({ length: Math.floor(energyRange / 25) + 1 }, (_, i) => {
             const energy = Math.ceil(minEnergy / 25) * 25 + i * 25;
             const y = yScale(energy);
             return (
               <g key={energy}>
-                <line x1={margin.left - 5} y1={y} x2={margin.left} y2={y} stroke="#374151" strokeWidth="1"/>
-                <text x={margin.left - 10} y={y} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-600">
+                <line
+                  x1={margin.left - 5}
+                  y1={y}
+                  x2={margin.left}
+                  y2={y}
+                  stroke="#374151"
+                  strokeWidth="1"
+                />
+                <text
+                  x={margin.left - 10}
+                  y={y}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                  className="text-xs fill-gray-600"
+                >
                   {energy}
                 </text>
               </g>

@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useUIState } from '../../context/UIStateContext';
 
 interface CompactLiveDataProps {
@@ -14,7 +14,7 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
   attackAngle,
   reactionProbability,
   timeScale,
-  themeClasses
+  themeClasses,
 }) => {
   // Color scheme based on importance:
   // - Reaction Probability (most important): Red/Orange/Green gradient
@@ -24,7 +24,7 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
 
   const getReactionProbabilityColor = (prob: number) => {
     if (prob >= 70) return 'bg-emerald-500'; // Green - high probability
-    if (prob >= 40) return 'bg-yellow-500';  // Yellow - medium probability
+    if (prob >= 40) return 'bg-yellow-500'; // Yellow - medium probability
     return 'bg-red-500'; // Red - low probability
   };
 
@@ -40,7 +40,7 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
       <h4 className={`text-xs font-semibold ${themeClasses.text} mb-3 uppercase tracking-wide`}>
         Live Data
       </h4>
-      
+
       <div className="space-y-2.5">
         {/* Reaction Probability - Most Important */}
         <div>
@@ -53,7 +53,7 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
             </span>
           </div>
           <div className={`h-2 ${barBgClass} rounded-full overflow-hidden`}>
-            <div 
+            <div
               className={`h-full ${getReactionProbabilityColor(reactionProbability)} transition-all duration-300`}
               style={{ width: `${getBarWidth(reactionProbability, 100)}%` }}
             />
@@ -71,7 +71,7 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
             </span>
           </div>
           <div className={`h-2 ${barBgClass} rounded-full overflow-hidden`}>
-            <div 
+            <div
               className="h-full bg-blue-500 transition-all duration-300"
               style={{ width: `${getBarWidth(relativeVelocity, 300)}%` }}
             />
@@ -89,7 +89,7 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
             </span>
           </div>
           <div className={`h-2 ${barBgClass} rounded-full overflow-hidden`}>
-            <div 
+            <div
               className="h-full bg-purple-500 transition-all duration-300"
               style={{ width: `${getBarWidth(attackAngle, 180)}%` }}
             />
@@ -99,15 +99,13 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
         {/* Time Scale - Lower Importance */}
         <div>
           <div className="flex justify-between items-center mb-1">
-            <span className={`text-xs ${themeClasses.textSecondary} font-medium`}>
-              Time Scale
-            </span>
+            <span className={`text-xs ${themeClasses.textSecondary} font-medium`}>Time Scale</span>
             <span className={`text-xs font-mono font-bold ${themeClasses.text}`}>
               {timeScale.toFixed(1)}x
             </span>
           </div>
           <div className={`h-2 ${barBgClass} rounded-full overflow-hidden`}>
-            <div 
+            <div
               className="h-full bg-gray-500 transition-all duration-300"
               style={{ width: `${getBarWidth(timeScale, 5)}%` }}
             />
@@ -117,4 +115,3 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
     </div>
   );
 };
-

@@ -1,9 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { physicsEngine } from '../../src/physics/cannonPhysicsEngine';
 
 // Minimal MoleculeGroup mock compatible with physicsEngine
-function createMockMolecule(name: string, position = new THREE.Vector3(), velocity = new THREE.Vector3()) {
+function createMockMolecule(
+  name: string,
+  position = new THREE.Vector3(),
+  velocity = new THREE.Vector3()
+) {
   const group = new THREE.Group();
   group.position.copy(position);
   return {
@@ -88,15 +92,3 @@ describe('Physics Engine Controls (unit)', () => {
     expect(q2?.w).toBeCloseTo(q.w, 6);
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-

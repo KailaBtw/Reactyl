@@ -46,7 +46,7 @@ export class CameraAnimator {
       startTarget,
       targetTarget,
       progress: 0,
-      duration
+      duration,
     };
   }
 
@@ -67,9 +67,9 @@ export class CameraAnimator {
   ): void {
     // Calculate position using spherical coordinates relative to target
     const targetPos = new THREE.Vector3(
-      distance * Math.cos(elevation) * Math.sin(azimuth),  // X
-      distance * Math.sin(elevation),                       // Y
-      distance * Math.cos(elevation) * Math.cos(azimuth)    // Z
+      distance * Math.cos(elevation) * Math.sin(azimuth), // X
+      distance * Math.sin(elevation), // Y
+      distance * Math.cos(elevation) * Math.cos(azimuth) // Z
     );
 
     // Position is relative to target (add target to get world position)
@@ -98,15 +98,9 @@ export class CameraAnimator {
     } else {
       // Smooth interpolation (ease-in-out cubic)
       const t = this.animation.progress;
-      const easeT = t < 0.5 
-        ? 2 * t * t 
-        : 1 - Math.pow(-2 * t + 2, 3) / 2; // Ease-in-out cubic
-      
-      this.camera.position.lerpVectors(
-        this.animation.startPos,
-        this.animation.targetPos,
-        easeT
-      );
+      const easeT = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 3 / 2; // Ease-in-out cubic
+
+      this.camera.position.lerpVectors(this.animation.startPos, this.animation.targetPos, easeT);
       this.controls.target.lerpVectors(
         this.animation.startTarget,
         this.animation.targetTarget,
@@ -132,4 +126,3 @@ export class CameraAnimator {
     }
   }
 }
-

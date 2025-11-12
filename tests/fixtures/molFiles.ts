@@ -60,7 +60,7 @@ M  END`,
   1  2  1  0  0  0  0
   1  3  1  0  0  0  0
   1  4  1  0  0  0  0
-M  END`
+M  END`,
 };
 
 export const MOLECULE_PROPERTIES = {
@@ -68,32 +68,32 @@ export const MOLECULE_PROPERTIES = {
     totalMass: 94.94,
     boundingRadius: 2.21,
     atomCount: 5,
-    bondCount: 4
+    bondCount: 4,
   },
   HYDROXIDE_ION: {
     totalMass: 17.01,
     boundingRadius: 0.91,
     atomCount: 2,
-    bondCount: 1
+    bondCount: 1,
   },
   METHYL_CHLORIDE: {
     totalMass: 50.49,
     boundingRadius: 1.76,
     atomCount: 5,
-    bondCount: 4
+    bondCount: 4,
   },
   WATER: {
     totalMass: 18.02,
     boundingRadius: 0.96,
     atomCount: 3,
-    bondCount: 2
+    bondCount: 2,
   },
   AMMONIA: {
     totalMass: 17.03,
     boundingRadius: 1.02,
     atomCount: 4,
-    bondCount: 3
-  }
+    bondCount: 3,
+  },
 };
 
 export const TEST_POSITIONS = {
@@ -101,7 +101,7 @@ export const TEST_POSITIONS = {
   SUBSTRATE: { x: 0, y: 0, z: 7.5 },
   NUCLEOPHILE: { x: 0, y: 0, z: -7.5 },
   SIDE_ATTACK: { x: 5, y: 0, z: 0 },
-  FRONT_ATTACK: { x: 0, y: 5, z: 0 }
+  FRONT_ATTACK: { x: 0, y: 5, z: 0 },
 };
 
 export const TEST_VELOCITIES = {
@@ -109,16 +109,5 @@ export const TEST_VELOCITIES = {
   FORWARD: { x: 0, y: 0, z: 5 },
   BACKWARD: { x: 0, y: 0, z: -5 },
   SIDE: { x: 5, y: 0, z: 0 },
-  HIGH_SPEED: { x: 0, y: 0, z: 15 }
+  HIGH_SPEED: { x: 0, y: 0, z: 15 },
 };
-
-
-
-
-
-
-
-
-
-
-

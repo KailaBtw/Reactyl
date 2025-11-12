@@ -1,21 +1,26 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { ChemicalDataService } from '../../../chemistry/chemicalDataService';
+import { sn2ReactionSystem } from '../../../chemistry/sn2Reaction';
 import { drawMolecule } from '../../../components/moleculeDrawer';
 import { sceneBridge } from '../../../services/SceneBridge';
-import { useUIState } from '../../context/UIStateContext';
 import { threeJSBridge } from '../../bridge/ThreeJSBridge';
-import { SmartInfoBubble } from '../common/SmartInfoBubble';
+import { ATTACK_MODES } from '../../constants/attackModes';
+import {
+  AVAILABLE_MOLECULES,
+  DEFAULT_NUCLEOPHILE,
+  DEFAULT_SUBSTRATE,
+} from '../../constants/availableMolecules';
+import { useUIState } from '../../context/UIStateContext';
 import type { ReactionType } from '../common/InfoBubbleContent';
-import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from '../../constants/availableMolecules';
-import { MoleculeSelector } from './MoleculeSelector';
-import { SidebarCard } from './SidebarCard';
+import { SmartInfoBubble } from '../common/SmartInfoBubble';
 import { DebugControls } from './DebugControls';
 import { LiveStats } from './LiveStats';
+import { MoleculeSelector } from './MoleculeSelector';
 import { ReactionControls } from './ReactionControls';
 import { ReactionProducts } from './ReactionProducts';
-import { sn2ReactionSystem } from '../../../chemistry/sn2Reaction';
-import { ATTACK_MODES } from '../../constants/attackModes';
+import { SidebarCard } from './SidebarCard';
 
 interface SearchResult {
   cid: string;
@@ -54,7 +59,10 @@ interface TabbedSearchProps {
   onExternalTabChange?: (tab: TabId) => void;
 }
 
-export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, onExternalTabChange }) => {
+export const TabbedSearch: React.FC<TabbedSearchProps> = ({
+  externalActiveTab,
+  onExternalTabChange,
+}) => {
   const { uiState, updateUIState } = useUIState();
   const [internalTab, setInternalTab] = useState<TabId>(uiState.activeTab || 'reactions');
   const activeTab: TabId = externalActiveTab ?? internalTab;
@@ -91,7 +99,7 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
 
     // Check periodically until ready
     const interval = setInterval(checkSceneReady, 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -100,12 +108,12 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
     // Always update to the centralized list
     const targetMolecules = [...AVAILABLE_MOLECULES];
     const currentMolecules = uiState.availableMolecules;
-    
+
     // Check if we need to update
-    const needsUpdate = 
+    const needsUpdate =
       currentMolecules.length !== targetMolecules.length ||
       !targetMolecules.every(mol => currentMolecules.includes(mol));
-    
+
     if (needsUpdate) {
       updateUIState({
         availableMolecules: targetMolecules,
@@ -115,89 +123,100 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
     }
   }, [uiState.availableMolecules.length]);
 
-  const handleSearch = useCallback(async (query: string) => {
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    setIsSearching(true);
-    setSearchStatus('Searching...');
-
-    try {
-      let results: SearchResult[] = [];
-
-      // Enhanced search routing - detect input type
-      if (/^\d+$/.test(query)) {
-        // CID search (numeric)
-        try {
-          const molecularData = await chemicalService.fetchMoleculeByCID(query);
-          results = [
-            {
-              cid: query,
-              name: molecularData.title || molecularData.name || molecularData.formula || `Molecule ${query}`,
-              formula: molecularData.formula || 'Unknown',
-            },
-          ];
-          setSearchStatus(`Found CID ${query}`);
-        } catch (error) {
-          setSearchStatus(`CID ${query} not found`);
-          results = [];
-        }
-      } else if (isInChIKey(query)) {
-        // InChIKey search (27 characters, contains hyphens)
-        try {
-          const molecularData = await chemicalService.fetchMoleculeByInChIKey(query);
-          results = [
-            {
-              cid: String(molecularData.cid || 'Unknown'),
-              name: molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
-              formula: molecularData.formula || 'Unknown',
-            },
-          ];
-          setSearchStatus(`Found InChIKey ${query}`);
-        } catch (error) {
-          setSearchStatus(`InChIKey ${query} not found`);
-          results = [];
-        }
-      } else if (isSMILES(query)) {
-        // SMILES search (contains special characters)
-        try {
-          const molecularData = await chemicalService.fetchMoleculeBySMILES(query);
-          results = [
-            {
-              cid: String(molecularData.cid || 'Unknown'),
-              name: molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
-              formula: molecularData.formula || 'Unknown',
-            },
-          ];
-          setSearchStatus(`Found SMILES ${query}`);
-        } catch (error) {
-          setSearchStatus(`SMILES ${query} not found`);
-          results = [];
-        }
-      } else {
-        // General search (name, formula, etc.)
-        results = await chemicalService.searchMolecules(query, 10);
-        setSearchStatus(results.length > 0 ? `Found ${results.length} results` : 'No results found');
+  const handleSearch = useCallback(
+    async (query: string) => {
+      if (!query || query.length < 2) {
+        setSearchResults([]);
+        setShowDropdown(false);
+        return;
       }
 
-      setSearchResults(results);
-      setShowDropdown(results.length > 0);
-    } catch (error) {
-      setSearchStatus('Search failed');
-      setSearchResults([]);
-      setShowDropdown(false);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [chemicalService]);
+      setIsSearching(true);
+      setSearchStatus('Searching...');
+
+      try {
+        let results: SearchResult[] = [];
+
+        // Enhanced search routing - detect input type
+        if (/^\d+$/.test(query)) {
+          // CID search (numeric)
+          try {
+            const molecularData = await chemicalService.fetchMoleculeByCID(query);
+            results = [
+              {
+                cid: query,
+                name:
+                  molecularData.title ||
+                  molecularData.name ||
+                  molecularData.formula ||
+                  `Molecule ${query}`,
+                formula: molecularData.formula || 'Unknown',
+              },
+            ];
+            setSearchStatus(`Found CID ${query}`);
+          } catch (error) {
+            setSearchStatus(`CID ${query} not found`);
+            results = [];
+          }
+        } else if (isInChIKey(query)) {
+          // InChIKey search (27 characters, contains hyphens)
+          try {
+            const molecularData = await chemicalService.fetchMoleculeByInChIKey(query);
+            results = [
+              {
+                cid: String(molecularData.cid || 'Unknown'),
+                name:
+                  molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
+                formula: molecularData.formula || 'Unknown',
+              },
+            ];
+            setSearchStatus(`Found InChIKey ${query}`);
+          } catch (error) {
+            setSearchStatus(`InChIKey ${query} not found`);
+            results = [];
+          }
+        } else if (isSMILES(query)) {
+          // SMILES search (contains special characters)
+          try {
+            const molecularData = await chemicalService.fetchMoleculeBySMILES(query);
+            results = [
+              {
+                cid: String(molecularData.cid || 'Unknown'),
+                name:
+                  molecularData.title || molecularData.name || molecularData.formula || 'Unknown',
+                formula: molecularData.formula || 'Unknown',
+              },
+            ];
+            setSearchStatus(`Found SMILES ${query}`);
+          } catch (error) {
+            setSearchStatus(`SMILES ${query} not found`);
+            results = [];
+          }
+        } else {
+          // General search (name, formula, etc.)
+          results = await chemicalService.searchMolecules(query, 10);
+          setSearchStatus(
+            results.length > 0 ? `Found ${results.length} results` : 'No results found'
+          );
+        }
+
+        setSearchResults(results);
+        setShowDropdown(results.length > 0);
+      } catch (error) {
+        setSearchStatus('Search failed');
+        setSearchResults([]);
+        setShowDropdown(false);
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [chemicalService]
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
+
     // Debounce search
     const timeoutId = setTimeout(() => {
       handleSearch(query);
@@ -229,10 +248,10 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
 
       if (!scene || !moleculeManager) {
         setSearchStatus('Error: Scene not available. Please wait for initialization...');
-        console.error('Scene or molecule manager not available:', { 
-          scene: !!scene, 
+        console.error('Scene or molecule manager not available:', {
+          scene: !!scene,
           moleculeManager: !!moleculeManager,
-          bridgeInitialized: sceneBridge.isInitialized()
+          bridgeInitialized: sceneBridge.isInitialized(),
         });
         return;
       }
@@ -240,30 +259,24 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
       // Load the molecule with stationary position
       const position = { x: 0, y: 0, z: 0 }; // Stationary at origin
       const molecularData = await chemicalService.fetchMoleculeByCID(result.cid);
-      
+
       if (!molecularData.mol3d) {
         setSearchStatus(`❌ No 3D structure available for ${result.name}`);
         return;
       }
-      
-      drawMolecule(
-        molecularData.mol3d,
-        moleculeManager,
-        scene,
-        position,
-        result.name
-      );
+
+      drawMolecule(molecularData.mol3d, moleculeManager, scene, position, result.name);
 
       // Make the molecule stationary by setting zero velocity
       moleculeManager.setMoleculeVelocity(result.name, new THREE.Vector3(0, 0, 0), 0);
 
       setSearchStatus(`✅ Loaded ${result.name} (stationary)`);
-      
+
       // Reset status after showing success message
       setTimeout(() => {
         setSearchStatus('Ready');
       }, 1500);
-      
+
       // Note: Not updating availableMolecules list - search spawns molecules independently
       // The dropdowns use hardcoded demo molecules for user testing
     } catch (error) {
@@ -276,16 +289,16 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
   };
 
   const isSMILES = (query: string): boolean => {
-    return /[=#@\[\]()]/.test(query);
+    return /[=#@[\]()]/.test(query);
   };
 
   const getPlaceholder = () => {
-    if (!sceneReady) return "Waiting for scene initialization...";
-    
+    if (!sceneReady) return 'Waiting for scene initialization...';
+
     if (activeTab === 'molecules') {
-      return "e.g., benzene, 241, C6H6, C1=CC=CC=C1, etc...";
+      return 'e.g., benzene, 241, C6H6, C1=CC=CC=C1, etc...';
     } else {
-      return "e.g., SN2, substitution, elimination, etc...";
+      return 'e.g., SN2, substitution, elimination, etc...';
     }
   };
 
@@ -299,108 +312,30 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
     <div className="tabbed-search">
       {/* Modern Tab Headers (only when not externally controlled) */}
       {!externalActiveTab && (
-      <div style={{ 
-        display: 'flex', 
-        marginBottom: '0',
-        borderBottom: '1px solid #1a1a1a',
-        backgroundColor: '#222',
-        gap: '0'
-      }}>
-        <button
-          onClick={() => {
-            setActiveTab('reactions');
-            updateUIState({ activeTab: 'reactions' });
-          }}
+        <div
           style={{
-            flex: 1,
-            padding: '10px 12px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            borderBottom: activeTab === 'reactions' ? '2px solid #4a90e2' : '2px solid transparent',
-            color: activeTab === 'reactions' ? '#4a90e2' : '#999',
-            fontSize: '11px',
-            fontWeight: activeTab === 'reactions' ? '600' : '500',
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.3px',
-            position: 'relative',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}
-          onMouseEnter={(e) => {
-            if (activeTab !== 'reactions') {
-              e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
-              e.currentTarget.style.color = '#ccc';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeTab !== 'reactions') {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#999';
-            }
+            marginBottom: '0',
+            borderBottom: '1px solid #1a1a1a',
+            backgroundColor: '#222',
+            gap: '0',
           }}
         >
-          <span style={{ fontSize: '14px', filter: activeTab === 'reactions' ? 'grayscale(0%)' : 'grayscale(100%)' }}>⚗️</span>
-          Reactions
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('molecules');
-            updateUIState({ activeTab: 'molecules' });
-          }}
-          style={{
-            flex: 1,
-            padding: '10px 12px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            borderBottom: activeTab === 'molecules' ? '2px solid #4a90e2' : '2px solid transparent',
-            color: activeTab === 'molecules' ? '#4a90e2' : '#999',
-            fontSize: '11px',
-            fontWeight: activeTab === 'molecules' ? '600' : '500',
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.3px',
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}
-          onMouseEnter={(e) => {
-            if (activeTab !== 'molecules') {
-              e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
-              e.currentTarget.style.color = '#ccc';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeTab !== 'molecules') {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#999';
-            }
-          }}
-        >
-          <span style={{ fontSize: '14px', filter: activeTab === 'molecules' ? 'grayscale(0%)' : 'grayscale(100%)' }}>🧪</span>
-          Molecules
-        </button>
-        {!uiState.userTestMode && (
           <button
             onClick={() => {
-              setActiveTab('debug');
-              updateUIState({ activeTab: 'debug' });
+              setActiveTab('reactions');
+              updateUIState({ activeTab: 'reactions' });
             }}
             style={{
               flex: 1,
               padding: '10px 12px',
               backgroundColor: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'debug' ? '2px solid #4a90e2' : '2px solid transparent',
-              color: activeTab === 'debug' ? '#4a90e2' : '#999',
+              borderBottom:
+                activeTab === 'reactions' ? '2px solid #4a90e2' : '2px solid transparent',
+              color: activeTab === 'reactions' ? '#4a90e2' : '#999',
               fontSize: '11px',
-              fontWeight: activeTab === 'debug' ? '600' : '500',
+              fontWeight: activeTab === 'reactions' ? '600' : '500',
               cursor: 'pointer',
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               textTransform: 'uppercase',
@@ -409,47 +344,156 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px'
+              gap: '6px',
             }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'debug') {
+            onMouseEnter={e => {
+              if (activeTab !== 'reactions') {
                 e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
                 e.currentTarget.style.color = '#ccc';
               }
             }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'debug') {
+            onMouseLeave={e => {
+              if (activeTab !== 'reactions') {
                 e.currentTarget.style.backgroundColor = 'transparent';
                 e.currentTarget.style.color = '#999';
               }
             }}
           >
-            <span style={{ fontSize: '14px', filter: activeTab === 'debug' ? 'grayscale(0%)' : 'grayscale(100%)' }}>🔧</span>
-            Debug
+            <span
+              style={{
+                fontSize: '14px',
+                filter: activeTab === 'reactions' ? 'grayscale(0%)' : 'grayscale(100%)',
+              }}
+            >
+              ⚗️
+            </span>
+            Reactions
           </button>
-        )}
-      </div>
+          <button
+            onClick={() => {
+              setActiveTab('molecules');
+              updateUIState({ activeTab: 'molecules' });
+            }}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderBottom:
+                activeTab === 'molecules' ? '2px solid #4a90e2' : '2px solid transparent',
+              color: activeTab === 'molecules' ? '#4a90e2' : '#999',
+              fontSize: '11px',
+              fontWeight: activeTab === 'molecules' ? '600' : '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+            onMouseEnter={e => {
+              if (activeTab !== 'molecules') {
+                e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
+                e.currentTarget.style.color = '#ccc';
+              }
+            }}
+            onMouseLeave={e => {
+              if (activeTab !== 'molecules') {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#999';
+              }
+            }}
+          >
+            <span
+              style={{
+                fontSize: '14px',
+                filter: activeTab === 'molecules' ? 'grayscale(0%)' : 'grayscale(100%)',
+              }}
+            >
+              🧪
+            </span>
+            Molecules
+          </button>
+          {!uiState.userTestMode && (
+            <button
+              onClick={() => {
+                setActiveTab('debug');
+                updateUIState({ activeTab: 'debug' });
+              }}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === 'debug' ? '2px solid #4a90e2' : '2px solid transparent',
+                color: activeTab === 'debug' ? '#4a90e2' : '#999',
+                fontSize: '11px',
+                fontWeight: activeTab === 'debug' ? '600' : '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+              onMouseEnter={e => {
+                if (activeTab !== 'debug') {
+                  e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
+                  e.currentTarget.style.color = '#ccc';
+                }
+              }}
+              onMouseLeave={e => {
+                if (activeTab !== 'debug') {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#999';
+                }
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '14px',
+                  filter: activeTab === 'debug' ? 'grayscale(0%)' : 'grayscale(100%)',
+                }}
+              >
+                🔧
+              </span>
+              Debug
+            </button>
+          )}
+        </div>
       )}
 
       {/* Search Interface - Only show on molecules tab */}
       {activeTab === 'molecules' && (
-        <div className="form-group" style={{ 
-          padding: '16px', 
-          backgroundColor: 'rgba(30, 30, 30, 0.8)', 
-          borderRadius: '12px', 
-          margin: '12px 0',
-          border: '1px solid rgba(74, 144, 226, 0.2)',
-          backdropFilter: 'blur(10px)'
-        }}>
-          <label className="form-label" style={{ 
-            color: '#e0e0e0', 
-            fontSize: '14px', 
-            fontWeight: '600', 
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
+        <div
+          className="form-group"
+          style={{
+            padding: '16px',
+            backgroundColor: 'rgba(30, 30, 30, 0.8)',
+            borderRadius: '12px',
+            margin: '12px 0',
+            border: '1px solid rgba(74, 144, 226, 0.2)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <label
+            className="form-label"
+            style={{
+              color: '#e0e0e0',
+              fontSize: '14px',
+              fontWeight: '600',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             {getSearchLabel()}
           </label>
           <div style={{ position: 'relative' }}>
@@ -465,36 +509,40 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                 width: '100%',
                 padding: '14px 16px',
                 backgroundColor: sceneReady ? '#2a2a2a' : '#1a1a1a',
-                border: sceneReady ? '2px solid rgba(74, 144, 226, 0.3)' : '2px solid rgba(102, 102, 102, 0.3)',
+                border: sceneReady
+                  ? '2px solid rgba(74, 144, 226, 0.3)'
+                  : '2px solid rgba(102, 102, 102, 0.3)',
                 color: sceneReady ? '#ffffff' : '#666666',
                 fontSize: '14px',
                 borderRadius: '10px',
                 cursor: sceneReady ? 'text' : 'not-allowed',
                 outline: 'none',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: sceneReady 
-                  ? '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)' 
+                boxShadow: sceneReady
+                  ? '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
                   : '0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.02)',
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 boxSizing: 'border-box',
                 maxWidth: '100%',
               }}
-              onFocus={(e) => {
+              onFocus={e => {
                 if (sceneReady) {
                   e.target.style.borderColor = '#4a90e2';
-                  e.target.style.boxShadow = '0 0 0 4px rgba(74, 144, 226, 0.15), 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)';
+                  e.target.style.boxShadow =
+                    '0 0 0 4px rgba(74, 144, 226, 0.15), 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)';
                   e.target.style.backgroundColor = '#2f2f2f';
                 }
               }}
-              onBlur={(e) => {
+              onBlur={e => {
                 if (sceneReady) {
                   e.target.style.borderColor = 'rgba(74, 144, 226, 0.3)';
-                  e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)';
+                  e.target.style.boxShadow =
+                    '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)';
                   e.target.style.backgroundColor = '#2a2a2a';
                 }
               }}
             />
-            
+
             {showDropdown && searchResults.length > 0 && (
               <div
                 style={{
@@ -523,21 +571,29 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                     style={{
                       padding: '12px 16px',
                       cursor: 'pointer',
-                      borderBottom: index < searchResults.length - 1 ? '1px solid rgba(74, 144, 226, 0.1)' : 'none',
+                      borderBottom:
+                        index < searchResults.length - 1
+                          ? '1px solid rgba(74, 144, 226, 0.1)'
+                          : 'none',
                       color: '#ffffff',
                       fontSize: '14px',
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      borderRadius: index === 0 ? '8px 8px 0 0' : index === searchResults.length - 1 ? '0 0 8px 8px' : '0',
+                      borderRadius:
+                        index === 0
+                          ? '8px 8px 0 0'
+                          : index === searchResults.length - 1
+                            ? '0 0 8px 8px'
+                            : '0',
                       width: '100%',
                       boxSizing: 'border-box',
                       wordWrap: 'break-word',
                       overflowWrap: 'break-word',
                     }}
-                    onMouseEnter={(e) => {
+                    onMouseEnter={e => {
                       e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.15)';
                       e.currentTarget.style.transform = 'translateX(2px)';
                     }}
-                    onMouseLeave={(e) => {
+                    onMouseLeave={e => {
                       e.currentTarget.style.backgroundColor = 'transparent';
                       e.currentTarget.style.transform = 'translateX(0)';
                     }}
@@ -551,7 +607,7 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
               </div>
             )}
           </div>
-          
+
           <div
             style={{
               color: isSearching ? '#4ade80' : sceneReady ? '#a1a1aa' : '#f87171',
@@ -565,39 +621,54 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
               gap: '6px',
             }}
           >
-            {isSearching && <div style={{ width: '12px', height: '12px', border: '2px solid #4ade80', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>}
+            {isSearching && (
+              <div
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  border: '2px solid #4ade80',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }}
+              ></div>
+            )}
             {searchStatus}
           </div>
-          
 
           {/* Auto Rotate Control */}
-          <div className="form-group" style={{ 
-            padding: '12px', 
-            backgroundColor: 'rgba(40, 40, 40, 0.6)', 
-            borderRadius: '8px', 
-            margin: '12px 0',
-            border: '1px solid rgba(74, 144, 226, 0.1)'
-          }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#e0e0e0',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}>
-              <input 
-                type="checkbox" 
-                onChange={(e) => {
+          <div
+            className="form-group"
+            style={{
+              padding: '12px',
+              backgroundColor: 'rgba(40, 40, 40, 0.6)',
+              borderRadius: '8px',
+              margin: '12px 0',
+              border: '1px solid rgba(74, 144, 226, 0.1)',
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#e0e0e0',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                onChange={e => {
                   const controls = threeJSBridge.getControls();
                   if (controls) {
                     controls.autoRotate = e.target.checked;
                   }
                 }}
-                style={{ 
+                style={{
                   accentColor: '#4a90e2',
-                  transform: 'scale(1.1)'
+                  transform: 'scale(1.1)',
                 }}
               />
               🔄 Auto Rotate
@@ -610,10 +681,10 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
       {activeTab === 'reactions' && (
         <div style={{ position: 'relative', overflow: 'visible', padding: '8px 0' }}>
           {/* Reaction Type Section */}
-          <SidebarCard 
+          <SidebarCard
             title="Reaction Type"
             right={
-              <SmartInfoBubble 
+              <SmartInfoBubble
                 term="leaving_group"
                 reactionType={uiState.reactionType as ReactionType}
                 size="small"
@@ -636,14 +707,22 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
           <SidebarCard title="Molecule Selection">
             {/* Filter molecules into substrates and nucleophiles */}
             {(() => {
-              const substrateOptions = uiState.availableMolecules.filter(mol => 
-                mol.includes('Methyl') || mol.includes('Ethyl') || mol.includes('Isopropyl') || 
-                mol.includes('Tert') || mol.includes('butyl')
+              const substrateOptions = uiState.availableMolecules.filter(
+                mol =>
+                  mol.includes('Methyl') ||
+                  mol.includes('Ethyl') ||
+                  mol.includes('Isopropyl') ||
+                  mol.includes('Tert') ||
+                  mol.includes('butyl')
               );
-              
-              const nucleophileOptions = uiState.availableMolecules.filter(mol => 
-                mol.includes('Hydroxide') || mol.includes('Cyanide') || mol.includes('Methoxide') ||
-                mol.includes('Methanol') || mol.includes('Water')
+
+              const nucleophileOptions = uiState.availableMolecules.filter(
+                mol =>
+                  mol.includes('Hydroxide') ||
+                  mol.includes('Cyanide') ||
+                  mol.includes('Methoxide') ||
+                  mol.includes('Methanol') ||
+                  mol.includes('Water')
               );
 
               return (
@@ -652,7 +731,7 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                     label="Substrate"
                     value={uiState.substrateMolecule}
                     options={substrateOptions}
-                    onChange={(value) => updateUIState({ substrateMolecule: value })}
+                    onChange={value => updateUIState({ substrateMolecule: value })}
                     reactionType={uiState.reactionType}
                     term="substrate"
                   />
@@ -661,7 +740,7 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                     label={uiState.reactionType.startsWith('e') ? 'Base' : 'Nucleophile'}
                     value={uiState.nucleophileMolecule}
                     options={nucleophileOptions}
-                    onChange={(value) => updateUIState({ nucleophileMolecule: value })}
+                    onChange={value => updateUIState({ nucleophileMolecule: value })}
                     reactionType={uiState.reactionType}
                     term={uiState.reactionType.startsWith('e') ? 'base' : 'nucleophile'}
                   />
@@ -671,25 +750,32 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
           </SidebarCard>
 
           {/* Reaction Parameters Section */}
-          <div className="form-group" style={{ 
-            marginBottom: '20px',
-            padding: '14px', 
-            backgroundColor: 'rgba(40, 40, 40, 0.4)', 
-            borderRadius: '8px', 
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-              <h4 style={{ 
-                margin: '0', 
-                fontSize: '13px', 
-                fontWeight: '700', 
-                color: '#e0e0e0',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
+          <div
+            className="form-group"
+            style={{
+              marginBottom: '20px',
+              padding: '14px',
+              backgroundColor: 'rgba(40, 40, 40, 0.4)',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}
+            >
+              <h4
+                style={{
+                  margin: '0',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  color: '#e0e0e0',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
                 Reaction Parameters
               </h4>
-              <SmartInfoBubble 
+              <SmartInfoBubble
                 term="attack_mode"
                 reactionType={uiState.reactionType as ReactionType}
                 size="small"
@@ -698,34 +784,41 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
 
             {/* Attack Mode Selector */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ 
-                fontSize: '12px', 
-                fontWeight: '600', 
-                color: '#e0e0e0',
-                marginBottom: '8px',
-                display: 'block',
-                letterSpacing: '0.3px'
-              }}>
+              <label
+                style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#e0e0e0',
+                  marginBottom: '8px',
+                  display: 'block',
+                  letterSpacing: '0.3px',
+                }}
+              >
                 Attack Mode
               </label>
-              <div style={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: '6px'
-              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                }}
+              >
                 {ATTACK_MODES.map(mode => {
-                  const isActive = uiState.approachAngle === mode.approachAngle && 
-                                 uiState.impactParameter === mode.impactParameter && 
-                                 uiState.relativeVelocity === mode.relativeVelocity;
-                  
+                  const isActive =
+                    uiState.approachAngle === mode.approachAngle &&
+                    uiState.impactParameter === mode.impactParameter &&
+                    uiState.relativeVelocity === mode.relativeVelocity;
+
                   return (
                     <button
                       key={mode.id}
-                      onClick={() => updateUIState({
-                        approachAngle: mode.approachAngle,
-                        impactParameter: mode.impactParameter,
-                        relativeVelocity: mode.relativeVelocity
-                      })}
+                      onClick={() =>
+                        updateUIState({
+                          approachAngle: mode.approachAngle,
+                          impactParameter: mode.impactParameter,
+                          relativeVelocity: mode.relativeVelocity,
+                        })
+                      }
                       style={{
                         padding: '8px 12px',
                         fontSize: '12px',
@@ -736,15 +829,15 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                         borderRadius: '6px',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        outline: 'none'
+                        outline: 'none',
                       }}
-                      onMouseEnter={(e) => {
+                      onMouseEnter={e => {
                         if (!isActive) {
                           e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.2)';
                           e.currentTarget.style.borderColor = '#4a90e2';
                         }
                       }}
-                      onMouseLeave={(e) => {
+                      onMouseLeave={e => {
                         if (!isActive) {
                           e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                           e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
@@ -756,63 +849,76 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                   );
                 })}
               </div>
-              <div style={{ 
-                fontSize: '11px', 
-                color: '#888', 
-                marginTop: '6px',
-                fontStyle: 'italic'
-              }}>
-                {ATTACK_MODES.find(mode => 
-                  uiState.approachAngle === mode.approachAngle && 
-                  uiState.impactParameter === mode.impactParameter && 
-                  uiState.relativeVelocity === mode.relativeVelocity
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: '#888',
+                  marginTop: '6px',
+                  fontStyle: 'italic',
+                }}
+              >
+                {ATTACK_MODES.find(
+                  mode =>
+                    uiState.approachAngle === mode.approachAngle &&
+                    uiState.impactParameter === mode.impactParameter &&
+                    uiState.relativeVelocity === mode.relativeVelocity
                 )?.description || 'Custom parameters selected'}
               </div>
             </div>
 
             {/* Fine-tune Parameters */}
-            <div style={{ 
-              backgroundColor: 'rgba(0, 0, 0, 0.2)', 
-              borderRadius: '6px', 
-              padding: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.05)'
-            }}>
-              <h5 style={{ 
-                margin: '0 0 10px 0', 
-                fontSize: '12px', 
-                fontWeight: '700', 
-                color: '#e0e0e0',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
+            <div
+              style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '6px',
+                padding: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+              }}
+            >
+              <h5
+                style={{
+                  margin: '0 0 10px 0',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: '#e0e0e0',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
                 Fine-Tune Parameters
               </h5>
 
               {/* Impact Parameter */}
               <div style={{ marginBottom: '12px' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginBottom: '6px'
-                }}>
-                  <label style={{ 
-                    fontSize: '12px', 
-                    fontWeight: '500', 
-                    color: '#e0e0e0' 
-                  }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '6px',
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#e0e0e0',
+                    }}
+                  >
                     Impact Parameter
                   </label>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    color: '#ccc',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    minWidth: '30px',
-                    textAlign: 'center'
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: '#ccc',
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      minWidth: '30px',
+                      textAlign: 'center',
+                    }}
+                  >
                     {uiState.impactParameter.toFixed(1)}
                   </span>
                 </div>
@@ -837,29 +943,35 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
 
               {/* Relative Velocity */}
               <div style={{ marginBottom: '12px' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginBottom: '6px'
-                }}>
-                  <label style={{ 
-                    fontSize: '12px', 
-                    fontWeight: '500', 
-                    color: '#e0e0e0' 
-                  }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '6px',
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#e0e0e0',
+                    }}
+                  >
                     Relative Velocity
                   </label>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    color: '#ccc',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    minWidth: '40px',
-                    textAlign: 'center'
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: '#ccc',
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      minWidth: '40px',
+                      textAlign: 'center',
+                    }}
+                  >
                     {uiState.relativeVelocity.toFixed(1)} m/s
                   </span>
                 </div>
@@ -884,29 +996,35 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
 
               {/* Temperature */}
               <div>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginBottom: '6px'
-                }}>
-                  <label style={{ 
-                    fontSize: '12px', 
-                    fontWeight: '500', 
-                    color: '#e0e0e0' 
-                  }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '6px',
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#e0e0e0',
+                    }}
+                  >
                     Temperature
                   </label>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    color: '#ccc',
-                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    minWidth: '30px',
-                    textAlign: 'center'
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: '#ccc',
+                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      minWidth: '30px',
+                      textAlign: 'center',
+                    }}
+                  >
                     {uiState.temperature}K
                   </span>
                 </div>
@@ -934,8 +1052,11 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
           <div className="form-group" style={{ display: 'flex', gap: '8px' }}>
             <button
               className={`btn ${
-                !uiState.reactionInProgress ? 'btn-success' : 
-                uiState.isPlaying ? 'btn-danger' : 'btn-success'
+                !uiState.reactionInProgress
+                  ? 'btn-success'
+                  : uiState.isPlaying
+                    ? 'btn-danger'
+                    : 'btn-success'
               }`}
               onClick={async () => {
                 // If no reaction started yet, start the reaction
@@ -971,22 +1092,27 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                   }
                 }
               }}
-              disabled={!uiState.reactionInProgress && (!uiState.substrateMolecule || !uiState.nucleophileMolecule)}
+              disabled={
+                !uiState.reactionInProgress &&
+                (!uiState.substrateMolecule || !uiState.nucleophileMolecule)
+              }
               style={{ flex: 1 }}
             >
-              {!uiState.reactionInProgress ? 'Start Reaction' : 
-               uiState.isPlaying ? 'Pause' : 'Play'}
+              {!uiState.reactionInProgress
+                ? 'Start Reaction'
+                : uiState.isPlaying
+                  ? 'Pause'
+                  : 'Play'}
             </button>
-            <button 
-              className="btn btn-secondary" 
+            <button
+              className="btn btn-secondary"
               onClick={() => {
-                
                 // Clear any running reaction monitoring intervals
                 sn2ReactionSystem.clearAllIntervals();
-                
+
                 // Use the new clear method from ThreeJSBridge
                 threeJSBridge.clear();
-                
+
                 // Reset all UI state to initial values
                 updateUIState({
                   isPlaying: false,
@@ -1001,7 +1127,6 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                   // Keep available molecules list so user can select new ones
                   // availableMolecules: [] // Don't clear this - keep demo molecules available
                 });
-                
               }}
               style={{ flex: 1 }}
             >
@@ -1017,19 +1142,25 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
           <CollapsibleSection title="System Status" defaultOpen={true}>
             <div style={{ padding: '12px' }}>
               <div className="form-group">
-                <h4 style={{ color: '#e0e0e0', fontSize: '14px', marginBottom: '12px' }}>Scene Status</h4>
-                <div style={{ 
-                  backgroundColor: 'rgba(40, 40, 40, 0.6)', 
-                  borderRadius: '8px', 
-                  padding: '12px',
-                  marginBottom: '16px'
-                }}>
-                  <div style={{
-                    color: !sceneReady ? '#f87171' : '#4ade80',
-                    fontSize: '14px',
-                    marginBottom: '8px',
-                    fontWeight: '500'
-                  }}>
+                <h4 style={{ color: '#e0e0e0', fontSize: '14px', marginBottom: '12px' }}>
+                  Scene Status
+                </h4>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(40, 40, 40, 0.6)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div
+                    style={{
+                      color: !sceneReady ? '#f87171' : '#4ade80',
+                      fontSize: '14px',
+                      marginBottom: '8px',
+                      fontWeight: '500',
+                    }}
+                  >
                     Status: {sceneReady ? 'Ready' : 'Not Ready'}
                   </div>
                   <button
@@ -1043,7 +1174,7 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
                       color: '#fff',
                       border: 'none',
                       borderRadius: '4px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                   >
                     Debug Scene Status
@@ -1052,21 +1183,38 @@ export const TabbedSearch: React.FC<TabbedSearchProps> = ({ externalActiveTab, o
               </div>
 
               <div className="form-group">
-                <h4 style={{ color: '#e0e0e0', fontSize: '14px', marginBottom: '12px' }}>Search Status</h4>
-                <div style={{ 
-                  backgroundColor: 'rgba(40, 40, 40, 0.6)', 
-                  borderRadius: '8px', 
-                  padding: '12px'
-                }}>
-                  <div style={{
-                    color: isSearching ? '#4ade80' : sceneReady ? '#a1a1aa' : '#f87171',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}>
-                    {isSearching && <div style={{ width: '12px', height: '12px', border: '2px solid #4ade80', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>}
+                <h4 style={{ color: '#e0e0e0', fontSize: '14px', marginBottom: '12px' }}>
+                  Search Status
+                </h4>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(40, 40, 40, 0.6)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                  }}
+                >
+                  <div
+                    style={{
+                      color: isSearching ? '#4ade80' : sceneReady ? '#a1a1aa' : '#f87171',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    {isSearching && (
+                      <div
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          border: '2px solid #4ade80',
+                          borderTop: '2px solid transparent',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite',
+                        }}
+                      ></div>
+                    )}
                     {searchStatus}
                   </div>
                 </div>

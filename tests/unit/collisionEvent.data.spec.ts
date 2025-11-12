@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
+import { describe, expect, it } from 'vitest';
 import { createCollisionEvent } from '../../src/physics/collisionEventSystem';
 
 function mol(name: string, pos: THREE.Vector3, vel: THREE.Vector3) {
@@ -33,15 +33,3 @@ describe('createCollisionEvent data correctness (unit)', () => {
     expect(evt.relativeVelocity.z).toBeCloseTo(0, 6);
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-

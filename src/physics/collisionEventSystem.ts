@@ -1,9 +1,16 @@
 import * as THREE from 'three';
 import { ReactionDetector, type ReactionResult } from '../chemistry/reactionDetector';
-import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
-import { log } from '../utils/debug';
 import { reactionEventBus } from '../events/ReactionEventBus';
+import { workerManager } from '../services/workerManager';
+import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
 import { calculateAngleProbability } from '../ui/utils/angleProbability';
+import { log } from '../utils/debug';
+import type { ChemistryWorkerMessage, SerializableReactionType } from '../workers/types';
+import {
+  deserializeReactionResult,
+  serializeCollisionData,
+  serializeReactionResult,
+} from '../workers/utils';
 // reactionDemo removed - using chemistry reaction system
 
 /**
@@ -142,12 +149,61 @@ class CollisionEventSystem {
   }
 
   /**
+   * Detect reaction using chemistry worker
+   */
+  private async detectReactionWithWorker(
+    collisionData: CollisionData,
+    reactionType: ReactionType,
+    temperature: number,
+    substrate: MoleculeGroup,
+    nucleophile: MoleculeGroup
+  ): Promise<ReactionResult> {
+    // Serialize reaction type
+    const serializedReactionType: SerializableReactionType = {
+      id: reactionType.id,
+      name: reactionType.name,
+      mechanism: reactionType.mechanism,
+      activationEnergy: reactionType.activationEnergy,
+      optimalAngle: reactionType.optimalAngle,
+      requiredFeatures: {
+        substrate: reactionType.requiredFeatures.substrate.map(f => ({
+          type: f.type,
+          atoms: f.atoms,
+          strength: f.strength,
+        })),
+        nucleophile: reactionType.requiredFeatures.nucleophile.map(f => ({
+          type: f.type,
+          atoms: f.atoms,
+          strength: f.strength,
+        })),
+      },
+    };
+
+    // Send to chemistry worker
+    const message: ChemistryWorkerMessage = {
+      type: 'detectReaction',
+      collisionData: serializeCollisionData(collisionData),
+      reactionType: serializedReactionType,
+      temperature,
+    };
+
+    const response = await workerManager.sendChemistryMessage(message);
+
+    if (response.type === 'reactionResult' && response.reactionResult) {
+      // Deserialize and restore molecule references
+      return deserializeReactionResult(response.reactionResult, substrate, nucleophile);
+    }
+
+    throw new Error('Invalid response from chemistry worker');
+  }
+
+  /**
    * Emit a collision event to all registered handlers
    * @param event - Collision event data
    */
   emitCollision(event: CollisionEvent): void {
     console.log(`🔔 emitCollision called: ${event.moleculeA.name} + ${event.moleculeB.name}`);
-    
+
     // Check if either molecule is in a reaction to prevent race conditions
     if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
       console.log(`⏸️ Skipping: molecules already reacting`);
@@ -158,11 +214,9 @@ class CollisionEventSystem {
     // Individual molecule reactionInProgress flags prevent duplicate processing per molecule pair
 
     // Check cooldown to prevent spam
-    // Pressure affects collision frequency: Rate ∝ P² for bimolecular reactions
-    // Higher pressure → shorter cooldown → more collisions per second
-    const pressureFactor = (this.pressure / 1.0) ** 2; // P² scaling for bimolecular
-    const effectiveCooldown = this.baseCollisionCooldown / pressureFactor;
-    
+    // Pressure effects removed - reactions are in solution where pressure has negligible effect
+    const effectiveCooldown = this.baseCollisionCooldown;
+
     const key = this.getCollisionKey(event.moleculeA, event.moleculeB);
     const now = performance.now() / 1000;
 
@@ -171,7 +225,9 @@ class CollisionEventSystem {
       if (lastCollision && now - lastCollision < effectiveCooldown) {
         // Debug: Log cooldown occasionally
         if (Math.random() < 0.05) {
-          console.log(`⏳ Collision in cooldown: ${key} (${((now - lastCollision) * 1000).toFixed(0)}ms ago, need ${(effectiveCooldown * 1000).toFixed(0)}ms)`);
+          console.log(
+            `⏳ Collision in cooldown: ${key} (${((now - lastCollision) * 1000).toFixed(0)}ms ago, need ${(effectiveCooldown * 1000).toFixed(0)}ms)`
+          );
         }
         return; // Still in cooldown
       }
@@ -186,7 +242,9 @@ class CollisionEventSystem {
       console.log(`✅ Reaction type is set: ${this.currentReactionType.id}`);
       this.processReactionDetection(event);
     } else {
-      console.warn('⚠️ Collision detected but no reaction type set. Set reaction type with collisionEventSystem.setReactionType()');
+      console.warn(
+        '⚠️ Collision detected but no reaction type set. Set reaction type with collisionEventSystem.setReactionType()'
+      );
     }
 
     // NOTE: Removed reactionOccurred check - allow handlers to process all reactions
@@ -206,7 +264,7 @@ class CollisionEventSystem {
   /**
    * Process reaction detection for collision event
    */
-  private processReactionDetection(event: CollisionEvent): void {
+  private async processReactionDetection(event: CollisionEvent): Promise<void> {
     if (!this.currentReactionType) {
       console.warn('⚠️ processReactionDetection called but no reaction type set');
       return;
@@ -217,9 +275,10 @@ class CollisionEventSystem {
       console.log(`⏸️ Skipping reaction detection: molecules already reacting`);
       return;
     }
-    
-    console.log(`🧪 Processing reaction detection: ${event.moleculeA.name} + ${event.moleculeB.name}, type: ${this.currentReactionType.id}, temp: ${this.temperature}K`);
 
+    console.log(
+      `🧪 Processing reaction detection: ${event.moleculeA.name} + ${event.moleculeB.name}, type: ${this.currentReactionType.id}, temp: ${this.temperature}K`
+    );
 
     // Calculate collision data
     const collisionData: CollisionData = {
@@ -233,24 +292,47 @@ class CollisionEventSystem {
       },
     };
 
-    // Calculate compatibility factor separately to include in event
-    const compatibilityFactor = this.reactionDetector.calculateCompatibilityFactor(
-      event.moleculeA,
-      event.moleculeB,
-      this.currentReactionType
-    );
+    let reactionResult: ReactionResult;
 
-    // Detect reaction
-    const relVelMag = collisionData.relativeVelocity.length();
-    console.log(`⚗️ Calling detectReaction: relVel=${relVelMag.toFixed(2)} m/s, E_collision=${collisionData.collisionEnergy.toFixed(2)} kJ/mol, E_activation=${this.currentReactionType.activationEnergy} kJ/mol, angle=${collisionData.approachAngle.toFixed(1)}°`);
-    const reactionResult = this.reactionDetector.detectReaction(
-      collisionData,
-      this.currentReactionType,
-      this.temperature,
-      event.moleculeA,
-      event.moleculeB
+    // Use chemistry worker if enabled
+    if (workerManager.isChemistryWorkerEnabled()) {
+      try {
+        reactionResult = await this.detectReactionWithWorker(
+          collisionData,
+          this.currentReactionType,
+          this.temperature,
+          event.moleculeA,
+          event.moleculeB
+        );
+      } catch (error) {
+        console.error('Chemistry worker failed, falling back to main thread:', error);
+        // Fallback to main thread
+        reactionResult = this.reactionDetector.detectReaction(
+          collisionData,
+          this.currentReactionType,
+          this.temperature,
+          event.moleculeA,
+          event.moleculeB
+        );
+      }
+    } else {
+      // Use main thread
+      const relVelMag = collisionData.relativeVelocity.length();
+      console.log(
+        `⚗️ Calling detectReaction: relVel=${relVelMag.toFixed(2)} m/s, E_collision=${collisionData.collisionEnergy.toFixed(2)} kJ/mol, E_activation=${this.currentReactionType.activationEnergy} kJ/mol, angle=${collisionData.approachAngle.toFixed(1)}°`
+      );
+      reactionResult = this.reactionDetector.detectReaction(
+        collisionData,
+        this.currentReactionType,
+        this.temperature,
+        event.moleculeA,
+        event.moleculeB
+      );
+    }
+
+    console.log(
+      `📊 Reaction result: occurs=${reactionResult.occurs}, prob=${(reactionResult.probability * 100).toFixed(2)}%`
     );
-    console.log(`📊 Reaction result: occurs=${reactionResult.occurs}, prob=${(reactionResult.probability * 100).toFixed(2)}%`);
 
     // RAPID OVERRIDE: Use UI-calculated probability instead of forcing 100%
     if (this.testingMode) {
@@ -258,15 +340,15 @@ class CollisionEventSystem {
       const uiState = (window as any).uiState;
       if (uiState) {
         const { approachAngle, relativeVelocity, temperature, reactionType } = uiState;
-        
+
         // Calculate kinetic energy from UI
         const velocityScale = relativeVelocity / 500;
         const maxKineticEnergy = 40;
         const kineticEnergy = velocityScale * maxKineticEnergy * Math.sqrt(temperature / 298);
-        
+
         // Get angle probability from UI calculation
         const angleResult = calculateAngleProbability(approachAngle, reactionType);
-        
+
         // Calculate energy probability
         const activationEnergy = 30;
         const energyRatio = kineticEnergy / activationEnergy;
@@ -276,12 +358,12 @@ class CollisionEventSystem {
         else if (energyRatio >= 0.8) energyProbability = 0.4;
         else if (energyRatio >= 0.6) energyProbability = 0.1;
         else energyProbability = 0.01;
-        
+
         // Use real calculated probability
         const realProbability = energyProbability * angleResult.probability;
         (reactionResult as any).probability = realProbability;
         (reactionResult as any).occurs = Math.random() < realProbability;
-        
+
         // UI override applied silently
       } else {
         // Fallback to original behavior if UI state not available
@@ -315,11 +397,16 @@ class CollisionEventSystem {
 
     // Log reactions for debugging
     if (reactionResult.occurs) {
-      console.log(`✅ REACTION: ${event.moleculeA.name} + ${event.moleculeB.name} (${(reactionResult.probability * 100).toFixed(1)}%)`);
+      console.log(
+        `✅ REACTION: ${event.moleculeA.name} + ${event.moleculeB.name} (${(reactionResult.probability * 100).toFixed(1)}%)`
+      );
     } else if (reactionResult.probability > 0.1) {
       // Log high-probability collisions that didn't react (for debugging)
-      if (Math.random() < 0.1) { // Log 10% of high-probability non-reactions
-        console.log(`⚠️ High prob collision (${(reactionResult.probability * 100).toFixed(1)}%) but no reaction: ${event.moleculeA.name} + ${event.moleculeB.name}`);
+      if (Math.random() < 0.1) {
+        // Log 10% of high-probability non-reactions
+        console.log(
+          `⚠️ High prob collision (${(reactionResult.probability * 100).toFixed(1)}%) but no reaction: ${event.moleculeA.name} + ${event.moleculeB.name}`
+        );
       }
     }
 
@@ -337,7 +424,6 @@ class CollisionEventSystem {
 
     // Emit reaction event if reaction occurs
     if (reactionResult.occurs) {
-
       // Set reaction flags to prevent race conditions
       event.moleculeA.reactionInProgress = true;
       event.moleculeB.reactionInProgress = true;
@@ -366,17 +452,24 @@ class CollisionEventSystem {
 
     // Debug: Log masses and velocity occasionally
     if (Math.random() < 0.01) {
-      console.log(`Energy calc: massA=${massA.toFixed(1)} AMU, massB=${massB.toFixed(1)} AMU, relVel=${relativeVelocity.toFixed(2)} m/s, temp=${this.temperature}K`);
+      console.log(
+        `Energy calc: massA=${massA.toFixed(1)} AMU, massB=${massB.toFixed(1)} AMU, relVel=${relativeVelocity.toFixed(2)} m/s, temp=${this.temperature}K`
+      );
     }
 
     // Pass current temperature to collision energy calculation for proper scaling
-    const energy = this.reactionDetector.calculateCollisionEnergy(massA, massB, relativeVelocity, this.temperature);
-    
+    const energy = this.reactionDetector.calculateCollisionEnergy(
+      massA,
+      massB,
+      relativeVelocity,
+      this.temperature
+    );
+
     // Debug: Log calculated energy occasionally
     if (Math.random() < 0.01) {
       console.log(`Calculated collision energy: ${energy.toFixed(4)} kJ/mol`);
     }
-    
+
     return energy;
   }
 
@@ -478,9 +571,9 @@ export function createCollisionEvent(molA: MoleculeGroup, molB: MoleculeGroup): 
 
   // CRITICAL FIX: Read velocities from physics bodies, not stale molecule.velocity
   // Physics bodies have the actual current velocities
-  let velA = new THREE.Vector3();
-  let velB = new THREE.Vector3();
-  
+  const velA = new THREE.Vector3();
+  const velB = new THREE.Vector3();
+
   if (molA.physicsBody) {
     const bodyA = molA.physicsBody as any;
     velA.set(bodyA.velocity.x, bodyA.velocity.y, bodyA.velocity.z);
@@ -488,7 +581,7 @@ export function createCollisionEvent(molA: MoleculeGroup, molB: MoleculeGroup): 
     // Fallback to molecule velocity if no physics body
     velA.copy(molA.velocity);
   }
-  
+
   if (molB.physicsBody) {
     const bodyB = molB.physicsBody as any;
     velB.set(bodyB.velocity.x, bodyB.velocity.y, bodyB.velocity.z);

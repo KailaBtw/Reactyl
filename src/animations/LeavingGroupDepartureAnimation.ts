@@ -4,10 +4,10 @@
  */
 
 import * as THREE from 'three';
-import { AnimationRunner, EasingFunctions, type AnimationOptions } from './AnimationUtils';
-import { log } from '../utils/debug';
-import type { MoleculeState } from '../systems/ReactionOrchestrator';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';
+import type { MoleculeState } from '../systems/ReactionOrchestrator';
+import { log } from '../utils/debug';
+import { type AnimationOptions, AnimationRunner, EasingFunctions } from './AnimationUtils';
 
 export interface LeavingGroupDepartureOptions {
   duration?: number;
@@ -40,7 +40,7 @@ export class LeavingGroupDepartureAnimation {
       easing = EasingFunctions.easeOutCubic,
       fadeOut = true,
       onComplete,
-      onStart
+      onStart,
     } = options;
 
     log('🔄 Starting leaving group departure animation...');
@@ -67,8 +67,12 @@ export class LeavingGroupDepartureAnimation {
     const targetPosition = startPosition.clone().add(departDirection.multiplyScalar(distance));
 
     // Create new leaving group molecule
-    const leavingGroupMolecule = this.createLeavingGroupMolecule(leavingGroupAtom, startPosition, substrate);
-    
+    const leavingGroupMolecule = this.createLeavingGroupMolecule(
+      leavingGroupAtom,
+      startPosition,
+      substrate
+    );
+
     // Remove the leaving group atom from the substrate
     substrate.group.remove(leavingGroupAtom);
 
@@ -81,7 +85,11 @@ export class LeavingGroupDepartureAnimation {
         leavingGroupMolecule.group.position.copy(currentPosition);
 
         // Fade out if enabled
-        if (fadeOut && leavingGroupMolecule.group.children[0] && (leavingGroupMolecule.group.children[0] as any).material) {
+        if (
+          fadeOut &&
+          leavingGroupMolecule.group.children[0] &&
+          (leavingGroupMolecule.group.children[0] as any).material
+        ) {
           const opacity = 1 - progress;
           (leavingGroupMolecule.group.children[0] as any).material.opacity = opacity;
           (leavingGroupMolecule.group.children[0] as any).material.transparent = true;
@@ -91,11 +99,11 @@ export class LeavingGroupDepartureAnimation {
         // Add physics body to the leaving group molecule and give it velocity
         this.launchLeavingGroup(leavingGroupMolecule, departDirection);
         log('✅ Leaving group departed and launched as new molecule');
-        
+
         if (onComplete) {
           onComplete();
         }
-      }
+      },
     };
 
     this.animationRunner = new AnimationRunner();
@@ -107,7 +115,11 @@ export class LeavingGroupDepartureAnimation {
   /**
    * Create a new molecule from the leaving group atom
    */
-  private createLeavingGroupMolecule(leavingGroupAtom: THREE.Object3D, position: THREE.Vector3, substrate: MoleculeState): any {
+  private createLeavingGroupMolecule(
+    leavingGroupAtom: THREE.Object3D,
+    position: THREE.Vector3,
+    substrate: MoleculeState
+  ): any {
     // Create a new molecule group
     const leavingGroupMolecule = {
       name: `${leavingGroupAtom.userData.element}⁻`,
@@ -117,17 +129,17 @@ export class LeavingGroupDepartureAnimation {
       physicsBody: null,
       molecularProperties: {
         totalMass: this.getElementMass(leavingGroupAtom.userData.element),
-        boundingRadius: 0.5
+        boundingRadius: 0.5,
       },
-      hasPhysics: false
+      hasPhysics: false,
     };
 
     // Position the molecule
     leavingGroupMolecule.group.position.copy(position);
-    
+
     // Add the atom to the molecule group
     leavingGroupMolecule.group.add(leavingGroupAtom);
-    
+
     // Add to the scene (we'll need to get the scene from somewhere)
     // For now, we'll add it to the substrate's parent scene
     if (substrate.group.parent) {
@@ -144,16 +156,21 @@ export class LeavingGroupDepartureAnimation {
   private launchLeavingGroup(leavingGroupMolecule: any, direction: THREE.Vector3): void {
     try {
       // Add physics body
-      const success = physicsEngine.addMolecule(leavingGroupMolecule, leavingGroupMolecule.molecularProperties);
+      const success = physicsEngine.addMolecule(
+        leavingGroupMolecule,
+        leavingGroupMolecule.molecularProperties
+      );
       if (success) {
         leavingGroupMolecule.hasPhysics = true;
         leavingGroupMolecule.physicsBody = physicsEngine.getPhysicsBody(leavingGroupMolecule);
-        
+
         // Give it velocity in the departure direction
         const launchVelocity = direction.clone().multiplyScalar(10); // 10 units/second
         physicsEngine.setVelocity(leavingGroupMolecule, launchVelocity);
-        
-        log(`🚀 Launched leaving group with velocity: (${launchVelocity.x.toFixed(2)}, ${launchVelocity.y.toFixed(2)}, ${launchVelocity.z.toFixed(2)})`);
+
+        log(
+          `🚀 Launched leaving group with velocity: (${launchVelocity.x.toFixed(2)}, ${launchVelocity.y.toFixed(2)}, ${launchVelocity.z.toFixed(2)})`
+        );
       }
     } catch (error) {
       log(`❌ Error launching leaving group: ${error}`);
@@ -165,10 +182,10 @@ export class LeavingGroupDepartureAnimation {
    */
   private getElementMass(element: string): number {
     const masses: Record<string, number> = {
-      'Cl': 35.45,
-      'Br': 79.90,
-      'I': 126.90,
-      'F': 19.00
+      Cl: 35.45,
+      Br: 79.9,
+      I: 126.9,
+      F: 19.0,
     };
     return masses[element] || 35.45; // Default to chlorine mass
   }
