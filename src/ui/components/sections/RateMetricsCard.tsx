@@ -21,10 +21,10 @@ export const RateMetricsCard: React.FC<RateMetricsCardProps> = ({
   const successRate = collisionCount > 0 ? (productsFormed / collisionCount) * 100 : 0;
 
   return (
-    <div className={`border-t ${themeClasses.card}`}>
-      <div className="flex flex-row gap-3 p-3 overflow-x-auto">
+    <div className={`border-t ${themeClasses.card} h-full flex flex-col overflow-hidden`}>
+      <div className="flex flex-col sm:flex-row gap-2 p-2 sm:overflow-x-auto flex-1 min-h-0 md:flex-wrap md:overflow-x-visible md:justify-center md:items-center md:content-center">
         {/* Reaction Rate Card - Orange/Red theme */}
-        <div className="flex-shrink-0 min-w-[140px] p-4 rounded-lg border border-orange-500/20 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10">
+        <div className="flex-shrink-0 w-[120px] md:w-[min(150px,calc((100%-3rem)/6))] aspect-square p-3 rounded-lg border border-orange-500/20 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10 flex flex-col justify-between">
           <div className="mb-2">
             <span
               className={`text-xs font-semibold uppercase tracking-wide ${themeClasses.textSecondary}`}
@@ -45,7 +45,7 @@ export const RateMetricsCard: React.FC<RateMetricsCardProps> = ({
         </div>
 
         {/* Remaining Reactants Card - Blue/Indigo theme */}
-        <div className="flex-shrink-0 min-w-[130px] p-4 rounded-lg border border-blue-500/20 bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10">
+        <div className="flex-shrink-0 w-[120px] md:w-[min(150px,calc((100%-3rem)/6))] aspect-square p-3 rounded-lg border border-blue-500/20 bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 flex flex-col justify-between">
           <div className="mb-2">
             <span
               className={`text-xs font-semibold uppercase tracking-wide ${themeClasses.textSecondary}`}
@@ -65,7 +65,7 @@ export const RateMetricsCard: React.FC<RateMetricsCardProps> = ({
         </div>
 
         {/* Products Formed Card - Green/Emerald theme */}
-        <div className="flex-shrink-0 min-w-[130px] p-4 rounded-lg border border-green-500/20 bg-gradient-to-br from-green-50/50 to-green-100/30 dark:from-green-950/20 dark:to-green-900/10">
+        <div className="flex-shrink-0 w-[120px] md:w-[min(150px,calc((100%-3rem)/6))] aspect-square p-3 rounded-lg border border-green-500/20 bg-gradient-to-br from-green-50/50 to-green-100/30 dark:from-green-950/20 dark:to-green-900/10 flex flex-col justify-between">
           <div className="mb-2">
             <span
               className={`text-xs font-semibold uppercase tracking-wide ${themeClasses.textSecondary}`}
@@ -78,7 +78,7 @@ export const RateMetricsCard: React.FC<RateMetricsCardProps> = ({
         </div>
 
         {/* Collisions Card - Purple/Violet theme */}
-        <div className="flex-shrink-0 min-w-[130px] p-4 rounded-lg border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10">
+        <div className="flex-shrink-0 w-[120px] md:w-[min(150px,calc((100%-3rem)/6))] aspect-square p-3 rounded-lg border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10 flex flex-col justify-between">
           <div className="mb-2">
             <span
               className={`text-xs font-semibold uppercase tracking-wide ${themeClasses.textSecondary}`}
@@ -93,7 +93,7 @@ export const RateMetricsCard: React.FC<RateMetricsCardProps> = ({
         </div>
 
         {/* Success Rate Card - Teal/Cyan theme */}
-        <div className="flex-shrink-0 min-w-[130px] p-4 rounded-lg border border-teal-500/20 bg-gradient-to-br from-teal-50/50 to-teal-100/30 dark:from-teal-950/20 dark:to-teal-900/10">
+        <div className="flex-shrink-0 w-[120px] md:w-[min(150px,calc((100%-3rem)/6))] aspect-square p-3 rounded-lg border border-teal-500/20 bg-gradient-to-br from-teal-50/50 to-teal-100/30 dark:from-teal-950/20 dark:to-teal-900/10 flex flex-col justify-between">
           <div className="mb-2">
             <span
               className={`text-xs font-semibold uppercase tracking-wide ${themeClasses.textSecondary}`}
@@ -108,7 +108,7 @@ export const RateMetricsCard: React.FC<RateMetricsCardProps> = ({
         </div>
 
         {/* Elapsed Time Card - Slate/Gray theme */}
-        <div className="flex-shrink-0 min-w-[130px] p-4 rounded-lg border border-slate-500/20 bg-gradient-to-br from-slate-50/50 to-slate-100/30 dark:from-slate-900/20 dark:to-slate-800/10">
+        <div className="flex-shrink-0 w-[120px] md:w-[min(150px,calc((100%-3rem)/6))] aspect-square p-3 rounded-lg border border-slate-500/20 bg-gradient-to-br from-slate-50/50 to-slate-100/30 dark:from-slate-900/20 dark:to-slate-800/10 flex flex-col justify-between">
           <div className="mb-2">
             <span
               className={`text-xs font-semibold uppercase tracking-wide ${themeClasses.textSecondary}`}

@@ -28,13 +28,23 @@ interface PlotlyEnergyProfileProps {
 export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
   data,
   isAnimating,
-  width = 600,
-  height = 120,
+  width: propWidth,
+  height: propHeight,
   className = '',
 }) => {
   const plotRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const plotlyInstanceRef = useRef<any>(null);
   const [isPlotReady, setIsPlotReady] = useState(false);
+  
+  // Aspect ratio: 1.5:1 (width:height) for energy profile graphs
+  const ASPECT_RATIO = 2;
+  const MAX_WIDTH = 600;
+  const MAX_HEIGHT = 400;
+  const MIN_WIDTH = 300;
+  const MIN_HEIGHT = 200;
+  
+  const [dimensions, setDimensions] = useState({ width: propWidth || 600, height: propHeight || 200 });
 
   const {
     reactantEnergy,
@@ -452,8 +462,8 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
 
     // Layout configuration
     const layout = {
-      width: width,
-      height: height,
+      width: dimensions.width,
+      height: dimensions.height,
       margin: { l: 60, r: 50, t: 20, b: 30 },
 
       xaxis: {
@@ -603,9 +613,112 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
     substrateMass,
     nucleophileMass,
     isAnimating,
-    width,
-    height,
+    dimensions.width,
+    dimensions.height,
   ]);
+
+  // Measure container size and update dimensions with aspect ratio lock
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const containerWidth = rect.width - 8; // Small padding (4px * 2)
+        const containerHeight = rect.height - 8; // Small padding (4px * 2)
+        
+        let newWidth: number;
+        let newHeight: number;
+        
+        if (propWidth && propHeight) {
+          // Use provided dimensions if both are specified
+          newWidth = propWidth;
+          newHeight = propHeight;
+        } else if (propWidth) {
+          // If only width provided, calculate height from aspect ratio
+          newWidth = propWidth;
+          newHeight = propWidth / ASPECT_RATIO;
+        } else if (propHeight) {
+          // If only height provided, calculate width from aspect ratio
+          newHeight = propHeight;
+          newWidth = propHeight * ASPECT_RATIO;
+        } else {
+          // Calculate dimensions based on container, maintaining aspect ratio
+          // Try to fit within container while maintaining aspect ratio
+          const widthFromHeight = containerHeight * ASPECT_RATIO;
+          const heightFromWidth = containerWidth / ASPECT_RATIO;
+          
+          if (widthFromHeight <= containerWidth) {
+            // Container is wider than needed, fit to height
+            newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, containerHeight));
+            newWidth = newHeight * ASPECT_RATIO;
+          } else {
+            // Container is taller than needed, fit to width
+            newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, containerWidth));
+            newHeight = newWidth / ASPECT_RATIO;
+          }
+          
+          // Ensure we don't exceed max dimensions
+          if (newWidth > MAX_WIDTH) {
+            newWidth = MAX_WIDTH;
+            newHeight = MAX_WIDTH / ASPECT_RATIO;
+          }
+          if (newHeight > MAX_HEIGHT) {
+            newHeight = MAX_HEIGHT;
+            newWidth = MAX_HEIGHT * ASPECT_RATIO;
+          }
+          
+          // Ensure we meet min dimensions
+          if (newWidth < MIN_WIDTH) {
+            newWidth = MIN_WIDTH;
+            newHeight = MIN_WIDTH / ASPECT_RATIO;
+          }
+          if (newHeight < MIN_HEIGHT) {
+            newHeight = MIN_HEIGHT;
+            newWidth = MIN_HEIGHT * ASPECT_RATIO;
+          }
+        }
+        
+        setDimensions(prev => {
+          // Only update if dimensions actually changed
+          if (prev.width !== newWidth || prev.height !== newHeight) {
+            return { width: newWidth, height: newHeight };
+          }
+          return prev;
+        });
+      }
+    };
+
+    // Initial measurement
+    updateDimensions();
+
+    // Use ResizeObserver for efficient size tracking
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions();
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    // Fallback to window resize
+    window.addEventListener('resize', updateDimensions);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [propWidth, propHeight]);
+
+  // Resize plot when dimensions change
+  useEffect(() => {
+    if (plotlyInstanceRef.current && plotRef.current && isPlotReady) {
+      // Use Plotly's resize method for smooth updates
+      try {
+        Plotly.Plots.resize(plotRef.current);
+      } catch (error: any) {
+        console.warn('Plotly resize error:', error);
+      }
+    }
+  }, [dimensions.width, dimensions.height, isPlotReady]);
 
   // Initialize and update plot
   useEffect(() => {
@@ -624,8 +737,17 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
   }, []);
 
   return (
-    <div className={`w-full ${className}`}>
-      <div ref={plotRef} className="w-full" style={{ minHeight: height }} />
+    <div ref={containerRef} className={`w-full h-full flex items-center justify-center ${className}`} style={{ padding: 0 }}>
+      <div 
+        ref={plotRef} 
+        className="w-full h-full" 
+        style={{ 
+          width: `${dimensions.width}px`,
+          height: `${dimensions.height}px`,
+          maxWidth: '100%',
+          maxHeight: '100%'
+        }} 
+      />
 
       {!isPlotReady && (
         <div className="flex items-center justify-center h-24">

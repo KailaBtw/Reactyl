@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { reactionEventBus } from '../events/ReactionEventBus';
 import { concentrationToParticleCount } from '../utils/concentrationConverter';
 import { threeJSBridge } from './bridge/ThreeJSBridge';
@@ -13,6 +13,7 @@ import {
 import { UIStateProvider } from './context/UIStateContext';
 import { calculateAngleProbability } from './utils/angleProbability';
 import { calculateActivationEnergy } from './utils/thermodynamicCalculator';
+import { physicsEngine } from '../physics/cannonPhysicsEngine';
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
@@ -280,9 +281,62 @@ export const App: React.FC = () => {
       updateUIState({ nucleophileMolecule: nucleophile }),
     onAttackAngleChange: (angle: number) => {
       updateUIState({ approachAngle: angle });
+      // If autoplay is active and simulation is playing, debounce reset and respawn
+      if (uiState.autoplay && uiState.isPlaying && uiState.simulationMode === 'single') {
+        // Debounce: wait 500ms after last change before resetting
+        if ((window as any).angleChangeTimeout) {
+          clearTimeout((window as any).angleChangeTimeout);
+        }
+        (window as any).angleChangeTimeout = setTimeout(async () => {
+          try {
+            threeJSBridge.clear();
+            await threeJSBridge.startReactionAnimation();
+            updateUIState({ isPlaying: true, reactionInProgress: true });
+          } catch (e) {
+            console.error('Failed to reset on angle change:', e);
+          }
+        }, 500);
+      }
     },
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
-    onRelativeVelocityChange: (value: number) => updateUIState({ relativeVelocity: value }),
+    onRelativeVelocityChange: (value: number) => {
+      updateUIState({ relativeVelocity: value });
+      // If autoplay is active and simulation is playing, update velocities in real-time
+      if (uiState.autoplay && uiState.isPlaying && uiState.simulationMode === 'single') {
+        // Update velocities without resetting - just speed up/slow down active scene
+        const orchestrator = (window as any).reactionOrchestrator;
+        if (orchestrator && orchestrator.isReactionInProgress()) {
+          // Update velocities for existing molecules
+          const moleculeManager = threeJSBridge.getMoleculeManager();
+          if (moleculeManager) {
+            const molecules = moleculeManager.getAllMolecules();
+            const substrate = molecules.find((m: any) => m.name === 'substrate');
+            const nucleophile = molecules.find((m: any) => m.name === 'nucleophile');
+            
+            if (substrate && nucleophile) {
+              // Recalculate velocities based on new relativeVelocity
+              const approachAngleRad = (uiState.approachAngle * Math.PI) / 180;
+              const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(
+                new THREE.Vector3(0, 1, 0),
+                approachAngleRad
+              );
+              const visualScale = 0.1; // Match the scaling used in applyEncounter
+              const scaledVelocity = value * visualScale;
+              
+              const substrateVelocity = new THREE.Vector3(0, 0, 0);
+              const nucleophileVelocity = direction.clone().multiplyScalar(scaledVelocity);
+              
+              if (substrate.hasPhysics) {
+                physicsEngine.setVelocity(substrate, substrateVelocity);
+              }
+              if (nucleophile.hasPhysics) {
+                physicsEngine.setVelocity(nucleophile, nucleophileVelocity);
+              }
+            }
+          }
+        }
+      }
+    },
     onTemperatureChange: (value: number) => updateUIState({ temperature: value }),
     autoplay: uiState.autoplay,
     onAutoplayChange: async (enabled: boolean) => {

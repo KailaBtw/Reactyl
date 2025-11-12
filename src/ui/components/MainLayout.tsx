@@ -4,6 +4,7 @@ import { concentrationToParticleCount } from '../../utils/concentrationConverter
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
+import { useResizable } from '../hooks/useResizable';
 import { ControlsHelp } from './ControlsHelp';
 import { SettingsModal } from './SettingsModal';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
@@ -69,18 +70,31 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const temperatureUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingTemperatureRef = useRef<number | null>(null);
 
-  // Resizable sidebar state
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    // Load from localStorage or default to 220px (narrower default)
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sidebarWidth');
-      return saved ? parseInt(saved, 10) : 220;
-    }
-    return 220;
+  // Resizable sidebar using hook
+  const {
+    size: sidebarWidth,
+    isResizing: isSidebarResizing,
+    handleResizeStart: handleSidebarResizeStart,
+  } = useResizable({
+    orientation: 'horizontal',
+    initialSize: 220,
+    minSize: 200,
+    maxSize: () => Math.floor(window.innerWidth * 0.5),
+    storageKey: 'sidebarWidth',
   });
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeStartXRef = useRef<number>(0);
-  const resizeStartWidthRef = useRef<number>(220);
+
+  // Resizable bottom panel using hook
+  const {
+    size: bottomPanelHeight,
+    isResizing: isBottomPanelResizing,
+    handleResizeStart: handleBottomPanelResizeStart,
+  } = useResizable({
+    orientation: 'vertical',
+    initialSize: 250,
+    minSize: 150,
+    maxSize: () => Math.floor(window.innerHeight * 0.5), // Max 50% of viewport height, similar to sidebar max width
+    storageKey: 'bottomPanelHeight',
+  });
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -90,71 +104,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       }
     };
   }, []);
-
-  // Sidebar resize handlers
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    resizeStartXRef.current = e.clientX;
-    resizeStartWidthRef.current = sidebarWidth;
-  };
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    let rafId: number | null = null;
-    let pendingWidth: number | null = null;
-
-    const updateWidth = () => {
-      if (pendingWidth !== null) {
-        setSidebarWidth(pendingWidth);
-        pendingWidth = null;
-      }
-      rafId = null;
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      // Drag left (toward center) = wider, drag right (away from center) = narrower
-      // Handle is on left edge, so dragging left moves left edge left = wider sidebar
-      const deltaX = resizeStartXRef.current - e.clientX;
-      const maxWidth = Math.floor(window.innerWidth * 0.5);
-      const newWidth = Math.max(200, Math.min(maxWidth, resizeStartWidthRef.current + deltaX));
-
-      // Throttle updates using requestAnimationFrame to prevent flashing
-      pendingWidth = newWidth;
-      if (rafId === null) {
-        rafId = requestAnimationFrame(updateWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      if (pendingWidth !== null) {
-        setSidebarWidth(pendingWidth);
-        localStorage.setItem('sidebarWidth', pendingWidth.toString());
-      } else {
-        localStorage.setItem('sidebarWidth', sidebarWidth.toString());
-      }
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-    };
-  }, [isResizing, sidebarWidth]);
 
   // Get theme-based CSS classes
   const getThemeClasses = () => {
@@ -259,8 +208,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="flex flex-col min-h-0" style={{ width: `calc(100% - ${sidebarWidth}px)` }}>
           {/* 3D Viewport */}
           <div
-            className="flex-1 relative transition-colors duration-300 min-h-0"
-            style={{ backgroundColor }}
+            className="relative transition-colors duration-300 min-h-0"
+            style={{
+              backgroundColor,
+              height: `calc(100% - ${bottomPanelHeight}px)`,
+            }}
           >
             <ThreeViewer
               ref={sceneRef}
@@ -271,38 +223,53 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           {/* Bottom Panel - Show different cards based on simulation mode */}
-          {uiState.simulationMode === 'single' ? (
-            <BottomEnergyPanel
-              thermodynamicData={{
-                activationEnergy: thermodynamicData.activationEnergy,
-                enthalpyOfFormation: thermodynamicData.enthalpyChange,
-                reactantEnergy: thermodynamicData.reactantEnergy,
-                productEnergy: thermodynamicData.productEnergy,
-                transitionStateEnergy: thermodynamicData.transitionStateEnergy,
-              }}
-              isPlaying={isPlaying}
-              themeClasses={themeClasses}
-              reactionType={currentReaction}
-              reactionProgress={0}
-              currentVelocity={relativeVelocity}
-              substrate={substrate}
-              nucleophile={nucleophile}
-              substrateMass={thermodynamicData.substrateMass}
-              nucleophileMass={thermodynamicData.nucleophileMass}
-              attackAngle={attackAngle}
-              timeScale={timeScale}
-              reactionProbability={uiState.reactionProbability}
+          <div
+            className="relative flex-shrink-0"
+            style={{ height: `${bottomPanelHeight}px`, minHeight: '150px' }}
+          >
+            {/* Resize Handle */}
+            <div
+              onMouseDown={handleBottomPanelResizeStart}
+              className={`absolute top-0 left-0 right-0 h-1 z-10 transition-colors ${
+                isBottomPanelResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
+              }`}
+              style={{ cursor: 'row-resize' }}
+              title="Drag to resize bottom panel"
             />
-          ) : (
-            <RateMetricsCard
-              reactionRate={uiState.reactionRate}
-              remainingReactants={uiState.remainingReactants}
-              productsFormed={uiState.productsFormed || 0}
-              collisionCount={(uiState as any).collisionCount || 0}
-              elapsedTime={(uiState as any).elapsedTime || 0}
-              themeClasses={themeClasses}
-            />
-          )}
+            {uiState.simulationMode === 'single' ? (
+              <BottomEnergyPanel
+                height={bottomPanelHeight}
+                thermodynamicData={{
+                  activationEnergy: thermodynamicData.activationEnergy,
+                  enthalpyOfFormation: thermodynamicData.enthalpyChange,
+                  reactantEnergy: thermodynamicData.reactantEnergy,
+                  productEnergy: thermodynamicData.productEnergy,
+                  transitionStateEnergy: thermodynamicData.transitionStateEnergy,
+                }}
+                isPlaying={isPlaying}
+                themeClasses={themeClasses}
+                reactionType={currentReaction}
+                reactionProgress={0}
+                currentVelocity={relativeVelocity}
+                substrate={substrate}
+                nucleophile={nucleophile}
+                substrateMass={thermodynamicData.substrateMass}
+                nucleophileMass={thermodynamicData.nucleophileMass}
+                attackAngle={attackAngle}
+                timeScale={timeScale}
+                reactionProbability={uiState.reactionProbability}
+              />
+            ) : (
+              <RateMetricsCard
+                reactionRate={uiState.reactionRate}
+                remainingReactants={uiState.remainingReactants}
+                productsFormed={uiState.productsFormed || 0}
+                collisionCount={(uiState as any).collisionCount || 0}
+                elapsedTime={(uiState as any).elapsedTime || 0}
+                themeClasses={themeClasses}
+              />
+            )}
+          </div>
         </div>
 
         {/* Right Control Panel - Resizable - Anchored to right edge */}
@@ -317,9 +284,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         >
           {/* Resize Handle */}
           <div
-            onMouseDown={handleResizeStart}
+            onMouseDown={handleSidebarResizeStart}
             className={`absolute left-0 top-0 bottom-0 w-2 z-10 transition-colors ${
-              isResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
+              isSidebarResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
             }`}
             style={{ cursor: 'col-resize' }}
             title="Drag to resize sidebar"

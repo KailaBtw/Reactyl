@@ -91,28 +91,45 @@ export class ReactionRateSimulator {
     // Pressure effects removed - reactions are in solution where pressure has negligible effect
     collisionEventSystem.setTemperature(temperature);
 
-    // Spawn molecule pairs with error handling
-    for (let i = 0; i < particleCount; i++) {
-      try {
-        await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
-        this.nextPairIndex = i + 1;
-      } catch (error: any) {
-        // If it's an abort error, wait a bit longer and retry once
-        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-          console.warn(`Spawn aborted for pair ${i}, waiting and retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 200));
-          try {
-            await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
-            this.nextPairIndex = i + 1;
-          } catch (retryError) {
-            console.error(`Failed to spawn molecule pair ${i} after retry:`, retryError);
-            // Continue with next pair instead of crashing
-          }
-        } else {
-          console.error(`Failed to spawn molecule pair ${i}:`, error);
-          // Continue with next pair instead of crashing
-        }
+    // Spawn molecule pairs in parallel batches for much faster initialization
+    const BATCH_SIZE = 10; // Spawn 10 pairs at a time
+    const batches: Promise<void>[] = [];
+    
+    for (let batchStart = 0; batchStart < particleCount; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, particleCount);
+      const batchPromises: Promise<void>[] = [];
+      
+      for (let i = batchStart; i < batchEnd; i++) {
+        batchPromises.push(
+          (async () => {
+            try {
+              await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
+              this.nextPairIndex = Math.max(this.nextPairIndex, i + 1);
+            } catch (error: any) {
+              // If it's an abort error, wait a bit longer and retry once
+              if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                console.warn(`Spawn aborted for pair ${i}, waiting and retrying...`);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                try {
+                  await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
+                  this.nextPairIndex = Math.max(this.nextPairIndex, i + 1);
+                } catch (retryError) {
+                  console.error(`Failed to spawn molecule pair ${i} after retry:`, retryError);
+                  // Continue with next pair instead of crashing
+                }
+              } else {
+                console.error(`Failed to spawn molecule pair ${i}:`, error);
+                // Continue with next pair instead of crashing
+              }
+            }
+          })()
+        );
       }
+      
+      // Wait for this batch to complete before starting next batch
+      // This prevents overwhelming the system while still being much faster than sequential
+      batches.push(Promise.all(batchPromises).then(() => {}));
+      await Promise.all(batchPromises);
     }
 
     this.startTime = performance.now();

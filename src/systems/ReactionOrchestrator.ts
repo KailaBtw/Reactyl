@@ -233,33 +233,35 @@ export class ReactionOrchestrator {
       let retryCount = 0;
       const maxRetries = 3;
 
+      // Load molecules in parallel for faster startup
       while (retryCount < maxRetries) {
         try {
-          log(
-            `Attempting to load substrate (attempt ${retryCount + 1}/${maxRetries}): ${params.substrateMolecule.name} (CID: ${params.substrateMolecule.cid})`
-          );
-          // Load substrate molecule
-          substrate = await this.loadMolecule(
-            params.substrateMolecule.cid,
-            params.substrateMolecule.name,
-            { x: 0, y: 0, z: 7.5 }, // Substrate positioned away from center
-            false // No random rotation for precise positioning
-          );
+          // Load both molecules in parallel instead of sequentially
+          const [substrateResult, nucleophileResult] = await Promise.all([
+            this.loadMolecule(
+              params.substrateMolecule.cid,
+              params.substrateMolecule.name,
+              { x: 0, y: 0, z: 7.5 }, // Substrate positioned away from center
+              false // No random rotation for precise positioning
+            ).catch(error => {
+              log(`Substrate load failed: ${error}`);
+              throw error;
+            }),
+            this.loadMolecule(
+              params.nucleophileMolecule.cid,
+              params.nucleophileMolecule.name,
+              { x: 0, y: 0, z: -7.5 }, // Nucleophile positioned away from center
+              false // No random rotation for precise positioning
+            ).catch(error => {
+              log(`Nucleophile load failed: ${error}`);
+              throw error;
+            }),
+          ]);
 
-          log(
-            `Attempting to load nucleophile (attempt ${retryCount + 1}/${maxRetries}): ${params.nucleophileMolecule.name} (CID: ${params.nucleophileMolecule.cid})`
-          );
-          // Load nucleophile molecule
-          nucleophile = await this.loadMolecule(
-            params.nucleophileMolecule.cid,
-            params.nucleophileMolecule.name,
-            { x: 0, y: 0, z: -7.5 }, // Nucleophile positioned away from center
-            false // No random rotation for precise positioning
-          );
+          substrate = substrateResult;
+          nucleophile = nucleophileResult;
 
-          log(
-            `Molecules loaded successfully: substrate=${!!substrate}, nucleophile=${!!nucleophile}`
-          );
+          log(`Molecules loaded successfully: substrate=${!!substrate}, nucleophile=${!!nucleophile}`);
           break; // Success, exit retry loop
         } catch (error) {
           retryCount++;
@@ -272,8 +274,8 @@ export class ReactionOrchestrator {
             );
           }
 
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Reduced wait time for faster retries
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       }
 

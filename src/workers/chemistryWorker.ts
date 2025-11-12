@@ -197,11 +197,8 @@ class ChemistryWorker {
     // 3. Calculate temperature factor (Arrhenius equation)
     const tempFactor = this.calculateTemperatureFactor(reaction, temperature);
 
-    // 4. Compatibility factor (simplified - would need molecule data for full calculation)
-    const compatibilityFactor = 1.0; // Default - full calculation requires molecule features
-
-    // 5. Combined probability
-    const probability = energyFactor * orientationFactor * tempFactor * compatibilityFactor;
+    // 4. Combined probability (energy, orientation, temperature)
+    const probability = energyFactor * orientationFactor * tempFactor;
 
     // 6. Stochastic determination
     const occurs = Math.random() < probability;

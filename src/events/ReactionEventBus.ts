@@ -53,7 +53,6 @@ export interface CollisionDetectedEvent {
     collisionEnergy: number;
     approachAngle: number;
     reactionProbability: number;
-    compatibilityFactor: number;
   };
 }
 
@@ -360,12 +359,11 @@ export class ReactionEventBus {
   emitCollisionDetected(
     collisionEnergy: number,
     approachAngle: number,
-    reactionProbability: number,
-    compatibilityFactor: number
+    reactionProbability: number
   ): void {
     this.emit({
       type: 'collision-detected',
-      data: { collisionEnergy, approachAngle, reactionProbability, compatibilityFactor },
+      data: { collisionEnergy, approachAngle, reactionProbability },
     });
   }
 

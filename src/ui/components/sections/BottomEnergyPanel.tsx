@@ -3,6 +3,7 @@ import { getReactionMasses } from '../../utils/molecularMassLookup';
 import { PlotlyEnergyProfile } from '../ScientificallyAccuratePlotlyEnergyProfile';
 
 interface BottomEnergyPanelProps {
+  height?: number;
   thermodynamicData: {
     activationEnergy: number;
     enthalpyOfFormation: number;
@@ -25,6 +26,7 @@ interface BottomEnergyPanelProps {
 }
 
 export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
+  height = 250,
   thermodynamicData,
   isPlaying,
   themeClasses,
@@ -45,35 +47,38 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
   const nucleophileMass =
     propNucleophileMass || getReactionMasses(substrate, nucleophile).nucleophileMass;
   return (
-    <div className={`border-t ${themeClasses.card}`}>
-      <div className="flex flex-col lg:flex-row gap-2 p-2">
-        {/* Energy Profile Graph */}
-        <div className="w-full">
-          <div className={`${themeClasses.card} border rounded-lg overflow-hidden h-full`}>
-            <div className={`p-2 border-b ${themeClasses.card}`}>
-              <h3 className={`text-sm font-semibold ${themeClasses.text}`}>
-                Activation Energy Profile
-              </h3>
-            </div>
-            <div className="px-1 py-0">
-              <PlotlyEnergyProfile
-                data={{
-                  reactantEnergy: thermodynamicData.reactantEnergy,
-                  activationEnergy: thermodynamicData.activationEnergy,
-                  enthalpyChange: thermodynamicData.enthalpyOfFormation,
-                  reactionProgress: reactionProgress,
-                  reactionType: reactionType,
-                  currentVelocity: currentVelocity,
-                  attackAngle: attackAngle,
-                  substrateMass: substrateMass,
-                  nucleophileMass: nucleophileMass,
-                }}
-                isAnimating={isPlaying}
-                width={450}
-                height={200}
-              />
-            </div>
-          </div>
+    <div className={`border-t ${themeClasses.card} h-full flex flex-col relative`}>
+      {/* Title in top left corner */}
+      <div className={`absolute top-2 left-3 z-10 ${themeClasses.card} px-2 py-0.5 rounded`}>
+        <h3 className={`text-xs font-semibold ${themeClasses.text} m-0`}>
+          Activation Energy Profile
+        </h3>
+      </div>
+      {/* Graph container with aspect ratio and minimal padding */}
+      <div className="flex flex-col flex-1 min-h-0 items-center justify-center p-1">
+        <div 
+          className="w-full h-full relative"
+          style={{ 
+            aspectRatio: '2 / 1',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            padding: '4px'
+          }}
+        >
+          <PlotlyEnergyProfile
+            data={{
+              reactantEnergy: thermodynamicData.reactantEnergy,
+              activationEnergy: thermodynamicData.activationEnergy,
+              enthalpyChange: thermodynamicData.enthalpyOfFormation,
+              reactionProgress: reactionProgress,
+              reactionType: reactionType,
+              currentVelocity: currentVelocity,
+              attackAngle: attackAngle,
+              substrateMass: substrateMass,
+              nucleophileMass: nucleophileMass,
+            }}
+            isAnimating={isPlaying}
+          />
         </div>
       </div>
     </div>

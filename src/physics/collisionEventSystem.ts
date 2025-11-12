@@ -414,8 +414,7 @@ class CollisionEventSystem {
     reactionEventBus.emitCollisionDetected(
       collisionData.collisionEnergy,
       collisionData.approachAngle,
-      reactionResult.probability,
-      compatibilityFactor
+      reactionResult.probability
     );
 
     // Add collision data and reaction result to event

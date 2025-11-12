@@ -53,11 +53,8 @@ export class ReactionDetector {
     // 3. Calculate temperature factor (Arrhenius equation)
     const tempFactor = reaction.probabilityFactors.temperature(temperature);
 
-    // 4. Check molecular compatibility
-    const compatibilityFactor = this.calculateCompatibilityFactor(substrate, nucleophile, reaction);
-
-    // 5. Combined probability (only factors matter if energy >= activation energy)
-    const probability = energyFactor * orientationFactor * tempFactor * compatibilityFactor;
+    // 4. Combined probability (energy, orientation, temperature)
+    const probability = energyFactor * orientationFactor * tempFactor;
 
     // 6. Stochastic determination (only if energy threshold passed)
     const occurs = Math.random() < probability;
@@ -125,58 +122,6 @@ export class ReactionDetector {
     return orientationFactor;
   }
 
-  /**
-   * Calculate molecular compatibility factor
-   */
-  calculateCompatibilityFactor(
-    substrate: MoleculeGroup,
-    nucleophile: MoleculeGroup,
-    reaction: ReactionType
-  ): number {
-    let compatibility = 1.0;
-
-    // Check substrate compatibility
-    if (substrate.reactionFeatures) {
-      const substrateCompatible = this.checkFeatureCompatibility(
-        substrate.reactionFeatures,
-        reaction.requiredFeatures.substrate
-      );
-      compatibility *= substrateCompatible;
-    }
-
-    // Check nucleophile compatibility
-    if (nucleophile.reactionFeatures) {
-      const nucleophileCompatible = this.checkFeatureCompatibility(
-        nucleophile.reactionFeatures,
-        reaction.requiredFeatures.nucleophile
-      );
-      compatibility *= nucleophileCompatible;
-    }
-
-    return compatibility;
-  }
-
-  /**
-   * Check if molecular features match required features
-   */
-  private checkFeatureCompatibility(moleculeFeatures: any, requiredFeatures: any[]): number {
-    let maxCompatibility = 0;
-
-    for (const requiredFeature of requiredFeatures) {
-      const featureType = requiredFeature.type;
-      const moleculeFeaturesOfType = moleculeFeatures[featureType] || [];
-
-      for (const moleculeFeature of moleculeFeaturesOfType) {
-        if (requiredFeature.atoms.includes(moleculeFeature.atomType)) {
-          // Calculate compatibility based on strength
-          const strength = moleculeFeature.strength / 10; // Normalize to 0-1
-          maxCompatibility = Math.max(maxCompatibility, strength);
-        }
-      }
-    }
-
-    return maxCompatibility;
-  }
 
   /**
    * Calculate collision energy from molecular masses and relative velocity
