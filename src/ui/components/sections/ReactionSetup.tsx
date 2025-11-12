@@ -58,7 +58,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
   );
 
   return (
-    <section className="p-5 border-b border-gray-200 dark:border-gray-700">
+    <section className="p-4 border-b border-gray-200 dark:border-gray-700">
       {/* Tab Header */}
       <div className="flex mb-5 border-b-2 border-gray-200 dark:border-gray-700">
         <button
@@ -203,7 +203,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               onChange={(e) => onRelativeVelocityChange(parseFloat(e.target.value))}
               className="slider w-full"
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-1`}>
               <span>Low Energy</span>
               <span>High Energy</span>
             </div>
@@ -225,7 +225,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               onChange={(e) => onTemperatureChange?.(parseInt(e.target.value))}
               className="slider w-full"
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-1`}>
               <span>-73°C</span>
               <span>25°C</span>
               <span>200°C</span>
@@ -304,9 +304,9 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               </span>
             </div>
             <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
-              {concentration.toFixed(3)} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">mol/L</span>
+              {concentration.toFixed(3)} <span className={`text-sm font-normal ${themeClasses.textSecondary}`}>mol/L</span>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 italic">
+            <div className={`text-xs ${themeClasses.textSecondary} mb-2 italic`}>
               Realistic: showing actual molecules in tiny sample volume
             </div>
             <input 
@@ -318,7 +318,7 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               onChange={(e) => onConcentrationChange?.(parseFloat(e.target.value))}
               className="slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
+            <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-2`}>
               <span>0.001 M</span>
               <span className="font-medium">Dilute</span>
               <span className="font-medium">Concentrated</span>
@@ -369,10 +369,10 @@ Where reaction rate k increases exponentially with temperature T.`}
               <div className={`text-3xl font-bold ${themeClasses.text}`}>
                 {Math.round(temperature - 273.15)}
               </div>
-              <div className={`text-lg font-medium text-gray-600 dark:text-gray-400`}>
+              <div className={`text-lg font-medium ${themeClasses.textSecondary}`}>
                 °C
               </div>
-              <div className={`text-lg font-medium text-gray-500 dark:text-gray-500 ml-2`}>
+              <div className={`text-lg font-medium ${themeClasses.textSecondary} ml-2`}>
                 ({temperature} K)
               </div>
             </div>
@@ -389,7 +389,7 @@ Where reaction rate k increases exponentially with temperature T.`}
                 <div className="mb-3 text-xs">
                   <div className="flex items-center justify-between mb-1">
                     <span className={`${themeClasses.textSecondary}`}>Molecular Kinetic Energy</span>
-                    <span className={`font-medium ${energyRatio >= 0.1 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500'}`}>
+                    <span className={`font-medium ${energyRatio >= 0.1 ? 'text-orange-600 dark:text-orange-400' : themeClasses.textSecondary}`}>
                       {kineticEnergy.toFixed(1)} kJ/mol
                     </span>
                   </div>

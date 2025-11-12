@@ -61,6 +61,9 @@ export class ReactionRateSimulator {
     pressure: number = 1.0
   ): Promise<void> {
     
+    // Wait a moment to ensure scene/backend is ready (prevents abort errors on reload)
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Store simulation parameters for dynamic adjustments
     this.substrateData = substrateData;
     this.nucleophileData = nucleophileData;
@@ -85,7 +88,6 @@ export class ReactionRateSimulator {
     if (reactionTypeObj) {
       collisionEventSystem.setReactionType(reactionTypeObj);
     } else {
-      log(`⚠️ Unknown reaction type: ${reactionType}, using sn2 as default`);
       collisionEventSystem.setReactionType(REACTION_TYPES.sn2);
     }
     
@@ -93,10 +95,28 @@ export class ReactionRateSimulator {
     collisionEventSystem.setTemperature(temperature);
     collisionEventSystem.setPressure(pressure);
     
-    // Spawn molecule pairs
+    // Spawn molecule pairs with error handling
     for (let i = 0; i < particleCount; i++) {
-      await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
-      this.nextPairIndex = i + 1;
+      try {
+        await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
+        this.nextPairIndex = i + 1;
+      } catch (error: any) {
+        // If it's an abort error, wait a bit longer and retry once
+        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+          console.warn(`⚠️ Spawn aborted for pair ${i}, waiting and retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 200));
+          try {
+            await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
+            this.nextPairIndex = i + 1;
+          } catch (retryError) {
+            console.error(`Failed to spawn molecule pair ${i} after retry:`, retryError);
+            // Continue with next pair instead of crashing
+          }
+        } else {
+          console.error(`Failed to spawn molecule pair ${i}:`, error);
+          // Continue with next pair instead of crashing
+        }
+      }
     }
     
     this.startTime = performance.now();

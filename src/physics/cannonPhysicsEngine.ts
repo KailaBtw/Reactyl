@@ -100,7 +100,6 @@ export class CannonPhysicsEngine {
         molecule.group.position.y,
         molecule.group.position.z
       );
-      log(`Physics body for ${molecule.name} created at position (${body.position.x.toFixed(2)}, ${body.position.y.toFixed(2)}, ${body.position.z.toFixed(2)})`);
       body.quaternion.set(
         molecule.group.quaternion.x,
         molecule.group.quaternion.y,
@@ -163,9 +162,7 @@ export class CannonPhysicsEngine {
       molecule.physicsBody = body;
       molecule.hasPhysics = true;
       
-      log(`Added ${molecule.name} to physics world with mass ${mass.toFixed(2)}`);
-      log(`Physics world now has ${this.world.bodies.length} bodies`);
-      log(`MoleculeBodies map has ${this.moleculeBodies.size} entries`);
+      // Debug logging removed for performance
       
       return true;
     } catch (error) {
@@ -280,10 +277,20 @@ export class CannonPhysicsEngine {
     if (this.pendingCollisionPairs.length > 0) {
       const pairs = this.pendingCollisionPairs.slice();
       this.pendingCollisionPairs.length = 0;
+      
+      // Debug: Log collision detection
+      if (pairs.length > 0) {
+        console.log(`💥 Detected ${pairs.length} collision(s) this frame`);
+      }
+      
       for (const { a, b } of pairs) {
         // Skip if either molecule began a reaction since queuing
-        if ((a as any).reactionInProgress || (b as any).reactionInProgress) continue;
+        if ((a as any).reactionInProgress || (b as any).reactionInProgress) {
+          console.log(`⏭️ Skipping collision: ${a.name} or ${b.name} already reacting`);
+          continue;
+        }
         const collisionEvent = createCollisionEvent(a, b);
+        console.log(`📡 Emitting collision: ${a.name} + ${b.name}`);
         collisionEventSystem.emitCollision(collisionEvent);
       }
     }

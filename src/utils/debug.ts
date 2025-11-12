@@ -4,7 +4,7 @@ import * as THREE from 'three';
  * Global flag to enable or disable debug log messages.
  * Set to false to prevent log messages from being printed to the console.
  */
-export const DEBUG_MODE: boolean = true;
+export const DEBUG_MODE: boolean = false;
 
 /**
  * Global flag to enable or disable lighting debug helpers.

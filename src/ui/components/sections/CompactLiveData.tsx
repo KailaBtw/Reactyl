@@ -36,7 +36,7 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
   const barBgClass = 'bg-gray-700/30';
 
   return (
-    <div className={`${themeClasses.card} border rounded-lg p-3 mb-2`}>
+    <div className={`${themeClasses.card} border rounded-lg p-3 mb-2 mx-1`}>
       <h4 className={`text-xs font-semibold ${themeClasses.text} mb-3 uppercase tracking-wide`}>
         Live Data
       </h4>

@@ -20,7 +20,7 @@ export const PressureControl: React.FC<PressureControlProps> = ({
   const pressureFactor = pressure / 1.0; // Normalized to 1 atm
   
   return (
-    <section className="p-4 rounded-lg border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10">
+    <section className="p-3 rounded-lg border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10">
       <div className="mb-3 flex items-center gap-2">
         <label className={`text-sm font-semibold ${themeClasses.text}`}>
           Pressure

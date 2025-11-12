@@ -141,15 +141,6 @@ export function drawMolecule(
 
   const molecule = moleculeManager.newMolecule(name); // Create a new molecule group using the manager.
 
-  // Debug: Log the first few atoms to see the data structure
-  log(`Molecule ${name} has ${molObject.atoms.length} atoms`);
-  if (molObject.atoms.length > 0) {
-    const firstAtom = molObject.atoms[0];
-    log(
-      `First atom: type=${firstAtom.type}, pos=(${firstAtom.position.x}, ${firstAtom.position.y}, ${firstAtom.position.z})`
-    );
-  }
-
   // ### Handle Molecule Shapes ###
 
   // Determine the center of the molecule for proper positioning.
@@ -223,7 +214,7 @@ export function drawMolecule(
     // Store molecular properties for future use
     (molecule as any).molecularProperties = molecularProperties;
 
-    log(`Rotation and physics systems initialized for ${name} with ${summary.atomCount} atoms`);
+    // Debug logging removed for performance
   } catch (error) {
     log(`Failed to initialize rotation and physics systems for ${name}: ${error}`);
   }

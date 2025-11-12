@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useUIState } from '../../context/UIStateContext';
 import { threeJSBridge } from '../../bridge/ThreeJSBridge';
 import { AVAILABLE_MOLECULES, DEFAULT_SUBSTRATE, DEFAULT_NUCLEOPHILE } from '../../constants/availableMolecules';

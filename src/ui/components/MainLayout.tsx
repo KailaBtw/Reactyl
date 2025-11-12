@@ -71,16 +71,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(() => {
-    // Load from localStorage or default to 256px (w-64)
+    // Load from localStorage or default to 220px (narrower default)
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sidebarWidth');
-      return saved ? parseInt(saved, 10) : 256;
+      return saved ? parseInt(saved, 10) : 220;
     }
-    return 256;
+    return 220;
   });
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartXRef = useRef<number>(0);
-  const resizeStartWidthRef = useRef<number>(256);
+  const resizeStartWidthRef = useRef<number>(220);
   
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -102,24 +102,23 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   useEffect(() => {
     if (!isResizing) return;
 
-    let currentWidth = resizeStartWidthRef.current;
-
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = resizeStartXRef.current - e.clientX; // Inverted: drag left = wider
-      currentWidth = Math.max(200, Math.min(500, resizeStartWidthRef.current + deltaX));
-      setSidebarWidth(currentWidth);
+      // Drag left (toward center) = wider, drag right (away from center) = narrower
+      // Handle is on left edge, so dragging left moves left edge left = wider sidebar
+      const deltaX = resizeStartXRef.current - e.clientX;
+      const maxWidth = Math.floor(window.innerWidth * 0.5);
+      const newWidth = Math.max(200, Math.min(maxWidth, resizeStartWidthRef.current + deltaX));
+      setSidebarWidth(newWidth);
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      // Save final width to localStorage
-      localStorage.setItem('sidebarWidth', currentWidth.toString());
+      localStorage.setItem('sidebarWidth', sidebarWidth.toString());
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    // Custom resize cursor - double arrow pointing left/right
-    document.body.style.cursor = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23007bff\' stroke=\'%23fff\' stroke-width=\'1.5\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize';
+    document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
 
     return () => {
@@ -128,7 +127,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [isResizing]);
+  }, [isResizing, sidebarWidth]);
 
   // Get theme-based CSS classes
   const getThemeClasses = () => {
@@ -147,7 +146,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           background: 'bg-blue-50',
           card: 'bg-blue-100 border-blue-200',
           text: 'text-blue-900',
-          textSecondary: 'text-blue-700',
+          textSecondary: 'text-blue-800', // Darker for better readability
           button: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600 shadow-md hover:shadow-lg transition-all',
           input: 'bg-white border-blue-300 text-blue-900'
         };
@@ -156,7 +155,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           background: 'bg-green-50',
           card: 'bg-green-100 border-green-200',
           text: 'text-green-900',
-          textSecondary: 'text-green-700',
+          textSecondary: 'text-green-800', // Darker for better readability
           button: 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-md hover:shadow-lg transition-all',
           input: 'bg-white border-green-300 text-green-900'
         };
@@ -165,7 +164,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           background: 'bg-purple-50',
           card: 'bg-purple-100 border-purple-200',
           text: 'text-purple-900',
-          textSecondary: 'text-purple-700',
+          textSecondary: 'text-purple-800', // Darker for better readability
           button: 'bg-violet-600 hover:bg-violet-700 text-white border-violet-600 shadow-md hover:shadow-lg transition-all',
           input: 'bg-white border-purple-300 text-purple-900'
         };
@@ -174,7 +173,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           background: 'bg-gray-50',
           card: 'bg-white border-gray-200',
           text: 'text-gray-900',
-          textSecondary: 'text-gray-600',
+          textSecondary: 'text-gray-700', // Darker for better readability
           button: 'bg-gray-200 hover:bg-gray-300 text-gray-800 border-gray-300 shadow-sm hover:shadow-md transition-all',
           input: 'bg-white border-gray-300 text-gray-900'
         };
@@ -193,8 +192,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
   return (
     <div className={`h-screen flex flex-col font-sans ${themeClasses.background}`}>
-      {/* Top Header */}
-      <header className={`flex justify-between items-center pl-2 pr-5 py-3 ${themeClasses.card} border-b shadow-sm min-h-[60px]`}>
+      {/* Top Header Bar */}
+      <header className={`flex justify-between items-center pl-2 pr-5 py-3 ${themeClasses.card} border-b shadow-sm min-h-[60px] flex-shrink-0`}>
         <div className="flex items-center gap-5">
           <img 
             src={`${(import.meta as any).env.BASE_URL}Reactyl_small.png`} 
@@ -223,10 +222,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Content Area - Full Height */}
+      <div className="flex-1 flex overflow-hidden relative">
+
         {/* Left Content Area */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0" style={{ marginRight: `${sidebarWidth}px` }}>
           {/* 3D Viewport */}
           <div 
             className="flex-1 relative transition-colors duration-300 min-h-0" 
@@ -237,27 +237,27 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
           {/* Bottom Panel - Show different cards based on simulation mode */}
           {uiState.simulationMode === 'single' ? (
-            <BottomEnergyPanel 
-              thermodynamicData={{
-                activationEnergy: thermodynamicData.activationEnergy,
-                enthalpyOfFormation: thermodynamicData.enthalpyChange,
-                reactantEnergy: thermodynamicData.reactantEnergy,
-                productEnergy: thermodynamicData.productEnergy,
-                transitionStateEnergy: thermodynamicData.transitionStateEnergy
-              }}
-              isPlaying={isPlaying}
-              themeClasses={themeClasses}
-              reactionType={currentReaction}
-              reactionProgress={0}
-              currentVelocity={relativeVelocity}
-              substrate={substrate}
-              nucleophile={nucleophile}
-              substrateMass={thermodynamicData.substrateMass}
-              nucleophileMass={thermodynamicData.nucleophileMass}
-              attackAngle={attackAngle}
-              timeScale={timeScale}
-              reactionProbability={uiState.reactionProbability}
-            />
+        <BottomEnergyPanel 
+          thermodynamicData={{
+            activationEnergy: thermodynamicData.activationEnergy,
+            enthalpyOfFormation: thermodynamicData.enthalpyChange,
+            reactantEnergy: thermodynamicData.reactantEnergy,
+            productEnergy: thermodynamicData.productEnergy,
+            transitionStateEnergy: thermodynamicData.transitionStateEnergy
+          }}
+          isPlaying={isPlaying}
+          themeClasses={themeClasses}
+          reactionType={currentReaction}
+          reactionProgress={0}
+          currentVelocity={relativeVelocity}
+          substrate={substrate}
+          nucleophile={nucleophile}
+          substrateMass={thermodynamicData.substrateMass}
+          nucleophileMass={thermodynamicData.nucleophileMass}
+          attackAngle={attackAngle}
+          timeScale={timeScale}
+          reactionProbability={uiState.reactionProbability}
+        />
           ) : (
             <RateMetricsCard
               reactionRate={uiState.reactionRate}
@@ -270,35 +270,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           )}
         </div>
 
-        {/* Right Control Panel - Resizable */}
+        {/* Right Control Panel - Resizable - Anchored to right edge */}
         <aside 
-          className={`border-l overflow-y-auto flex flex-col ${themeClasses.card} flex-shrink-0 relative`}
-          style={{ width: `${sidebarWidth}px` }}
+          className={`border-l overflow-y-auto flex flex-col ${themeClasses.card} flex-shrink-0 absolute top-0 bottom-0`}
+          style={{ 
+            width: `${sidebarWidth}px`, 
+            maxWidth: '50%',
+            right: 0,
+            height: '100%'
+          }}
         >
           {/* Resize Handle */}
           <div
             onMouseDown={handleResizeStart}
-            className={`absolute left-0 top-0 bottom-0 w-1 transition-colors ${
-              isResizing 
-                ? 'bg-blue-500' 
-                : 'bg-transparent hover:bg-blue-400/50'
+            className={`absolute left-0 top-0 bottom-0 w-2 z-10 transition-colors ${
+              isResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
             }`}
-            style={{ 
-              zIndex: 10,
-              cursor: isResizing 
-                ? 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23007bff\' stroke=\'%23fff\' stroke-width=\'1.5\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize'
-                : 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23666\' stroke=\'%23fff\' stroke-width=\'1\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize'
-            }}
+            style={{ cursor: 'col-resize' }}
             title="Drag to resize sidebar"
-          />
-          {/* Wider invisible hit area for easier grabbing */}
-          <div
-            onMouseDown={handleResizeStart}
-            className="absolute left-0 top-0 bottom-0 w-2"
-            style={{ 
-              zIndex: 10,
-              cursor: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 20 20\'%3E%3Cpath fill=\'%23666\' stroke=\'%23fff\' stroke-width=\'1\' d=\'M6 4l-2 2 2 2M14 4l2 2-2 2M10 2v16\'/%3E%3C/svg%3E") 10 10, col-resize'
-            }}
           />
           <div className="flex-1 overflow-y-auto">
           <ReactionSetup
@@ -396,7 +385,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
           {/* Pressure Control Card - Only show in rate mode */}
           {uiState.simulationMode === 'rate' && (
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
               <PressureControl
                 pressure={uiState.pressure || 1.0}
                 onPressureChange={(pressure) => {

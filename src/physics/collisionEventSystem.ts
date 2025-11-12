@@ -146,15 +146,16 @@ class CollisionEventSystem {
    * @param event - Collision event data
    */
   emitCollision(event: CollisionEvent): void {
+    console.log(`🔔 emitCollision called: ${event.moleculeA.name} + ${event.moleculeB.name}`);
+    
     // Check if either molecule is in a reaction to prevent race conditions
     if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
+      console.log(`⏸️ Skipping: molecules already reacting`);
       return;
     }
 
-    // Check if a reaction has already occurred to prevent duplicate processing
-    if (this.reactionOccurred) {
-      return;
-    }
+    // NOTE: Removed global reactionOccurred check - it was blocking all reactions after the first
+    // Individual molecule reactionInProgress flags prevent duplicate processing per molecule pair
 
     // Check cooldown to prevent spam
     // Pressure affects collision frequency: Rate ∝ P² for bimolecular reactions
@@ -168,6 +169,10 @@ class CollisionEventSystem {
     if (this.collisionHistory.has(key)) {
       const lastCollision = this.collisionHistory.get(key);
       if (lastCollision && now - lastCollision < effectiveCooldown) {
+        // Debug: Log cooldown occasionally
+        if (Math.random() < 0.05) {
+          console.log(`⏳ Collision in cooldown: ${key} (${((now - lastCollision) * 1000).toFixed(0)}ms ago, need ${(effectiveCooldown * 1000).toFixed(0)}ms)`);
+        }
         return; // Still in cooldown
       }
     }
@@ -175,17 +180,20 @@ class CollisionEventSystem {
     // Update collision history
     this.collisionHistory.set(key, now);
 
-    // Process reaction detection if reaction type is set
+    // Process reaction detection FIRST (before emitting to handlers)
+    // This ensures reactionResult is set on the event before handlers receive it
     if (this.currentReactionType) {
+      console.log(`✅ Reaction type is set: ${this.currentReactionType.id}`);
       this.processReactionDetection(event);
+    } else {
+      console.warn('⚠️ Collision detected but no reaction type set. Set reaction type with collisionEventSystem.setReactionType()');
     }
 
-    // If a reaction was confirmed during detection, do not emit further handlers this tick
-    if (this.reactionOccurred) {
-      return;
-    }
+    // NOTE: Removed reactionOccurred check - allow handlers to process all reactions
+    // Individual molecule reactionInProgress flags prevent duplicate processing per pair
 
-    // Emit to all handlers
+    // Emit to all handlers AFTER processing reaction detection
+    // This ensures event.reactionResult is available to handlers
     for (const handler of this.eventHandlers) {
       try {
         handler(event);
@@ -200,13 +208,17 @@ class CollisionEventSystem {
    */
   private processReactionDetection(event: CollisionEvent): void {
     if (!this.currentReactionType) {
+      console.warn('⚠️ processReactionDetection called but no reaction type set');
       return;
     }
 
     // Check if either molecule is already in a reaction to prevent race conditions
     if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
+      console.log(`⏸️ Skipping reaction detection: molecules already reacting`);
       return;
     }
+    
+    console.log(`🧪 Processing reaction detection: ${event.moleculeA.name} + ${event.moleculeB.name}, type: ${this.currentReactionType.id}, temp: ${this.temperature}K`);
 
 
     // Calculate collision data
@@ -229,6 +241,8 @@ class CollisionEventSystem {
     );
 
     // Detect reaction
+    const relVelMag = collisionData.relativeVelocity.length();
+    console.log(`⚗️ Calling detectReaction: relVel=${relVelMag.toFixed(2)} m/s, E_collision=${collisionData.collisionEnergy.toFixed(2)} kJ/mol, E_activation=${this.currentReactionType.activationEnergy} kJ/mol, angle=${collisionData.approachAngle.toFixed(1)}°`);
     const reactionResult = this.reactionDetector.detectReaction(
       collisionData,
       this.currentReactionType,
@@ -236,6 +250,7 @@ class CollisionEventSystem {
       event.moleculeA,
       event.moleculeB
     );
+    console.log(`📊 Reaction result: occurs=${reactionResult.occurs}, prob=${(reactionResult.probability * 100).toFixed(2)}%`);
 
     // RAPID OVERRIDE: Use UI-calculated probability instead of forcing 100%
     if (this.testingMode) {
@@ -276,11 +291,14 @@ class CollisionEventSystem {
       }
     }
 
-    // If reaction occurs, set flag to prevent duplicate processing and mark molecules busy
+    // If reaction occurs, mark molecules busy
+    // NOTE: Don't set reactionOccurred globally for rate simulation - we want multiple reactions
+    // The individual molecule reactionInProgress flags prevent duplicate processing per pair
     if (reactionResult.occurs) {
-      this.reactionOccurred = true;
       event.moleculeA.reactionInProgress = true;
       event.moleculeB.reactionInProgress = true;
+      // Only set global flag for single collision mode (prevents duplicate reactions in that mode)
+      // In rate mode, allow multiple reactions - individual molecule flags handle duplicates
     }
     // If demo easy mode is enabled, boost probability to showcase reaction
     else if (this.demoEasyMode) {
@@ -295,9 +313,14 @@ class CollisionEventSystem {
       (reactionResult as any).occurs = occurs;
     }
 
-    // Only log significant reactions
-    if (reactionResult.occurs || reactionResult.probability > 0.01) {
-      log(`Collision: ${reactionResult.occurs ? 'REACTION' : 'bounce'} (${(reactionResult.probability * 100).toFixed(1)}%)`);
+    // Log reactions for debugging
+    if (reactionResult.occurs) {
+      console.log(`✅ REACTION: ${event.moleculeA.name} + ${event.moleculeB.name} (${(reactionResult.probability * 100).toFixed(1)}%)`);
+    } else if (reactionResult.probability > 0.1) {
+      // Log high-probability collisions that didn't react (for debugging)
+      if (Math.random() < 0.1) { // Log 10% of high-probability non-reactions
+        console.log(`⚠️ High prob collision (${(reactionResult.probability * 100).toFixed(1)}%) but no reaction: ${event.moleculeA.name} + ${event.moleculeB.name}`);
+      }
     }
 
     // Emit collision detected event to unified system
@@ -321,21 +344,10 @@ class CollisionEventSystem {
 
       this.emitReactionEvent(event);
 
-      // Skip if we already spawned products in this demo session
-      if (this.hasShownDemoProduct) {
-        return;
-      }
-
-      // Generate products immediately (no timeout needed since we pause physics)
-      try {
-        this.generateReactionProducts(event);
-        this.hasShownDemoProduct = true;
-      } catch (e) {
-        console.error('Error during product generation', e);
-        // Reset flags on error
-        event.moleculeA.reactionInProgress = false;
-        event.moleculeB.reactionInProgress = false;
-      }
+      // NOTE: Product generation disabled for rate simulation mode
+      // In rate mode, we track reactions but don't generate visual products
+      // Product generation is only for single collision mode (handled by ReactionOrchestrator)
+      // The hasShownDemoProduct flag was blocking all reactions after the first - removed for rate mode
     } else {
     }
   }
@@ -352,7 +364,20 @@ class CollisionEventSystem {
         .molecularProperties?.totalMass || 1.0;
     const relativeVelocity = event.relativeVelocity.length();
 
-    return this.reactionDetector.calculateCollisionEnergy(massA, massB, relativeVelocity);
+    // Debug: Log masses and velocity occasionally
+    if (Math.random() < 0.01) {
+      console.log(`🔬 Energy calc: massA=${massA.toFixed(1)} AMU, massB=${massB.toFixed(1)} AMU, relVel=${relativeVelocity.toFixed(2)} m/s, temp=${this.temperature}K`);
+    }
+
+    // Pass current temperature to collision energy calculation for proper scaling
+    const energy = this.reactionDetector.calculateCollisionEnergy(massA, massB, relativeVelocity, this.temperature);
+    
+    // Debug: Log calculated energy occasionally
+    if (Math.random() < 0.01) {
+      console.log(`⚡ Calculated collision energy: ${energy.toFixed(4)} kJ/mol`);
+    }
+    
+    return energy;
   }
 
   /**
@@ -451,7 +476,28 @@ export function createCollisionEvent(molA: MoleculeGroup, molB: MoleculeGroup): 
     .subVectors(molB.group.position, molA.group.position)
     .normalize();
 
-  const relativeVelocity = new THREE.Vector3().subVectors(molB.velocity, molA.velocity);
+  // CRITICAL FIX: Read velocities from physics bodies, not stale molecule.velocity
+  // Physics bodies have the actual current velocities
+  let velA = new THREE.Vector3();
+  let velB = new THREE.Vector3();
+  
+  if (molA.physicsBody) {
+    const bodyA = molA.physicsBody as any;
+    velA.set(bodyA.velocity.x, bodyA.velocity.y, bodyA.velocity.z);
+  } else {
+    // Fallback to molecule velocity if no physics body
+    velA.copy(molA.velocity);
+  }
+  
+  if (molB.physicsBody) {
+    const bodyB = molB.physicsBody as any;
+    velB.set(bodyB.velocity.x, bodyB.velocity.y, bodyB.velocity.z);
+  } else {
+    // Fallback to molecule velocity if no physics body
+    velB.copy(molB.velocity);
+  }
+
+  const relativeVelocity = new THREE.Vector3().subVectors(velB, velA);
 
   return {
     moleculeA: molA,
