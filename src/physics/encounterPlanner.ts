@@ -189,14 +189,14 @@ export function applyEncounter(
   const substrateObj = moleculeManager.getMolecule(substrateName);
   const nucleophileObj = moleculeManager.getMolecule(nucleophileName);
   
-  // FAST AF OVERRIDE: Force UI velocity directly with VISUAL SCALING
+  // Override: Force UI velocity directly with visual scaling for educational display
   const uiState = (window as any).uiState;
   if (uiState && uiState.relativeVelocity) {
-    // VISUAL EDUCATION SCALING: Scale down for visible, educational movement
+    // Visual education scaling: Scale down for visible, educational movement
     const visualScale = 0.1; // Scale down by 10x for visual education
     const scaledVelocity = uiState.relativeVelocity * visualScale;
     
-    console.log(`VISUAL OVERRIDE: UI velocity ${uiState.relativeVelocity} m/s → scaled to ${scaledVelocity} m/s for education`);
+    console.log(`Visual override: UI velocity ${uiState.relativeVelocity} m/s scaled to ${scaledVelocity} m/s for education`);
     
     // Create velocity vectors based on scaled UI velocity
     const approachAngleRad = (uiState.approachAngle * Math.PI) / 180;
@@ -208,14 +208,14 @@ export function applyEncounter(
     
     if (substrateObj) {
       physicsEngine.setVelocity(substrateObj as any, substrateVelocity);
-      console.log(`FAST OVERRIDE substrate velocity:`, substrateVelocity);
+      console.log(`Override substrate velocity:`, substrateVelocity);
       // Ensure physics body is awake for movement
       const body = physicsEngine.getPhysicsBody(substrateObj);
       if (body) body.wakeUp();
     }
     if (nucleophileObj) {
       physicsEngine.setVelocity(nucleophileObj as any, nucleophileVelocity);
-      console.log(`FAST OVERRIDE nucleophile velocity:`, nucleophileVelocity);
+      console.log(`Override nucleophile velocity:`, nucleophileVelocity);
       // Ensure physics body is awake for movement
       const body = physicsEngine.getPhysicsBody(nucleophileObj);
       if (body) body.wakeUp();

@@ -103,7 +103,7 @@ export class ReactionRateSimulator {
       } catch (error: any) {
         // If it's an abort error, wait a bit longer and retry once
         if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-          console.warn(`⚠️ Spawn aborted for pair ${i}, waiting and retrying...`);
+          console.warn(`Spawn aborted for pair ${i}, waiting and retrying...`);
           await new Promise(resolve => setTimeout(resolve, 200));
           try {
             await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
@@ -216,7 +216,7 @@ export class ReactionRateSimulator {
         if (pair && !pair.reacted) {
         pair.reacted = true;
           this.reactionCount++;
-          log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
+          log(`Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
         }
       }
     }

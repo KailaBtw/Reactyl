@@ -1,10 +1,10 @@
 /**
- * Enhanced molecular structure types for StructureEngine
- * Extends existing MolecularData interface with chemical intelligence
+ * Enhanced molecular structure types for StructureEngine.
+ * Extends existing MolecularData interface with chemical intelligence.
  */
 
 import * as THREE from 'three';
-import type { MolObject, MolecularData } from './index';
+import type { MolObject } from './index';
 
 export interface ReactionConditions {
   temperature?: number;
@@ -62,7 +62,7 @@ export interface CacheMetadata {
 }
 
 /**
- * Enhanced molecular structure that extends existing MOL data
+ * Enhanced molecular structure that extends existing MOL data.
  */
 export interface EnhancedMolecularJSON {
   // Original MOL data (preserved for compatibility)
@@ -80,7 +80,7 @@ export interface EnhancedMolecularJSON {
 }
 
 /**
- * Reaction step for pathway animation
+ * Reaction step for pathway animation.
  */
 export interface ReactionStep {
   stepType: 'bond_breaking' | 'bond_forming' | 'rearrangement' | 'proton_transfer';
@@ -91,12 +91,12 @@ export interface ReactionStep {
 }
 
 /**
- * Complete reaction pathway
+ * Complete reaction pathway.
  */
 export interface ReactionPathway {
   steps: ReactionStep[];
-  intermediates: any[]; // Will be MolecularStructure when implemented
-  transitionStates: any[]; // Will be TransitionState when implemented
+  intermediates: any[]; // TODO: Will be MolecularStructure when implemented
+  transitionStates: any[]; // TODO: Will be TransitionState when implemented
   energyProfile: number[];
   rateConstants: number[];
 }

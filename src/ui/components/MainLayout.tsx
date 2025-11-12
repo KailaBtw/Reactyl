@@ -226,7 +226,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       <div className="flex-1 flex overflow-hidden relative">
 
         {/* Left Content Area */}
-        <div className="flex-1 flex flex-col min-h-0" style={{ marginRight: `${sidebarWidth}px` }}>
+        <div className="flex flex-col min-h-0" style={{ width: `calc(100% - ${sidebarWidth}px)` }}>
           {/* 3D Viewport */}
           <div 
             className="flex-1 relative transition-colors duration-300 min-h-0" 

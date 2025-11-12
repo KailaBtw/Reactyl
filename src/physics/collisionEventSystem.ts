@@ -366,7 +366,7 @@ class CollisionEventSystem {
 
     // Debug: Log masses and velocity occasionally
     if (Math.random() < 0.01) {
-      console.log(`🔬 Energy calc: massA=${massA.toFixed(1)} AMU, massB=${massB.toFixed(1)} AMU, relVel=${relativeVelocity.toFixed(2)} m/s, temp=${this.temperature}K`);
+      console.log(`Energy calc: massA=${massA.toFixed(1)} AMU, massB=${massB.toFixed(1)} AMU, relVel=${relativeVelocity.toFixed(2)} m/s, temp=${this.temperature}K`);
     }
 
     // Pass current temperature to collision energy calculation for proper scaling
@@ -374,7 +374,7 @@ class CollisionEventSystem {
     
     // Debug: Log calculated energy occasionally
     if (Math.random() < 0.01) {
-      console.log(`⚡ Calculated collision energy: ${energy.toFixed(4)} kJ/mol`);
+      console.log(`Calculated collision energy: ${energy.toFixed(4)} kJ/mol`);
     }
     
     return energy;

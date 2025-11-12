@@ -36,7 +36,7 @@ export class WaldenInversionAnimation {
       onStart
     } = options;
 
-    log('🔄 Starting Walden inversion animation (umbrella flip mechanism)...');
+    log('Starting Walden inversion animation (umbrella flip mechanism)...');
 
     // Call start callback
     if (onStart) {
@@ -48,7 +48,7 @@ export class WaldenInversionAnimation {
     const hydrogenAtoms = this.findHydrogenAtoms(substrate);
     
     if (!carbonAtom || hydrogenAtoms.length === 0) {
-      log('❌ Could not find carbon or hydrogen atoms for Walden inversion');
+      log('Could not find carbon or hydrogen atoms for Walden inversion');
       return new AnimationRunner();
     }
 
@@ -82,7 +82,7 @@ export class WaldenInversionAnimation {
         substrate.rotation.copy(substrate.group.rotation);
       },
       onComplete: () => {
-        log('✅ Walden inversion (umbrella flip) animation complete');
+        log('Walden inversion (umbrella flip) animation complete');
         if (onComplete) {
           onComplete();
         }

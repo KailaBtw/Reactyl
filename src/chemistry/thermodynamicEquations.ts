@@ -6,10 +6,11 @@
  */
 
 /**
- * Modified Morse Potential for Activation Energy Curve
+ * Activation Energy Profile Curve
  * 
- * This equation generates a scientifically accurate activation energy profile
- * that matches the shape of real chemical reaction energy diagrams.
+ * Simplified curve for educational purposes that shows the energy barrier
+ * between reactants and products. Uses a simple parabolic shape that is
+ * easier to understand than complex exponential functions.
  * 
  * @param reactionCoordinate - Position along reaction coordinate (0-1)
  * @param reactantEnergy - Starting energy level (kJ/mol)
@@ -25,17 +26,21 @@ export function calculateActivationEnergyProfile(
 ): number {
   const transitionStateEnergy = reactantEnergy + activationEnergy;
   
+  // Simple parabolic curve: energy peaks at midpoint (transition state)
+  // For educational clarity, use a simple inverted parabola
+  // E(x) = reactantEnergy + (transitionStateEnergy - reactantEnergy) * 4x(1-x) for x in [0, 0.5]
+  // Then linear interpolation from transition state to products
+  
   if (reactionCoordinate <= 0.5) {
-    // Reactants to transition state - exponential approach to barrier
+    // Reactants to transition state - parabolic rise to barrier
     const t = reactionCoordinate * 2; // normalize to 0-1 for this segment
-    // Modified Morse potential approach for realistic shape
-    return reactantEnergy + (transitionStateEnergy - reactantEnergy) * 
-           (1 - Math.exp(-3 * t)) * Math.exp(-0.8 * (1 - t));
+    // Simple parabola: peaks at t=0.5 (reactionCoordinate=0.5)
+    const parabola = 4 * t * (1 - t); // 0 at t=0, 1 at t=0.5, 0 at t=1
+    return reactantEnergy + (transitionStateEnergy - reactantEnergy) * parabola;
   } else {
-    // Transition state to products - exponential decay from barrier
+    // Transition state to products - linear descent
     const t = (reactionCoordinate - 0.5) * 2; // normalize to 0-1 for this segment
-    return transitionStateEnergy - (transitionStateEnergy - productEnergy) * 
-           (1 - Math.exp(-3 * t)) * Math.exp(-0.8 * (1 - t));
+    return transitionStateEnergy - (transitionStateEnergy - productEnergy) * t;
   }
 }
 
@@ -61,7 +66,8 @@ export function calculateArrheniusRate(
 /**
  * Kinetic Energy from Velocity
  * 
- * Converts molecular velocity to kinetic energy
+ * Converts molecular velocity to kinetic energy per mole.
+ * Formula: KE = 0.5 * m * v^2 where m is mass per mole.
  * 
  * @param velocity - Molecular velocity (m/s)
  * @param molecularMass - Molecular mass (kg/mol)
@@ -69,9 +75,11 @@ export function calculateArrheniusRate(
  */
 export function calculateKineticEnergy(
   velocity: number,
-  molecularMass: number = 0.028 // Default for CH3Br
+  molecularMass: number = 0.028 // Default for CH3Br in kg/mol
 ): number {
-  return 0.5 * molecularMass * Math.pow(velocity, 2) * 6.022e23 / 1000; // Convert to kJ/mol
+  // KE = 0.5 * m * v^2 gives energy in J/mol
+  // Convert to kJ/mol by dividing by 1000
+  return 0.5 * molecularMass * Math.pow(velocity, 2) / 1000;
 }
 
 /**
@@ -91,26 +99,29 @@ export function calculateReactionProbability(
 }
 
 /**
- * Transition State Theory Rate Constant
+ * Simplified Transition State Theory Rate Constant
  * 
- * More sophisticated rate calculation using transition state theory
+ * Simplified rate calculation for educational purposes.
+ * Uses Arrhenius equation with entropy correction, avoiding quantum mechanical constants.
  * 
  * @param activationEnergy - Activation energy (kJ/mol)
  * @param temperature - Temperature (Kelvin)
  * @param deltaS - Entropy change (J/(mol·K))
+ * @param preExponentialFactor - Pre-exponential factor (default: 1e13 s^-1)
  * @returns Rate constant (s^-1)
  */
 export function calculateTransitionStateRate(
   activationEnergy: number,
   temperature: number,
-  deltaS: number = 0
+  deltaS: number = 0,
+  preExponentialFactor: number = 1e13
 ): number {
   const R = 8.314e-3; // Gas constant in kJ/(mol·K)
-  const kB = 1.381e-23; // Boltzmann constant
-  const h = 6.626e-34; // Planck constant
   
-  const kBT = kB * temperature;
-  const rate = (kBT / h) * Math.exp(-activationEnergy / (R * temperature)) * Math.exp(deltaS / (R * 1000));
+  // Simplified approach: Arrhenius with entropy correction
+  // Avoids quantum mechanical constants (Planck's constant) for educational clarity
+  const entropyFactor = Math.exp(deltaS / (R * 1000)); // Entropy contribution
+  const rate = preExponentialFactor * Math.exp(-activationEnergy / (R * temperature)) * entropyFactor;
   
   return rate;
 }

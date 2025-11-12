@@ -38,33 +38,33 @@ export class SN2MechanismAnimation {
       onStart
     } = options;
 
-    log('🔄 Starting complete SN2 mechanism animation...');
-    log(`🔄 Substrate: ${substrate.name}, Nucleophile: ${nucleophile.name}`);
-    log(`🔄 Duration: ${duration}ms`);
+    log('Starting complete SN2 mechanism animation...');
+    log(`Substrate: ${substrate.name}, Nucleophile: ${nucleophile.name}`);
+    log(`Duration: ${duration}ms`);
 
     try {
       // Call start callback
       if (onStart) {
-        log('🔄 Calling onStart callback...');
+        log('Calling onStart callback...');
         onStart();
       }
 
     // Fast SN2 mechanism using orientation + bond abstraction
-    log('🔄 Starting fast SN2 mechanism animation...');
+    log('Starting fast SN2 mechanism animation...');
 
     // Identify leaving group atom (Cl/Br/I) and electrophilic carbon (nearest C)
     const leavingGroupAtom = this.findLeavingGroupAtom(substrate);
     const carbonAtom = this.findNearestCarbonTo(substrate, leavingGroupAtom);
     const nucAtom = this.findNucleophileAtom(nucleophile);
 
-    log(`🔄 Found atoms - Leaving group: ${!!leavingGroupAtom}, Carbon: ${!!carbonAtom}, Nucleophile: ${!!nucAtom}`);
+    log(`Found atoms - Leaving group: ${!!leavingGroupAtom}, Carbon: ${!!carbonAtom}, Nucleophile: ${!!nucAtom}`);
 
     if (!leavingGroupAtom || !carbonAtom || !nucAtom) {
-      log('❌ SN2 fast path: required atoms not found (leaving group / carbon / nucleophile)');
-      log(`❌ Debug - Leaving group: ${leavingGroupAtom ? 'found' : 'missing'}, Carbon: ${carbonAtom ? 'found' : 'missing'}, Nucleophile: ${nucAtom ? 'found' : 'missing'}`);
+      log('SN2 fast path: required atoms not found (leaving group / carbon / nucleophile)');
+      log(`Debug - Leaving group: ${leavingGroupAtom ? 'found' : 'missing'}, Carbon: ${carbonAtom ? 'found' : 'missing'}, Nucleophile: ${nucAtom ? 'found' : 'missing'}`);
       
       // Fallback: Simple rotation animation for Walden inversion
-      log('🔄 Using fallback simple rotation animation');
+      log('Using fallback simple rotation animation');
       return this.createFallbackAnimation(substrate, nucleophile, duration, onComplete);
     }
 
@@ -80,9 +80,9 @@ export class SN2MechanismAnimation {
     const originalNucleophilePos = nucleophile.group.position.clone();
 
     // Execute SN2 mechanism instantly - no animation needed
-    log('🔄 Executing instant SN2 mechanism...');
+    log('Executing instant SN2 mechanism...');
     
-    // Hide the C–X bond
+    // Hide the C-X bond
     if (typeof cIdx === 'number' && typeof lgIdx === 'number') {
       BondHandler.hideBond(substrate as any, cIdx, lgIdx);
     }
@@ -94,10 +94,10 @@ export class SN2MechanismAnimation {
     // Remove the atom from substrate (with error handling for test environment)
     try {
       substrate.group.remove(leavingGroupAtom);
-      log('🔄 Leaving group removed and made into new molecule');
+      log('Leaving group removed and made into new molecule');
     } catch (error) {
       // Handle test environment where dispatchEvent might not be available
-      log('🔄 Leaving group removed (test environment)');
+      log('Leaving group removed (test environment)');
     }
     
     // Rotate substrate for Walden inversion
@@ -113,7 +113,7 @@ export class SN2MechanismAnimation {
       );
     }
     
-    log(`🔄 Walden inversion applied - Rotation Y: ${substrate.group.rotation.y.toFixed(2)}`);
+    log(`Walden inversion applied - Rotation Y: ${substrate.group.rotation.y.toFixed(2)}`);
     
     // Launch the leaving group molecule
     const nucleophileApproachDirection = new THREE.Vector3()
@@ -131,7 +131,7 @@ export class SN2MechanismAnimation {
     // Remove old molecules and load proper product molecules (CH3OH and Br⁻) from PubChem
     this.cleanupOldMoleculesAndLoadProducts(substrate, nucleophile, originalSubstratePos, originalNucleophilePos);
     
-    log('✅ SN2 mechanism complete - instant transition to products');
+    log('SN2 mechanism complete - instant transition to products');
     
     // Call completion callback immediately
     if (onComplete) {
@@ -147,7 +147,7 @@ export class SN2MechanismAnimation {
     } as any;
     return this.animationRunner;
     } catch (error) {
-      log(`❌ Error in SN2MechanismAnimation.animate: ${error}`);
+      log(`Error in SN2MechanismAnimation.animate: ${error}`);
       console.error('SN2 mechanism animation error:', error);
       return new AnimationRunner(); // Return empty runner on error
     }
@@ -187,19 +187,19 @@ export class SN2MechanismAnimation {
     try {
       if (scene && scene.type === 'Scene') {
         scene.add(leavingGroupMolecule.group);
-        log(`🔄 Added leaving group molecule to main scene: ${leavingGroupMolecule.name}`);
+        log(`Added leaving group molecule to main scene: ${leavingGroupMolecule.name}`);
       } else if (substrate.group.parent) {
         substrate.group.parent.add(leavingGroupMolecule.group);
-        log(`🔄 Added leaving group molecule to substrate parent: ${leavingGroupMolecule.name}`);
+        log(`Added leaving group molecule to substrate parent: ${leavingGroupMolecule.name}`);
       } else {
-        log(`❌ Could not find scene to add leaving group molecule: ${leavingGroupMolecule.name}`);
+        log(`Could not find scene to add leaving group molecule: ${leavingGroupMolecule.name}`);
       }
     } catch (error) {
       // Handle test environment where scene operations might fail
-      log(`🔄 Added leaving group molecule (test environment): ${leavingGroupMolecule.name}`);
+      log(`Added leaving group molecule (test environment): ${leavingGroupMolecule.name}`);
     }
 
-    log(`🔄 Created leaving group molecule: ${leavingGroupMolecule.name}`);
+    log(`Created leaving group molecule: ${leavingGroupMolecule.name}`);
     return leavingGroupMolecule;
   }
 
@@ -218,10 +218,10 @@ export class SN2MechanismAnimation {
         const launchVelocity = direction.clone().multiplyScalar(3); // 3 units/second (slower)
         physicsEngine.setVelocity(leavingGroupMolecule, launchVelocity);
         
-        log(`🚀 Launched leaving group with velocity: (${launchVelocity.x.toFixed(2)}, ${launchVelocity.y.toFixed(2)}, ${launchVelocity.z.toFixed(2)})`);
+        log(`Launched leaving group with velocity: (${launchVelocity.x.toFixed(2)}, ${launchVelocity.y.toFixed(2)}, ${launchVelocity.z.toFixed(2)})`);
       }
     } catch (error) {
-      log(`❌ Error launching leaving group: ${error}`);
+      log(`Error launching leaving group: ${error}`);
     }
   }
 
@@ -234,7 +234,7 @@ export class SN2MechanismAnimation {
     originalSubstratePos: THREE.Vector3, 
     originalNucleophilePos: THREE.Vector3
   ): void {
-    log('🔄 Separating product molecules to prevent overlap...');
+    log('Separating product molecules to prevent overlap...');
     
     // Calculate the direction from substrate to nucleophile
     const direction = new THREE.Vector3()
@@ -253,7 +253,7 @@ export class SN2MechanismAnimation {
     this.syncPositionToPhysics(substrate);
     this.syncPositionToPhysics(nucleophile);
     
-    log(`✅ Product molecules separated - Substrate: (${substrate.group.position.x.toFixed(2)}, ${substrate.group.position.y.toFixed(2)}, ${substrate.group.position.z.toFixed(2)}), Nucleophile: (${nucleophile.group.position.x.toFixed(2)}, ${nucleophile.group.position.y.toFixed(2)}, ${nucleophile.group.position.z.toFixed(2)})`);
+    log(`Product molecules separated - Substrate: (${substrate.group.position.x.toFixed(2)}, ${substrate.group.position.y.toFixed(2)}, ${substrate.group.position.z.toFixed(2)}), Nucleophile: (${nucleophile.group.position.x.toFixed(2)}, ${nucleophile.group.position.y.toFixed(2)}, ${nucleophile.group.position.z.toFixed(2)})`);
   }
 
   /**
@@ -264,7 +264,7 @@ export class SN2MechanismAnimation {
       // Get the molecule object from the molecule manager
       const moleculeObj = (window as any).moleculeManager?.getMolecule(molecule.name);
       if (!moleculeObj) {
-        log(`⚠️ Molecule object not found for ${molecule.name}`);
+        log(`Molecule object not found for ${molecule.name}`);
         return;
       }
       
@@ -273,12 +273,12 @@ export class SN2MechanismAnimation {
       if (body) {
         const pos = molecule.group.position;
         body.position.set(pos.x, pos.y, pos.z);
-        log(`✅ Synced position to physics for ${molecule.name}`);
+        log(`Synced position to physics for ${molecule.name}`);
       } else {
-        log(`⚠️ No physics body found for ${molecule.name}`);
+        log(`No physics body found for ${molecule.name}`);
       }
     } catch (error) {
-      log(`⚠️ Failed to sync position to physics: ${error}`);
+      log(`Failed to sync position to physics: ${error}`);
     }
   }
 
@@ -290,7 +290,7 @@ export class SN2MechanismAnimation {
       // Get the molecule object from the molecule manager
       const moleculeObj = (window as any).moleculeManager?.getMolecule(substrate.name);
       if (!moleculeObj) {
-        log(`⚠️ Molecule object not found for ${substrate.name}`);
+        log(`Molecule object not found for ${substrate.name}`);
         return;
       }
       
@@ -304,12 +304,12 @@ export class SN2MechanismAnimation {
         const q = substrate.group.quaternion;
         body.quaternion.set(q.x, q.y, q.z, q.w);
         
-        log(`🔒 Locked substrate rotation to prevent physics override`);
+        log(`Locked substrate rotation to prevent physics override`);
       } else {
-        log(`⚠️ No physics body found for ${substrate.name}`);
+        log(`No physics body found for ${substrate.name}`);
       }
     } catch (error) {
-      log(`⚠️ Failed to lock substrate rotation: ${error}`);
+      log(`Failed to lock substrate rotation: ${error}`);
     }
   }
 
@@ -322,16 +322,16 @@ export class SN2MechanismAnimation {
     substratePos: THREE.Vector3,
     nucleophilePos: THREE.Vector3
   ): Promise<void> {
-    log('🔄 Cleaning up old molecules and loading proper products...');
+    log('Cleaning up old molecules and loading proper products...');
     
     try {
       // First, remove the old nucleophile (OH⁻) from the scene (with error handling for test environment)
-      log('🗑️ Removing old hydroxide ion (OH⁻)...');
+      log('Removing old hydroxide ion (OH⁻)...');
       try {
         nucleophile.group.parent?.remove(nucleophile.group);
       } catch (error) {
         // Handle test environment where remove operations might fail
-        log('🗑️ Removed old hydroxide ion (test environment)');
+        log('Removed old hydroxide ion (test environment)');
       }
       
       // Remove any stray bromide ions that might exist
@@ -340,17 +340,17 @@ export class SN2MechanismAnimation {
       // Load methanol (CH3OH) - CID: 887
       const methanolData = await this.fetchMoleculeFromPubChem('887', 'Methanol');
       if (methanolData) {
-        log('✅ Loaded methanol (CH3OH) from PubChem');
+        log('Loaded methanol (CH3OH) from PubChem');
         // Replace substrate with methanol
         this.replaceMolecule(substrate, methanolData, substratePos, 'Methanol');
       }
       
       // Create a single bromide ion (Br⁻) at the nucleophile position
-      log('🔄 Creating bromide ion (Br⁻) as simple molecule...');
+      log('Creating bromide ion (Br⁻) as simple molecule...');
       this.createBromideIon(nucleophilePos);
       
     } catch (error) {
-      log(`❌ Failed to cleanup and load product molecules: ${error}`);
+      log(`Failed to cleanup and load product molecules: ${error}`);
       // Fallback: keep existing molecules but with proper separation
     }
   }
@@ -359,12 +359,12 @@ export class SN2MechanismAnimation {
    * Remove any stray bromide ions from the scene (but keep the correct one)
    */
   private removeStrayBromideIons(): void {
-    log('🗑️ Removing stray bromide ions...');
+    log('Removing stray bromide ions...');
     
     try {
       const scene = (window as any).scene;
       if (!scene) {
-        log('❌ Scene not available for cleanup');
+        log('Scene not available for cleanup');
         return;
       }
       
@@ -388,21 +388,21 @@ export class SN2MechanismAnimation {
       objectsToRemove.forEach(obj => {
         try {
           obj.parent?.remove(obj);
-          log(`🗑️ Removed stray bromide ion`);
+          log(`Removed stray bromide ion`);
         } catch (error) {
           // Handle test environment where remove operations might fail
-          log(`🗑️ Removed stray bromide ion (test environment)`);
+          log(`Removed stray bromide ion (test environment)`);
         }
       });
       
       if (objectsToRemove.length > 0) {
-        log(`✅ Removed ${objectsToRemove.length} stray bromide ion(s)`);
+        log(`Removed ${objectsToRemove.length} stray bromide ion(s)`);
       } else {
-        log('✅ No stray bromide ions found');
+        log('No stray bromide ions found');
       }
       
     } catch (error) {
-      log(`❌ Failed to remove stray bromide ions: ${error}`);
+      log(`Failed to remove stray bromide ions: ${error}`);
     }
   }
 
@@ -418,7 +418,7 @@ export class SN2MechanismAnimation {
       const molData = await response.text();
       return { mol3d: molData, name, cid };
     } catch (error) {
-      log(`❌ Failed to fetch ${name} (CID: ${cid}): ${error}`);
+      log(`Failed to fetch ${name} (CID: ${cid}): ${error}`);
       return null;
     }
   }
@@ -432,7 +432,7 @@ export class SN2MechanismAnimation {
     position: THREE.Vector3, 
     newName: string
   ): void {
-    log(`🔄 Replacing ${oldMolecule.name} with ${newName}...`);
+    log(`Replacing ${oldMolecule.name} with ${newName}...`);
     
     try {
       // Remove old molecule from scene and physics (with error handling for test environment)
@@ -440,7 +440,7 @@ export class SN2MechanismAnimation {
         oldMolecule.group.parent?.remove(oldMolecule.group);
       } catch (error) {
         // Handle test environment where remove operations might fail
-        log(`🗑️ Removed old molecule (test environment): ${oldMolecule.name}`);
+        log(`Removed old molecule (test environment): ${oldMolecule.name}`);
       }
       
       // Also remove from physics engine if it exists
@@ -449,7 +449,7 @@ export class SN2MechanismAnimation {
         const moleculeObj = moleculeManager.getMolecule(oldMolecule.name);
         if (moleculeObj && moleculeObj.hasPhysics) {
           physicsEngine.removeMolecule(moleculeObj);
-          log(`🗑️ Removed ${oldMolecule.name} from physics engine`);
+          log(`Removed ${oldMolecule.name} from physics engine`);
         }
       }
       
@@ -467,11 +467,11 @@ export class SN2MechanismAnimation {
             newName,
             false // No random rotation
           );
-          log(`✅ Successfully replaced ${oldMolecule.name} with ${newName}`);
+          log(`Successfully replaced ${oldMolecule.name} with ${newName}`);
         });
       }
     } catch (error) {
-      log(`❌ Failed to replace molecule: ${error}`);
+      log(`Failed to replace molecule: ${error}`);
     }
   }
 
@@ -479,14 +479,14 @@ export class SN2MechanismAnimation {
    * Create a simple bromide ion with physics
    */
   private createBromideIon(position: THREE.Vector3): void {
-    log('🔄 Creating bromide ion (Br⁻) with physics...');
+    log('Creating bromide ion (Br⁻) with physics...');
     
     try {
       const scene = (window as any).scene;
       const moleculeManager = (window as any).moleculeManager;
       
       if (!scene || !moleculeManager) {
-        log('❌ Scene or molecule manager not available for bromide ion creation');
+        log('Scene or molecule manager not available for bromide ion creation');
         return;
       }
       
@@ -542,13 +542,13 @@ export class SN2MechanismAnimation {
         );
         physicsEngine.setVelocity(bromideIon, randomVelocity);
         
-        log(`✅ Created bromide ion (Br⁻) with physics at position (${offsetPosition.x.toFixed(2)}, ${offsetPosition.y.toFixed(2)}, ${offsetPosition.z.toFixed(2)})`);
+        log(`Created bromide ion (Br⁻) with physics at position (${offsetPosition.x.toFixed(2)}, ${offsetPosition.y.toFixed(2)}, ${offsetPosition.z.toFixed(2)})`);
       } else {
-        log(`⚠️ Failed to add physics to bromide ion`);
+        log(`Failed to add physics to bromide ion`);
       }
       
     } catch (error) {
-      log(`❌ Failed to create bromide ion: ${error}`);
+      log(`Failed to create bromide ion: ${error}`);
     }
   }
 
@@ -624,7 +624,7 @@ export class SN2MechanismAnimation {
     duration: number,
     onComplete?: () => void
   ): AnimationRunner {
-    log('🔄 Creating fallback SN2 animation - simple rotation and movement');
+    log('Creating fallback SN2 animation - simple rotation and movement');
     
     const initialSubstrateRotation = substrate.group.quaternion.clone();
     const initialNucleophilePosition = nucleophile.group.position.clone();
@@ -650,7 +650,7 @@ export class SN2MechanismAnimation {
         }
       },
       onComplete: () => {
-        log('✅ Fallback SN2 animation complete');
+        log('Fallback SN2 animation complete');
         if (onComplete) {
           onComplete();
         }

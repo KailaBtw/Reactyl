@@ -46,8 +46,8 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
   const xScale = (reactionCoord: number) => margin.left + reactionCoord * plotWidth;
   const yScale = (energy: number) => margin.top + plotHeight - ((energy - minEnergy) / energyRange) * plotHeight;
 
-  // Generate scientifically accurate activation energy curve
-  // Uses modified Morse potential for realistic shape
+  // Generate activation energy curve
+  // Uses simplified parabolic curve for educational clarity
   const generateActivationCurve = () => {
     const points: [number, number][] = [];
     const numPoints = 200;
@@ -57,16 +57,15 @@ export const ScientificEnergyCurve: React.FC<ScientificEnergyCurveProps> = ({
       let energy: number;
       
       if (xi <= 0.5) {
-        // Reactants to transition state - exponential approach to barrier
+        // Reactants to transition state - parabolic rise to barrier
         const t = xi * 2; // normalize to 0-1 for this segment
-        // Modified Morse potential approach
-        energy = reactantEnergy + (transitionStateEnergy - reactantEnergy) * 
-                 (1 - Math.exp(-3 * t)) * Math.exp(-0.8 * (1 - t));
+        // Simple parabola: peaks at t=0.5 (reactionCoordinate=0.5)
+        const parabola = 4 * t * (1 - t); // 0 at t=0, 1 at t=0.5, 0 at t=1
+        energy = reactantEnergy + (transitionStateEnergy - reactantEnergy) * parabola;
       } else {
-        // Transition state to products - exponential decay from barrier
+        // Transition state to products - linear descent
         const t = (xi - 0.5) * 2; // normalize to 0-1 for this segment
-        energy = transitionStateEnergy - (transitionStateEnergy - productEnergy) * 
-                 (1 - Math.exp(-3 * t)) * Math.exp(-0.8 * (1 - t));
+        energy = transitionStateEnergy - (transitionStateEnergy - productEnergy) * t;
       }
       
       points.push([xScale(xi), yScale(energy)]);

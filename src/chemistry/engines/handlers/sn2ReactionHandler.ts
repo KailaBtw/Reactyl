@@ -70,7 +70,7 @@ export class SN2ReactionHandler extends ReactionHandler {
     conditions?: ReactionConditions
   ): Promise<void> {
     if (structures.length < 2) {
-      log('⚠️ SN2 requires at least 2 molecules');
+      log('SN2 requires at least 2 molecules');
       return;
     }
     
@@ -82,11 +82,11 @@ export class SN2ReactionHandler extends ReactionHandler {
     const leavingGroup = this.findLeavingGroup(substrate, electrophile?.atomIndex);
     
     if (!electrophile || !nucleophileCenter || !leavingGroup) {
-      log('⚠️ Could not find suitable SN2 reaction sites');
+      log('Could not find suitable SN2 reaction sites');
       return;
     }
     
-    log(`🎯 SN2 orientation: electrophile C${electrophile.atomIndex}, nucleophile ${nucleophileCenter.atomIndex}, leaving group ${leavingGroup.atomIndex}`);
+    log(`SN2 orientation: electrophile C${electrophile.atomIndex}, nucleophile ${nucleophileCenter.atomIndex}, leaving group ${leavingGroup.atomIndex}`);
     
     // Calculate backside attack vector (180° from leaving group)
     const attackVector = this.calculateBacksideAttackVector(
@@ -112,7 +112,7 @@ export class SN2ReactionHandler extends ReactionHandler {
       substrate.atoms[electrophile.atomIndex].position
     );
     
-    log('✅ SN2 orientation complete');
+    log('SN2 orientation complete');
   }
   
   /**
@@ -480,7 +480,7 @@ export class SN2ReactionHandler extends ReactionHandler {
     targetPos: { x: number; y: number; z: number }
   ): Promise<void> {
     // Simple implementation - could be enhanced with proper quaternion rotation
-    log(`🎯 Orienting atom ${atomIndex} toward target position`);
+    log(`Orienting atom ${atomIndex} toward target position`);
     // Implementation would involve rotating the entire molecule
     // to align the specified atom with the target direction
   }

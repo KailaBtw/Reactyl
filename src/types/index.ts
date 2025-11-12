@@ -1,8 +1,6 @@
 import type * as THREE from 'three';
 
-// ===============================
-//  Core Types
-// ===============================
+// Core Types
 
 export interface Position {
   x: number;
@@ -58,9 +56,7 @@ export interface MoleculesEnum {
   [key: string]: Molecule;
 }
 
-// ===============================
-//  Molecule Management Types
-// ===============================
+// Molecule Management Types
 
 export interface MoleculeGroup {
   name: string;
@@ -73,7 +69,7 @@ export interface MoleculeGroup {
   radius: number;
   molObject: MolObject | null;
   // rotationController removed - using physics engine for rotation
-  molecularProperties?: any; // Will be MolecularProperties type
+  molecularProperties?: any; // TODO: Will be MolecularProperties type
   physicsBody?: any; // CANNON.Body reference for physics integration
   hasPhysics?: boolean; // Flag to indicate if molecule is in physics world
   reactionInProgress?: boolean; // Flag to prevent race conditions during reactions
@@ -96,9 +92,7 @@ export interface MoleculeManager {
   clearAllMolecules: () => void;
 }
 
-// ===============================
-//  Spatial Grid Types
-// ===============================
+// Spatial Grid Types
 
 export interface GridStats {
   totalCells: number;
@@ -114,9 +108,7 @@ export interface GridCellCoordinates {
   z: number;
 }
 
-// ===============================
-//  GUI Types
-// ===============================
+// GUI Types
 
 export interface AutoRotate {
   x: { switch?: boolean };
@@ -139,9 +131,7 @@ export interface ValueDisplay {
   value: string;
 }
 
-// ===============================
-//  Reaction System Types
-// ===============================
+// Reaction System Types
 
 export interface ReactionType {
   id: string;
@@ -151,8 +141,8 @@ export interface ReactionType {
     substrate: MolecularFeature[];
     nucleophile: MolecularFeature[];
   };
-  activationEnergy: number; // kJ/mol
-  optimalAngle: number; // degrees
+  activationEnergy: number; // in kJ/mol
+  optimalAngle: number; // in degrees
   probabilityFactors: {
     temperature: (T: number) => number;
     orientation: (angle: number) => number;
@@ -161,8 +151,8 @@ export interface ReactionType {
 
 export interface MolecularFeature {
   type: 'leaving_group' | 'nucleophile' | 'electrophile' | 'double_bond';
-  atoms: string[]; // atom types that qualify
-  strength: number; // relative reactivity
+  atoms: string[]; // Atom types that qualify
+  strength: number; // Relative reactivity
 }
 
 export interface ReactionCandidate {
@@ -181,8 +171,8 @@ export interface ReactionFeatures {
 
 export interface CollisionData {
   relativeVelocity: THREE.Vector3;
-  collisionEnergy: number; // kJ/mol
-  approachAngle: number; // degrees
+  collisionEnergy: number; // in kJ/mol
+  approachAngle: number; // in degrees
   impactPoint: THREE.Vector3;
   moleculeOrientations: {
     substrate: THREE.Quaternion;
@@ -193,13 +183,13 @@ export interface CollisionData {
 export interface CollisionSetup {
   substrate: MoleculeGroup;
   nucleophile: MoleculeGroup;
-  approachAngle: number; // degrees
+  approachAngle: number; // in degrees
   impactParameter: number; // offset from center
-  relativeVelocity: number; // m/s
-  temperature: number; // Kelvin
+  relativeVelocity: number; // in m/s
+  temperature: number; // in Kelvin
 }
 
-export interface ReactionStep {
+export interface ReactionAnimationStep {
   time: number; // 0 to 1
   bondChanges: {
     breaking: { atoms: [number, number]; strength: number }[];
@@ -210,13 +200,13 @@ export interface ReactionStep {
 }
 
 export interface EnvironmentParameters {
-  temperature: number; // Kelvin
-  pressure: number; // atm
+  temperature: number; // in Kelvin
+  pressure: number; // in atm
   solvent: 'polar' | 'nonpolar' | 'protic' | 'aprotic';
   catalyst: string | null;
-  collisionEnergy: number; // kJ/mol
-  approachAngle: number; // degrees
-  impactParameter: number; // Angstroms
+  collisionEnergy: number; // in kJ/mol
+  approachAngle: number; // in degrees
+  impactParameter: number; // in Angstroms
 }
 
 export interface MolecularData {
@@ -237,7 +227,7 @@ export interface MolecularData {
 }
 
 export interface ReactivityData {
-  nucleophilicity: number; // 0-10 scale
-  electrophilicity: number; // 0-10 scale
-  leavingGroupAbility: number; // 0-10 scale
+  nucleophilicity: number; // on a 0-10 scale
+  electrophilicity: number; // on a 0-10 scale
+  leavingGroupAbility: number; // on a 0-10 scale
 }

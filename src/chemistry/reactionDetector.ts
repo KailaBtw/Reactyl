@@ -74,7 +74,7 @@ export class ReactionDetector {
     if(occurs) { // hide non-rxns
       // Only log if reaction occurs or probability is significant
       if (occurs || probability > 0.01) {
-        log(`Reaction: ${occurs ? '✓' : '✗'} ${(probability * 100).toFixed(1)}%`);
+        log(`Reaction: ${occurs ? 'YES' : 'NO'} ${(probability * 100).toFixed(1)}%`);
       }
     }
 
@@ -180,15 +180,8 @@ export class ReactionDetector {
   /**
    * Calculate collision energy from molecular masses and relative velocity
    * 
-   * SCIENTIFIC CORRECTION:
-   * - Masses are in AMU (atomic mass units), NOT kg/mol
-   * - Must convert AMU → kg before calculating kinetic energy
-   * - Formula: E_collision = 0.5 * μ * v² where μ = reduced mass in kg
-   * - Then convert to kJ/mol: E (kJ/mol) = E (J) * N_A / 1000
-   * 
-   * CRITICAL: Visualization speeds are scaled down for display (base ~12 m/s)
-   * Real molecular speeds at room temp are ~300-1000 m/s. We need to scale up
-   * visualization velocities to real speeds for accurate energy calculations.
+   * Uses reduced mass and scales visualization speeds to real molecular speeds
+   * based on temperature using Maxwell-Boltzmann distribution.
    * 
    * @param mass1 - Mass of molecule 1 in AMU
    * @param mass2 - Mass of molecule 2 in AMU  
@@ -197,40 +190,27 @@ export class ReactionDetector {
    * @returns Collision energy in kJ/mol
    */
   calculateCollisionEnergy(mass1: number, mass2: number, relativeVelocity: number, temperature: number = 298): number {
-    // Constants
     const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
-    
-    // VISUALIZATION SCALING: Convert visualization speeds to real molecular speeds
-    // Visualization speeds are scaled down for display (base ~12 m/s at 298K)
-    // Real molecular speeds follow Maxwell-Boltzmann: v_rms = sqrt(3kT/m)
-    // We need to scale visualization velocity to match real velocity at current temperature
-    const avgMass = (mass1 + mass2) / 2;
     const BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
-    const REFERENCE_TEMP = 298; // K (where visualization base speed is defined)
+    const REFERENCE_TEMP = 298; // K
     const VISUALIZATION_BASE_SPEED = 12.0; // m/s at reference temp
     
-    // Calculate real RMS velocity at current temperature for average mass
+    // Scale visualization velocity to real molecular velocity using Maxwell-Boltzmann
+    // Real molecular speeds: v_rms = sqrt(3kT/m)
+    const avgMass = (mass1 + mass2) / 2;
     const mass_kg = avgMass * AMU_TO_KG;
     const realVrms_at_T = Math.sqrt((3 * BOLTZMANN_CONSTANT * temperature) / mass_kg);
-    
-    // Scaling factor: real speed at current temp / visualization speed
-    // Visualization speed already scales with temp proportionally, so we scale by this ratio
-    const velocityScaleFactor = realVrms_at_T / VISUALIZATION_BASE_SPEED;
-    
-    // Scale visualization velocity to real velocity at current temperature
+    const realVrms_at_ref = Math.sqrt((3 * BOLTZMANN_CONSTANT * REFERENCE_TEMP) / mass_kg);
+    const velocityScaleFactor = realVrms_at_T / realVrms_at_ref;
     const realVelocity = relativeVelocity * velocityScaleFactor;
     
-    // Convert masses from AMU to kg
+    // Calculate collision energy using reduced mass
     const mass1_kg = mass1 * AMU_TO_KG;
     const mass2_kg = mass2 * AMU_TO_KG;
-    
-    // Calculate reduced mass in kg: μ = (m1 * m2) / (m1 + m2)
     const reducedMass_kg = (mass1_kg * mass2_kg) / (mass1_kg + mass2_kg);
-    
-    // Calculate kinetic energy in Joules using REAL velocity: E = 0.5 * μ * v²
     const kineticEnergy_J = 0.5 * reducedMass_kg * realVelocity ** 2;
     
-    // Convert to kJ/mol: multiply by Avogadro's number and divide by 1000
+    // Convert to kJ/mol
     const energy_kJ_per_mol = (kineticEnergy_J * this.N_A) / 1000;
 
     return energy_kJ_per_mol;
