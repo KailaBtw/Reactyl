@@ -624,8 +624,8 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const containerWidth = rect.width - 8; // Small padding (4px * 2)
-        const containerHeight = rect.height - 8; // Small padding (4px * 2)
+        const containerWidth = rect.width; // No padding subtraction - padding handled by parent
+        const containerHeight = rect.height; // No padding subtraction - padding handled by parent
         
         let newWidth: number;
         let newHeight: number;

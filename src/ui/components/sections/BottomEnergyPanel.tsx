@@ -2,6 +2,24 @@ import type React from 'react';
 import { getReactionMasses } from '../../utils/molecularMassLookup';
 import { PlotlyEnergyProfile } from '../ScientificallyAccuratePlotlyEnergyProfile';
 
+// Card styling constants - matching rate metrics cards style
+// Card wraps content, doesn't force full height
+const energyCardClasses = [
+  'rounded-lg',
+  'border',
+  'border-blue-500/20',
+  'bg-gradient-to-br',
+  'from-blue-50/50',
+  'to-blue-100/30',
+  'dark:from-blue-950/20',
+  'dark:to-blue-900/10',
+  'flex',
+  'flex-col',
+  'relative',
+  'w-full', // Card takes full width
+  'p-0', // Padding inside card
+].join(' ');
+
 interface BottomEnergyPanelProps {
   height?: number;
   thermodynamicData: {
@@ -47,38 +65,40 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
   const nucleophileMass =
     propNucleophileMass || getReactionMasses(substrate, nucleophile).nucleophileMass;
   return (
-    <div className={`border-t ${themeClasses.card} h-full flex flex-col relative`}>
-      {/* Title in top left corner */}
-      <div className={`absolute top-2 left-3 z-10 ${themeClasses.card} px-2 py-0.5 rounded`}>
-        <h3 className={`text-xs font-semibold ${themeClasses.text} m-0`}>
-          Activation Energy Profile
-        </h3>
-      </div>
-      {/* Graph container with aspect ratio and minimal padding */}
-      <div className="flex flex-col flex-1 min-h-0 items-center justify-center p-1">
-        <div 
-          className="w-full h-full relative"
-          style={{ 
-            aspectRatio: '2 / 1',
-            maxWidth: '100%',
-            maxHeight: '100%',
-            padding: '4px'
-          }}
-        >
-          <PlotlyEnergyProfile
-            data={{
-              reactantEnergy: thermodynamicData.reactantEnergy,
-              activationEnergy: thermodynamicData.activationEnergy,
-              enthalpyChange: thermodynamicData.enthalpyOfFormation,
-              reactionProgress: reactionProgress,
-              reactionType: reactionType,
-              currentVelocity: currentVelocity,
-              attackAngle: attackAngle,
-              substrateMass: substrateMass,
-              nucleophileMass: nucleophileMass,
+    <div className={`border-t ${themeClasses.card} h-full flex flex-col items-center justify-center relative`}>
+      {/* Styled card wrapper matching rate metrics cards - wraps graph content */}
+      <div className={energyCardClasses}>
+        {/* Title */}
+        <div className="mb-1 flex-shrink-0 px-1 pt-1">
+          <h3 className={`text-sm font-semibold ${themeClasses.text} m-0`}>
+            Activation Energy Profile
+          </h3>
+        </div>
+        {/* Graph container - resizes based on bottom panel height, card wraps it */}
+        <div className="flex flex-col items-center justify-center overflow-hidden px-1 pb-1 w-full" style={{ height: 'calc(100% - 2rem)' }}>
+          <div 
+            className="w-full h-full relative"
+            style={{ 
+              aspectRatio: '2 / 1',
+              maxWidth: '100%',
+              maxHeight: '100%',
             }}
-            isAnimating={isPlaying}
-          />
+          >
+            <PlotlyEnergyProfile
+              data={{
+                reactantEnergy: thermodynamicData.reactantEnergy,
+                activationEnergy: thermodynamicData.activationEnergy,
+                enthalpyChange: thermodynamicData.enthalpyOfFormation,
+                reactionProgress: reactionProgress,
+                reactionType: reactionType,
+                currentVelocity: currentVelocity,
+                attackAngle: attackAngle,
+                substrateMass: substrateMass,
+                nucleophileMass: nucleophileMass,
+              }}
+              isAnimating={isPlaying}
+            />
+          </div>
         </div>
       </div>
     </div>

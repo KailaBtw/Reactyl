@@ -36,10 +36,12 @@ export const CompactLiveData: React.FC<CompactLiveDataProps> = ({
   const barBgClass = 'bg-gray-700/30';
 
   return (
-    <div className={`${themeClasses.card} border rounded-lg p-3 mb-2 mx-1`}>
-      <h4 className={`text-xs font-semibold ${themeClasses.text} mb-3 uppercase tracking-wide`}>
-        Live Data
-      </h4>
+    <div
+      className={`p-4 rounded-lg ${themeClasses.card} border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10 mb-2 mx-1`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h4 className={`text-sm font-semibold ${themeClasses.text}`}>Live Data</h4>
+      </div>
 
       <div className="space-y-2.5">
         {/* Reaction Probability - Most Important */}

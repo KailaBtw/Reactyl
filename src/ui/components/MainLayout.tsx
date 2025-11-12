@@ -83,17 +83,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     storageKey: 'sidebarWidth',
   });
 
-  // Resizable bottom panel using hook
+  // Resizable bottom panel using hook - different defaults for each mode
+  // Single collision mode needs more height for the energy profile graph (350px)
+  // Rate mode needs less height for the metric cards (250px)
+  const bottomPanelInitialSize = uiState.simulationMode === 'single' ? 350 : 250;
+
   const {
     size: bottomPanelHeight,
     isResizing: isBottomPanelResizing,
     handleResizeStart: handleBottomPanelResizeStart,
   } = useResizable({
     orientation: 'vertical',
-    initialSize: 250,
+    initialSize: bottomPanelInitialSize,
     minSize: 150,
     maxSize: () => Math.floor(window.innerHeight * 0.5), // Max 50% of viewport height, similar to sidebar max width
-    storageKey: 'bottomPanelHeight',
+    storageKey: `bottomPanelHeight_${uiState.simulationMode}`, // Mode-specific storage key
   });
 
   // Cleanup timeout on unmount

@@ -5,6 +5,42 @@ import { InfoBubble } from '../common/InfoBubble';
 import { AttackModeSelector } from './AttackModeSelector';
 import { IdealButton } from './IdealButton';
 
+// Constants for Concentration Slider
+const CONCENTRATION_MIN = 0.001;
+const CONCENTRATION_MAX = 10;
+const CONCENTRATION_STEP = 0.001;
+
+// Constants for Temperature Slider
+const TEMP_MIN = 200; // K
+const TEMP_MAX = 473; // K (200°C)
+const TEMP_STEP = 1;
+const TEMP_ROOM = 298; // K (25°C)
+const TEMP_FREEZING = 273; // K (0°C)
+const TEMP_BOILING = 373; // K (100°C)
+const TEMP_ACTIVATION_ENERGY = 30; // kJ/mol for SN2
+const TEMP_BASE_KINETIC_ENERGY = 2.5; // kJ/mol at room temp
+
+// Shared card classes
+const controlCardClasses = 'p-4 rounded-lg border flex flex-col';
+const cardHeaderClasses = 'flex items-center justify-between mb-3';
+const cardTitleClasses = 'text-sm font-semibold';
+const sliderClasses = 'slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer';
+const sliderLabelsClasses = 'flex justify-between text-xs mt-2';
+
+// Color theme configurations for control cards
+const controlCardThemes = {
+  purple: {
+    border: 'border-purple-500/20',
+    gradient: 'bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10',
+    accent: 'text-purple-600 dark:text-purple-400',
+  },
+  orange: {
+    border: 'border-orange-500/20',
+    gradient: 'bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10',
+    accent: 'text-orange-600 dark:text-orange-400',
+  },
+} as const;
+
 interface ReactionSetupProps {
   currentReaction: string;
   substrate: string;
@@ -317,11 +353,11 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
 
           {/* Concentration Slider */}
           <div
-            className={`p-4 rounded-lg ${themeClasses.card} border border-purple-500/20 bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10`}
+            className={`${controlCardClasses} ${themeClasses.card} ${controlCardThemes.purple.border} ${controlCardThemes.purple.gradient}`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <label className={`text-sm font-semibold ${themeClasses.text}`}>Concentration</label>
-              <span className={`text-xs font-medium text-purple-600 dark:text-purple-400`}>
+            <div className={cardHeaderClasses}>
+              <label className={`${cardTitleClasses} ${themeClasses.text}`}>Concentration</label>
+              <span className={`text-xs font-medium ${controlCardThemes.purple.accent}`}>
                 {calculatedParticleCount} pairs
               </span>
             </div>
@@ -334,27 +370,27 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
             </div>
             <input
               type="range"
-              min="0.001"
-              max="10"
-              step="0.001"
+              min={CONCENTRATION_MIN}
+              max={CONCENTRATION_MAX}
+              step={CONCENTRATION_STEP}
               value={concentration}
               onChange={e => onConcentrationChange?.(parseFloat(e.target.value))}
-              className="slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              className={sliderClasses}
             />
-            <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-2`}>
-              <span>0.001 M</span>
+            <div className={`${sliderLabelsClasses} ${themeClasses.textSecondary}`}>
+              <span>{CONCENTRATION_MIN} M</span>
               <span className="font-medium">Dilute</span>
               <span className="font-medium">Concentrated</span>
-              <span>10 M</span>
+              <span>{CONCENTRATION_MAX} M</span>
             </div>
           </div>
 
           {/* Temperature Slider - Lab Realistic */}
           <div
-            className={`p-4 rounded-lg ${themeClasses.card} border border-orange-500/20 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/20 dark:to-orange-900/10`}
+            className={`${controlCardClasses} ${themeClasses.card} ${controlCardThemes.orange.border} ${controlCardThemes.orange.gradient}`}
           >
             <div className="mb-3 flex items-center gap-2">
-              <label className={`text-sm font-semibold ${themeClasses.text}`}>Temperature</label>
+              <label className={`${cardTitleClasses} ${themeClasses.text}`}>Temperature</label>
               <InfoBubble
                 term="Temperature & Molecular Velocity"
                 explanation={`Temperature controls molecular motion through the Maxwell-Boltzmann distribution. 
@@ -401,33 +437,34 @@ Where reaction rate k increases exponentially with temperature T.`}
             {/* Kinetic Energy Indicator */}
             {(() => {
               // Calculate relative kinetic energy (Maxwell-Boltzmann)
-              const tempFactor = Math.sqrt(temperature / 298);
-              const kineticEnergy = tempFactor * 2.5; // Base kinetic energy at room temp (~2.5 kJ/mol)
-              const activationEnergy = 30; // kJ/mol for SN2
-              const energyRatio = kineticEnergy / activationEnergy;
+              const tempFactor = Math.sqrt(temperature / TEMP_ROOM);
+              const kineticEnergy = tempFactor * TEMP_BASE_KINETIC_ENERGY;
+              const energyRatio = kineticEnergy / TEMP_ACTIVATION_ENERGY;
+              const progressWidth = Math.min(100, (tempFactor / 1.5) * 100);
+
+              // Temperature-based progress bar color
+              const getProgressColor = () => {
+                if (temperature < TEMP_ROOM) return 'bg-blue-500';
+                if (temperature < TEMP_BOILING) return 'bg-orange-500';
+                return 'bg-red-500';
+              };
 
               return (
                 <div className="mb-3 text-xs">
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`${themeClasses.textSecondary}`}>
-                      Molecular Kinetic Energy
-                    </span>
+                    <span className={themeClasses.textSecondary}>Molecular Kinetic Energy</span>
                     <span
-                      className={`font-medium ${energyRatio >= 0.1 ? 'text-orange-600 dark:text-orange-400' : themeClasses.textSecondary}`}
+                      className={`font-medium ${
+                        energyRatio >= 0.1 ? controlCardThemes.orange.accent : themeClasses.textSecondary
+                      }`}
                     >
                       {kineticEnergy.toFixed(1)} kJ/mol
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                     <div
-                      className={`h-1.5 rounded-full transition-all ${
-                        temperature < 298
-                          ? 'bg-blue-500'
-                          : temperature < 373
-                            ? 'bg-orange-500'
-                            : 'bg-red-500'
-                      }`}
-                      style={{ width: `${Math.min(100, (tempFactor / 1.5) * 100)}%` }}
+                      className={`h-1.5 rounded-full transition-all ${getProgressColor()}`}
+                      style={{ width: `${progressWidth}%` }}
                     />
                   </div>
                 </div>
@@ -435,29 +472,39 @@ Where reaction rate k increases exponentially with temperature T.`}
             })()}
 
             {/* Temperature Slider */}
+            {(() => {
+              // Calculate gradient stops for temperature slider
+              const tempRange = TEMP_MAX - TEMP_MIN;
+              const freezingPercent = ((TEMP_FREEZING - TEMP_MIN) / tempRange) * 100;
+              const roomPercent = ((TEMP_ROOM - TEMP_MIN) / tempRange) * 100;
+              const boilingPercent = ((TEMP_BOILING - TEMP_MIN) / tempRange) * 100;
+
+              return (
             <input
               type="range"
-              min="200"
-              max="473"
-              step="1"
+                  min={TEMP_MIN}
+                  max={TEMP_MAX}
+                  step={TEMP_STEP}
               value={temperature}
               onChange={e => onTemperatureChange?.(parseInt(e.target.value))}
-              className="slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  className={sliderClasses}
               style={{
                 background: `linear-gradient(to right, 
                   #1e40af 0%, 
-                  #1e40af ${((273 - 200) / (473 - 200)) * 100}%,
-                  #3b82f6 ${((273 - 200) / (473 - 200)) * 100}%,
-                  #3b82f6 ${((298 - 200) / (473 - 200)) * 100}%,
-                  #f97316 ${((298 - 200) / (473 - 200)) * 100}%,
-                  #f97316 ${((373 - 200) / (473 - 200)) * 100}%,
-                  #ef4444 ${((373 - 200) / (473 - 200)) * 100}%,
+                      #1e40af ${freezingPercent}%,
+                      #3b82f6 ${freezingPercent}%,
+                      #3b82f6 ${roomPercent}%,
+                      #f97316 ${roomPercent}%,
+                      #f97316 ${boilingPercent}%,
+                      #ef4444 ${boilingPercent}%,
                   #dc2626 100%)`,
               }}
             />
+              );
+            })()}
 
             {/* Lab Temperature Markers */}
-            <div className={`flex justify-between text-xs ${themeClasses.textSecondary} mt-2`}>
+            <div className={`${sliderLabelsClasses} ${themeClasses.textSecondary}`}>
               <div className="text-center">
                 <div className="text-blue-800 font-medium">Cryogenic</div>
                 <div className="text-blue-700">-73°C</div>
@@ -481,19 +528,22 @@ Where reaction rate k increases exponentially with temperature T.`}
             </div>
 
             {/* Scientific Info */}
+            {(() => {
+              const getTempDescription = () => {
+                if (temperature < TEMP_MIN) return 'Cryogenic - extremely slow';
+                if (temperature < TEMP_FREEZING) return 'Very cold - very slow reactions';
+                if (temperature < TEMP_ROOM) return 'Cold - slow reactions';
+                if (temperature < 310) return 'Room temperature - typical lab conditions';
+                if (temperature < TEMP_BOILING) return 'Warm - increased reaction rate';
+                return 'Hot - fast reactions';
+              };
+
+              return (
             <div className={`mt-3 text-xs italic ${themeClasses.textSecondary}`}>
-              {temperature < 200
-                ? 'Cryogenic - extremely slow'
-                : temperature < 273
-                  ? 'Very cold - very slow reactions'
-                  : temperature < 298
-                    ? 'Cold - slow reactions'
-                    : temperature < 310
-                      ? 'Room temperature - typical lab conditions'
-                      : temperature < 373
-                        ? 'Warm - increased reaction rate'
-                        : 'Hot - fast reactions'}
+                  {getTempDescription()}
             </div>
+              );
+            })()}
           </div>
         </div>
       )}

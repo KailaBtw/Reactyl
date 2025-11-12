@@ -27,6 +27,18 @@ export const useResizable = ({
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartPosRef = useRef<number>(0);
   const resizeStartSizeRef = useRef<number>(initialSize);
+  const prevStorageKeyRef = useRef<string>(storageKey);
+
+  // Reload from localStorage when storageKey changes (e.g., when switching modes)
+  useEffect(() => {
+    if (storageKey !== prevStorageKeyRef.current && typeof window !== 'undefined') {
+      const saved = localStorage.getItem(storageKey);
+      const newSize = saved ? parseInt(saved, 10) : initialSize;
+      setSize(newSize);
+      resizeStartSizeRef.current = newSize;
+      prevStorageKeyRef.current = storageKey;
+    }
+  }, [storageKey, initialSize]);
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
