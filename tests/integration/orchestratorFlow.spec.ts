@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import * as strategies from '../../src/config/molecule/positioning';
+import * as strategies from '../../src/config/moleculePositioning';
 import { reactionAnimationManager } from '../../src/animations/ReactionAnimationManager';
 import { collisionEventSystem } from '../../src/physics/collisionEventSystem';
 
@@ -47,20 +47,34 @@ describe('ReactionOrchestrator flow', () => {
     // Mock loadMolecule to avoid network
     vi.spyOn<any, any>(orchestrator as any, 'loadMolecule').mockImplementation(async (_cid: string, name: string, position: any) => {
       const group = new THREE.Group();
-      group.position.set(position.x, position.y, position.z);
-      const molecule: any = { name, group, velocity: new THREE.Vector3(), physicsBody: { quaternion: new THREE.Quaternion() } };
+      const pos = position || { x: 0, y: 0, z: 0 };
+      group.position.set(
+        isNaN(pos.x) ? 0 : pos.x,
+        isNaN(pos.y) ? 0 : pos.y,
+        isNaN(pos.z) ? 0 : pos.z
+      );
+      const molecule: any = { 
+        name, 
+        group, 
+        rotation: new THREE.Euler(),
+        velocity: new THREE.Vector3(), 
+        physicsBody: { 
+          quaternion: new THREE.Quaternion(),
+          velocity: { x: 0, y: 0, z: 0 }
+        } 
+      };
       moleculeManager.addMolecule(name, molecule);
       return molecule;
     });
 
-    // Spy orientation selection
-    const getStratSpy = vi.spyOn(strategies, 'getOrientationStrategy');
+    // Spy orientation method (orchestrator uses its own orientMoleculesForReaction, not getOrientationStrategy)
+    const orientSpy = vi.spyOn<any, any>(orchestrator as any, 'orientMoleculesForReaction');
 
     // Act
     await orchestrator.runReaction(params);
 
-    // Assert orientation strategy selected
-    expect(getStratSpy).toHaveBeenCalledWith('sn2');
+    // Assert orientation was called (orchestrator has its own orientation logic)
+    expect(orientSpy).toHaveBeenCalledWith('sn2');
 
     // Emit a synthetic collision reaction to trigger animation
     const sub: any = { name: 'Substrate', group: new THREE.Group(), velocity: new THREE.Vector3(), molecularProperties: { totalMass: 50 } };

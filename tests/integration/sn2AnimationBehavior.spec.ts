@@ -74,18 +74,17 @@ describe('SN2 Animation Behavior Integration', () => {
       expect(onStartSpy).toHaveBeenCalled();
     });
 
-    it('handles onComplete callback', () => {
+    it('handles onComplete callback', async () => {
       const onCompleteSpy = vi.fn();
       
+      // Animation is instant, so callback is called synchronously
       sn2Animation.animate(substrate, nucleophile, { onComplete: onCompleteSpy });
       
-      // Simulate animation completion by calling the callback directly
-      if (sn2Animation.animationRunner) {
-        // The animation will complete automatically due to the short duration
-        setTimeout(() => {
-          expect(onCompleteSpy).toHaveBeenCalled();
-        }, 200); // Wait for animation to complete
-      }
+      // Callback should be called immediately for instant animations
+      // Use a small delay to allow any async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      expect(onCompleteSpy).toHaveBeenCalled();
     });
 
     it('uses correct duration for instant transition', () => {

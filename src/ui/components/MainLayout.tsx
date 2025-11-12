@@ -102,18 +102,42 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   useEffect(() => {
     if (!isResizing) return;
 
+    let rafId: number | null = null;
+    let pendingWidth: number | null = null;
+
+    const updateWidth = () => {
+      if (pendingWidth !== null) {
+        setSidebarWidth(pendingWidth);
+        pendingWidth = null;
+      }
+      rafId = null;
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       // Drag left (toward center) = wider, drag right (away from center) = narrower
       // Handle is on left edge, so dragging left moves left edge left = wider sidebar
       const deltaX = resizeStartXRef.current - e.clientX;
       const maxWidth = Math.floor(window.innerWidth * 0.5);
       const newWidth = Math.max(200, Math.min(maxWidth, resizeStartWidthRef.current + deltaX));
-      setSidebarWidth(newWidth);
+      
+      // Throttle updates using requestAnimationFrame to prevent flashing
+      pendingWidth = newWidth;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(updateWidth);
+      }
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      localStorage.setItem('sidebarWidth', sidebarWidth.toString());
+      if (pendingWidth !== null) {
+        setSidebarWidth(pendingWidth);
+        localStorage.setItem('sidebarWidth', pendingWidth.toString());
+      } else {
+        localStorage.setItem('sidebarWidth', sidebarWidth.toString());
+      }
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -126,6 +150,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
     };
   }, [isResizing, sidebarWidth]);
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as THREE from 'three';
 import { ReactionOrchestrator } from '../../src/systems/ReactionOrchestrator';
-import { orientSN2Backside } from '../../src/config/molecule/positioning';
+import { orientSN2Backside } from '../../src/config/moleculePositioning';
 import { createCollisionEvent } from '../../src/physics/collisionEventSystem';
 
 describe('Business Logic Validation', () => {
@@ -21,13 +21,16 @@ describe('Business Logic Validation', () => {
   });
 
   it('verifies 180° approach angle in actual collision scenario', async () => {
-    // Arrange - Create realistic molecules
+    // Arrange - Create realistic molecules with proper physics body structure
     const substrate = {
       name: 'Methyl bromide',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      velocity: new THREE.Vector3(),
-      physicsBody: { quaternion: new THREE.Quaternion() },
+      velocity: new THREE.Vector3(0, 0, 0),
+      physicsBody: { 
+        quaternion: new THREE.Quaternion(),
+        velocity: { x: 0, y: 0, z: 0 }
+      },
       molecularProperties: { totalMass: 95 }
     };
 
@@ -35,8 +38,11 @@ describe('Business Logic Validation', () => {
       name: 'Hydroxide ion',
       group: new THREE.Group(),
       rotation: new THREE.Euler(),
-      velocity: new THREE.Vector3(),
-      physicsBody: { quaternion: new THREE.Quaternion() },
+      velocity: new THREE.Vector3(0, 0, 0),
+      physicsBody: { 
+        quaternion: new THREE.Quaternion(),
+        velocity: { x: 0, y: 0, z: 0 }
+      },
       molecularProperties: { totalMass: 17 }
     };
 

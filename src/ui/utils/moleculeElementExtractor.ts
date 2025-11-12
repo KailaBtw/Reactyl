@@ -77,3 +77,5 @@ export function extractElementsFromMolecules(moleculeNames: string[]): string[] 
 
 
 
+
+
