@@ -7,8 +7,8 @@ const tabButtonClasses = 'flex-1 px-4 py-2.5 text-sm font-semibold transition-al
 const tabIndicatorClasses = 'absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t';
 
 interface ModeTabsProps {
-  simulationMode: 'single' | 'rate';
-  onSimulationModeChange: (mode: 'single' | 'rate') => void;
+  simulationMode: 'molecule' | 'single' | 'rate';
+  onSimulationModeChange: (mode: 'molecule' | 'single' | 'rate') => void;
   themeClasses: any;
 }
 
@@ -19,6 +19,30 @@ export const ModeTabs: React.FC<ModeTabsProps> = ({
 }) => {
   return (
     <div className={tabContainerClasses}>
+      <button
+        onClick={e => {
+          // Don't switch tabs if clicking on InfoBubble
+          if ((e.target as HTMLElement).closest('[data-infobubble]')) {
+            return;
+          }
+          onSimulationModeChange('molecule');
+        }}
+        className={`${tabButtonClasses} ${
+          simulationMode === 'molecule'
+            ? themeClasses.text
+            : `${themeClasses.textSecondary} hover:${themeClasses.text}`
+        }`}
+      >
+        Single Molecule
+        <span data-infobubble>
+          <InfoBubble
+            term="Single Molecule"
+            explanation="Search for and visualize individual molecules. Use autocomplete to find molecules by name, CID, SMILES, or InChIKey. Perfect for exploring molecular structures and properties."
+            size="small"
+          />
+        </span>
+        {simulationMode === 'molecule' && <div className={tabIndicatorClasses} />}
+      </button>
       <button
         onClick={e => {
           // Don't switch tabs if clicking on InfoBubble

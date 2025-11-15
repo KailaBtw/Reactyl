@@ -42,3 +42,4 @@ describe('Rotation lock after SN2 (integration)', () => {
     expect(body.quaternion.w).toBeCloseTo(q.w, 6);
   });
 });
+

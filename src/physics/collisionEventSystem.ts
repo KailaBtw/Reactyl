@@ -47,6 +47,7 @@ class CollisionEventSystem {
   private demoEasyMode: boolean = false; // Forces high reaction probability for demos
   private hasShownDemoProduct: boolean = false; // Prevent duplicate product spawns in demos
   private reactionOccurred: boolean = false; // Prevent duplicate reaction processing
+  private simulationMode: 'molecule' | 'single' | 'rate' = 'single'; // Current simulation mode
 
   constructor() {
     this.reactionDetector = new ReactionDetector();
@@ -87,6 +88,20 @@ class CollisionEventSystem {
     log(
       `Testing mode ${testingMode ? 'enabled' : 'disabled'} - reaction probability ${testingMode ? 'forced to 100%' : 'calculated normally'}`
     );
+  }
+
+  /**
+   * Set the simulation mode
+   */
+  setSimulationMode(mode: 'molecule' | 'single' | 'rate'): void {
+    this.simulationMode = mode;
+  }
+
+  /**
+   * Get the current simulation mode
+   */
+  getSimulationMode(): 'molecule' | 'single' | 'rate' {
+    return this.simulationMode;
   }
 
   /**
@@ -204,6 +219,12 @@ class CollisionEventSystem {
   async emitCollision(event: CollisionEvent): Promise<void> {
     // Check if either molecule is in a reaction to prevent race conditions
     if (event.moleculeA.reactionInProgress || event.moleculeB.reactionInProgress) {
+      return;
+    }
+    
+    // Skip collisions if either molecule has already reacted (is a product)
+    // Products can't react again - they've already lost their leaving group
+    if (event.moleculeA.isProduct || event.moleculeB.isProduct) {
       return;
     }
 
@@ -326,7 +347,7 @@ class CollisionEventSystem {
     
     const orientationFactor = this.currentReactionType.optimalAngle === 0
       ? 1.0
-      : Math.exp(-(angleDeviation ** 2) / (2 * 30 ** 2));
+      : Math.exp(-(angleDeviation ** 2) / (2 * 20 ** 2)); // Tighter sigma (20°) for consistency with reaction detector
     // Temperature is already accounted for in collision energy via velocity scaling
     // No separate tempFactor needed - it would double-count temperature effects
 
@@ -385,6 +406,7 @@ class CollisionEventSystem {
         (reactionResult as any).occurs = true;
       }
     }
+
 
     // If reaction occurs, mark molecules busy
     // NOTE: Don't set reactionOccurred globally for rate simulation - we want multiple reactions
@@ -511,13 +533,38 @@ class CollisionEventSystem {
 
   /**
    * Calculate approach angle from event data
+   * Uses the relative velocity vector and collision geometry to determine approach angle
    */
   private calculateApproachAngle(event: CollisionEvent): number {
-    return this.reactionDetector.calculateApproachAngle(
-      event.moleculeA.group.quaternion,
-      event.moleculeB.group.quaternion,
-      event.collisionPoint
-    );
+    // Calculate direction from moleculeA to moleculeB
+    const directionAB = new THREE.Vector3()
+      .subVectors(event.moleculeB.group.position, event.moleculeA.group.position)
+      .normalize();
+    
+    // Get relative velocity direction (normalized)
+    const relativeVelDir = event.relativeVelocity.clone().normalize();
+    
+    // Calculate angle between direction vector and relative velocity
+    // For SN2, we want backside attack (180°), so we measure angle from the collision direction
+    const dot = directionAB.dot(relativeVelDir);
+    // Clamp to [-1, 1] to avoid numerical errors
+    const clampedDot = Math.max(-1, Math.min(1, dot));
+    
+    // Angle in radians, then convert to degrees
+    let angleRad = Math.acos(clampedDot);
+    let angleDeg = (angleRad * 180) / Math.PI;
+    
+    // For SN2 backside attack, optimal is 180°
+    // If relative velocity is opposite to direction AB, that's 180° (backside)
+    // If relative velocity is same as direction AB, that's 0° (frontside)
+    // So we want to measure: angle from direction AB to relative velocity
+    // If they're opposite (dot = -1), angle = 180° ✓
+    // If they're aligned (dot = 1), angle = 0°
+    
+    // The angle we calculated is correct: 0° = aligned, 180° = opposite
+    // For SN2, 180° is optimal (backside attack)
+    
+    return angleDeg;
   }
 
   /**

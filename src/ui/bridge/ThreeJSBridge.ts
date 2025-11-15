@@ -274,6 +274,11 @@ export class ThreeJSBridge {
       collisionEventSystem.setTestingMode(uiState.testingMode);
     }
 
+    // Update simulation mode in collision event system
+    if (!previousState || previousState.simulationMode !== uiState.simulationMode) {
+      collisionEventSystem.setSimulationMode(uiState.simulationMode);
+    }
+
     // Only update axes helper visibility if it actually changed
     if (!previousState || previousState.showAxes !== uiState.showAxes) {
       const axesHelper = this.scene.getObjectByName('axesHelper');

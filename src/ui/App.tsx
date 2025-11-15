@@ -18,7 +18,7 @@ import { physicsEngine } from '../physics/cannonPhysicsEngine';
 
 export interface UIState {
   // Simulation mode
-  simulationMode: 'single' | 'rate'; // Single collision vs reaction rate
+  simulationMode: 'molecule' | 'single' | 'rate'; // Single molecule search, single collision vs reaction rate
 
   // Time controls
   isPlaying: boolean;
@@ -155,6 +155,8 @@ export const App: React.FC = () => {
   // Autoplay: restart shortly after a collision completes if enabled and not paused
   useEffect(() => {
     const handleRestart = () => {
+      // Only restart in single mode
+      if (uiState.simulationMode !== 'single') return;
       if (!uiState.autoplay) return;
       if (!uiState.isPlaying) return;
       
@@ -187,21 +189,36 @@ export const App: React.FC = () => {
 
     // Listen for reaction completion (successful reaction)
     const reactionHandler = (_event: any) => {
+      // Only handle reactions in single mode
+      if (uiState.simulationMode !== 'single') {
+        return;
+      }
       handleRestart();
     };
     
     // Listen for collision detection - only restart if no reaction occurred
     // (if reaction occurs, reaction-completed will handle restart)
-    const collisionHandler = (_event: any) => {
-      // Wait a moment to see if a reaction starts
+    const collisionHandler = (event: any) => {
+      // Only handle collisions in single mode
+      if (uiState.simulationMode !== 'single') {
+        return;
+      }
+      
+      // Check if this collision resulted in a reaction
+      const reactionOccurred = event.data?.reactionProbability === 1.0 || 
+                               (event.data?.reactionProbability && event.data.reactionProbability > 0.95);
+      
+      // Wait a moment to see if a reaction starts (for cases where reaction is detected asynchronously)
       setTimeout(() => {
         const orchestrator = (window as any).reactionOrchestrator;
         const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
+        
         // Only restart if no reaction occurred (collision but no reaction)
-        if (!isReactionInProgress) {
+        // If a reaction occurred, reaction-completed event will handle restart
+        if (!isReactionInProgress && !reactionOccurred) {
           handleRestart();
         }
-      }, 200);
+      }, 500); // Increased delay to ensure reaction detection completes
     };
 
     reactionEventBus.on('reaction-completed', reactionHandler);
@@ -211,7 +228,7 @@ export const App: React.FC = () => {
       reactionEventBus.off('reaction-completed', reactionHandler);
       reactionEventBus.off('collision-detected', collisionHandler);
     };
-  }, [uiState.autoplay, uiState.isPlaying, uiState.reactionInProgress, updateUIState]);
+  }, [uiState.autoplay, uiState.isPlaying, uiState.reactionInProgress, uiState.simulationMode, updateUIState]);
 
   // Continuously update reaction probability based on current parameters
   useEffect(() => {
@@ -319,16 +336,16 @@ export const App: React.FC = () => {
       updateUIState({ nucleophileMolecule: nucleophile }),
     onAttackAngleChange: (angle: number) => {
       updateUIState({ approachAngle: angle });
-      // If autoplay is active and simulation is playing, queue reset after collision completes
-      if (uiState.autoplay && uiState.isPlaying && uiState.simulationMode === 'single') {
+      // Reset and restart simulation when approach angle changes (single collision mode only)
+      if (uiState.isPlaying && uiState.simulationMode === 'single') {
         const orchestrator = (window as any).reactionOrchestrator;
         const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
         
-        if (isReactionInProgress) {
-          // Reaction in progress - queue the change to apply after collision completes
+        if (isReactionInProgress && uiState.autoplay) {
+          // Reaction in progress with autoplay - queue the change to apply after collision completes
           pendingParameterChangeRef.current = { type: 'angle', value: angle };
         } else {
-          // No reaction in progress - reset immediately after debounce
+          // No reaction in progress or autoplay disabled - reset immediately after debounce
           if ((window as any).angleChangeTimeout) {
             clearTimeout((window as any).angleChangeTimeout);
           }
@@ -377,6 +394,10 @@ export const App: React.FC = () => {
     onAutoplayChange: async (enabled: boolean) => {
       updateUIState({ autoplay: enabled });
       if (enabled) {
+        // Only start autoplay in single mode
+        if (uiState.simulationMode !== 'single') {
+          return;
+        }
         try {
           if (!uiState.reactionInProgress) {
             await threeJSBridge.startReactionAnimation();

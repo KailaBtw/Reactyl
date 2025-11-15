@@ -36,3 +36,4 @@ describe('SN2 Product Loading Resilience', () => {
     expect(nucleophile.group.position).toBeDefined();
   });
 });
+

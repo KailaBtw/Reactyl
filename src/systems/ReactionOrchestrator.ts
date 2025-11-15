@@ -3,6 +3,7 @@ import { reactionAnimationManager } from '../animations/ReactionAnimationManager
 import { ChemicalDataService } from '../chemistry/chemicalDataService';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
 // Removed old ChemistryReactionSystem import - using unified approach
+import { reactionEventBus } from '../events/ReactionEventBus';
 import { type CannonPhysicsEngine, physicsEngine } from '../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../physics/collisionEventSystem';
 // Orientation handled simplistically (identity rotations); detailed strategies not needed
@@ -589,6 +590,12 @@ export class ReactionOrchestrator {
           this.applyWaldenInversionCorrection(substrate, nucleophile);
           // Resume physics simulation after correction
           this.physicsEngine.resume();
+          // Emit reaction-completed event for autoplay
+          reactionEventBus.emitReactionCompleted(
+            this.state.reaction.type,
+            true,
+            [substrate.name, nucleophile.name]
+          );
         },
       });
     } catch (error) {

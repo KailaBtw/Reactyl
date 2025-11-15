@@ -2,6 +2,7 @@ import { extractPubChemMetadata } from '../services/data/molFileToJSON';
 import { simpleCacheService } from '../services/simpleCacheService';
 import type { MolecularData, ReactivityData } from '../types';
 import { log } from '../utils/debug';
+import { fetchJsonWithCorsHandling, fetchTextWithCorsHandling } from '../utils/fetchWithCorsHandling';
 
 export class ChemicalDataService {
   private readonly PUBCHEM_BASE = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
@@ -45,18 +46,12 @@ export class ChemicalDataService {
       const propUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/property/MolecularFormula,MolecularWeight,SMILES,InChI,IUPACName,Title/JSON`;
       log(`Fetching properties from: ${propUrl}`);
 
-      const propResponse = await fetch(propUrl);
+      const propData = await fetchJsonWithCorsHandling(propUrl);
 
-      if (!propResponse.ok) {
-        const errorText = await propResponse.text();
-        log(`PubChem API error: ${propResponse.status} ${propResponse.statusText}`);
-        log(`Error response: ${errorText}`);
-        throw new Error(
-          `Failed to fetch properties for CID ${cid}: ${propResponse.status} ${propResponse.statusText}`
-        );
+      if (!propData || !propData.PropertyTable?.Properties?.[0]) {
+        log(`PubChem API error: Failed to fetch properties for CID ${cid} (CORS or network issue)`);
+        throw new Error(`Failed to fetch properties for CID ${cid}: CORS or network error`);
       }
-
-      const propData = await propResponse.json();
       const props = propData.PropertyTable.Properties[0];
 
       // Fetch synonyms
@@ -65,9 +60,8 @@ export class ChemicalDataService {
         const synonymsUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/synonyms/JSON`;
         log(`Fetching synonyms from: ${synonymsUrl}`);
 
-        const synonymsResponse = await fetch(synonymsUrl);
-        if (synonymsResponse.ok) {
-          const synonymsData = await synonymsResponse.json();
+        const synonymsData = await fetchJsonWithCorsHandling(synonymsUrl);
+        if (synonymsData) {
           synonyms = synonymsData.InformationList?.Information?.[0]?.Synonym || [];
           log(`Found ${synonyms.length} synonyms for CID ${cid}`);
         }
@@ -79,26 +73,20 @@ export class ChemicalDataService {
       const mol3dUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/SDF?record_type=3d`;
       log(`Fetching 3D structure from: ${mol3dUrl}`);
 
-      const mol3dResponse = await fetch(mol3dUrl);
+      let molData = await fetchTextWithCorsHandling(mol3dUrl);
 
-      if (!mol3dResponse.ok) {
+      if (!molData) {
         // Fallback to 2D if 3D not available
         log(`3D structure not available for CID ${cid}, trying 2D...`);
         const mol2dUrl = `${this.PUBCHEM_BASE}/compound/cid/${cid}/SDF`;
         log(`Fetching 2D structure from: ${mol2dUrl}`);
 
-        const mol2dResponse = await fetch(mol2dUrl);
+        molData = await fetchTextWithCorsHandling(mol2dUrl);
 
-        if (!mol2dResponse.ok) {
-          const errorText = await mol2dResponse.text();
-          log(`PubChem SDF error: ${mol2dResponse.status} ${mol2dResponse.statusText}`);
-          log(`Error response: ${errorText}`);
-          throw new Error(
-            `Failed to fetch structure for CID ${cid}: ${mol2dResponse.status} ${mol2dResponse.statusText}`
-          );
+        if (!molData) {
+          log(`PubChem SDF error: Failed to fetch structure for CID ${cid} (CORS or network issue)`);
+          throw new Error(`Failed to fetch structure for CID ${cid}: CORS or network error`);
         }
-
-        const molData = await mol2dResponse.text();
 
         // Extract metadata from the MOL data itself (in case API properties are missing)
         const molMetadata = extractPubChemMetadata(molData);
@@ -128,7 +116,7 @@ export class ChemicalDataService {
         return molecularData;
       }
 
-      const mol3dData = await mol3dResponse.text();
+      const mol3dData = molData;
 
       // Extract metadata from the MOL data itself (in case API properties are missing)
       const molMetadata = extractPubChemMetadata(mol3dData);

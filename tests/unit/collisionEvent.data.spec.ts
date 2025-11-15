@@ -33,3 +33,4 @@ describe('createCollisionEvent data correctness (unit)', () => {
     expect(evt.relativeVelocity.z).toBeCloseTo(0, 6);
   });
 });
+

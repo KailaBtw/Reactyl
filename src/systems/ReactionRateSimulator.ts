@@ -1,13 +1,10 @@
 import * as THREE from 'three';
-import { reactionAnimationManager } from '../animations/ReactionAnimationManager';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
 import { ContainerVisualization } from '../components/ContainerVisualization';
 import type { CannonPhysicsEngine } from '../physics/cannonPhysicsEngine';
 import { collisionEventSystem } from '../physics/collisionEventSystem';
 import { type ContainerBounds, MoleculeSpawner } from '../services/MoleculeSpawner';
 import type { MoleculeManager } from '../types';
-import type { MoleculeState } from './ReactionOrchestrator';
-import { log } from '../utils/debug';
 
 /**
  * Manages multi-molecule reaction rate simulations
@@ -215,7 +212,7 @@ export class ReactionRateSimulator {
   /**
    * Convert MoleculeGroup to MoleculeState format (required by animation manager)
    */
-  private createMoleculeState(molecule: any): MoleculeState {
+  private createMoleculeState(molecule: any): any {
     return {
       group: molecule.group,
       position: molecule.group.position.clone(),
@@ -254,8 +251,8 @@ export class ReactionRateSimulator {
 
         if (pair) {
           if (!pair.reacted) {
-            pair.reacted = true;
-            this.reactionCount++;
+          pair.reacted = true;
+          this.reactionCount++;
             console.log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
 
             // Execute visual reaction animation
@@ -321,33 +318,43 @@ export class ReactionRateSimulator {
           nucleophile = moleculeB;
         }
 
-        // Convert to MoleculeState format
-        const substrateState = this.createMoleculeState(substrate);
-        const nucleophileState = this.createMoleculeState(nucleophile);
-
         // Get reaction type from UI state or collision event system
         const uiState = (window as any).uiState;
         const reactionType = uiState?.reactionType || collisionEventSystem.getReactionType()?.id || 'sn2';
         const reactionTypeLower = reactionType.toLowerCase();
 
-        // Execute appropriate animation based on reaction type
-        console.log(`🎬 Executing ${reactionTypeLower} reaction animation for ${moleculeAId} + ${moleculeBId}`);
+        // Execute appropriate reaction based on reaction type
+        console.log(`🎬 Executing ${reactionTypeLower} reaction for ${moleculeAId} + ${moleculeBId}`);
 
         if (reactionTypeLower === 'sn2') {
-          reactionAnimationManager.animateSN2Reaction(substrateState, nucleophileState, {
-            onComplete: () => {
-              console.log(`✅ Reaction animation completed for ${moleculeAId} + ${moleculeBId}`);
-              // Optionally fade out or remove molecules after animation
-              // For now, we'll keep them visible but marked as reacted
-            },
-            onStart: () => {
-              console.log(`🎬 Reaction animation started for ${moleculeAId} + ${moleculeBId}`);
-            },
+          // Use simpler ReactionGraphics for rate mode - modifies molecule in place, more reliable
+          import('../graphics/reactions').then(({ reactionGraphics }) => {
+            try {
+              const success = reactionGraphics.executeSN2Reaction(substrate, nucleophile);
+              if (success) {
+                console.log(`✅ Reaction completed for ${moleculeAId} + ${moleculeBId}`);
+                // Clear reaction flags - molecule is now a product and won't react again
+                substrate.reactionInProgress = false;
+                nucleophile.reactionInProgress = false;
+              } else {
+                console.log(`❌ Reaction failed for ${moleculeAId} + ${moleculeBId} - clearing flags`);
+                // Clear flags on failure so they can try again
+                substrate.reactionInProgress = false;
+                nucleophile.reactionInProgress = false;
+              }
+            } catch (error) {
+              console.error(`❌ Error executing reaction: ${error}`);
+              // Clear flags on error
+              substrate.reactionInProgress = false;
+              nucleophile.reactionInProgress = false;
+            }
           });
         } else {
-          // For SN1 and E2, we could add similar handling if animation methods exist
-          // For now, just log that reaction occurred
-          console.log(`⚠️ Visual animation not yet implemented for reaction type: ${reactionTypeLower}`);
+          // For SN1 and E2, we could add similar handling if reaction methods exist
+          console.log(`⚠️ Reaction not yet implemented for reaction type: ${reactionTypeLower}`);
+          // Clear flags
+          substrate.reactionInProgress = false;
+          nucleophile.reactionInProgress = false;
         }
       } catch (error) {
         console.error(`❌ Error executing visual reaction: ${error}`);

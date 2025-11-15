@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createAtomMesh, getAtomConfig } from '../config/atomConfig';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
+import { addProductOutline } from '../utils/moleculeOutline';
 
 /**
  * Minimal Reaction Graphics System
@@ -72,6 +73,14 @@ export class ReactionGraphics {
 
       // Step 3: Add OH group at the computed positions, bonded to the original carbon index
       this.addOHGroup(substrate, carbonIndex, oPos, hPos);
+
+      // Step 4: Mark substrate as product and add red outline (only in rate mode)
+      const { collisionEventSystem } = require('../physics/collisionEventSystem');
+      const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
+      substrate.isProduct = true;
+      if (isRateMode) {
+        addProductOutline(substrate);
+      }
 
       log('✅ Minimal SN2 reaction completed');
       return true;

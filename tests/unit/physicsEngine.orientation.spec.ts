@@ -38,3 +38,4 @@ describe('physicsEngine orientation accessors (unit)', () => {
     expect(physicsEngine.getOrientation(mol)).toBeNull();
   });
 });
+

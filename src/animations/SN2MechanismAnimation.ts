@@ -9,6 +9,7 @@ import { physicsEngine } from '../physics/cannonPhysicsEngine';
 import type { MoleculeState } from '../systems/ReactionOrchestrator';
 import { log } from '../utils/debug';
 import { type AnimationOptions, AnimationRunner, EasingFunctions } from './AnimationUtils';
+import { addProductOutline } from '../utils/moleculeOutline';
 
 export interface SN2MechanismOptions {
   duration?: number;
@@ -141,6 +142,9 @@ export class SN2MechanismAnimation {
         originalNucleophilePos
       );
 
+      // Mark substrate as product BEFORE replacement (so it's skipped in future collisions)
+      (substrate as any).isProduct = true;
+      
       // Remove old molecules and load proper product molecules (CH3OH and Br⁻) from PubChem
       this.cleanupOldMoleculesAndLoadProducts(
         substrate,
@@ -438,16 +442,17 @@ export class SN2MechanismAnimation {
    */
   private async fetchMoleculeFromPubChem(cid: string, name: string): Promise<any> {
     try {
-      const response = await fetch(
+      const { fetchTextWithCorsHandling } = await import('../utils/fetchWithCorsHandling');
+      const molData = await fetchTextWithCorsHandling(
         `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/record/SDF/?record_type=3d&response_type=display`
       );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (!molData) {
+        // CORS error - return null silently
+        return null;
       }
-      const molData = await response.text();
       return { mol3d: molData, name, cid };
     } catch (error) {
-      log(`Failed to fetch ${name} (CID: ${cid}): ${error}`);
+      // Silently handle errors (including CORS)
       return null;
     }
   }
@@ -497,6 +502,21 @@ export class SN2MechanismAnimation {
             false // No random rotation
           );
           log(`Successfully replaced ${oldMolecule.name} with ${newName}`);
+          
+          // Mark the new molecule as a product and add red outline (only in rate mode)
+          // Use setTimeout to ensure molecule is fully created
+          setTimeout(() => {
+            const newMolecule = moleculeManager.getMolecule(newName);
+            if (newMolecule) {
+              const { collisionEventSystem } = require('../physics/collisionEventSystem');
+              const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
+              newMolecule.isProduct = true;
+              if (isRateMode) {
+                addProductOutline(newMolecule);
+                log(`Marked ${newName} as product with red outline`);
+              }
+            }
+          }, 100);
         });
       }
     } catch (error) {

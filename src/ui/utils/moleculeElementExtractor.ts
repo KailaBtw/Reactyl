@@ -77,3 +77,4 @@ export function extractElementsFromMolecules(moleculeNames: string[]): string[] 
   });
   return Array.from(allElements);
 }
+

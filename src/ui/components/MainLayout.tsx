@@ -4,6 +4,7 @@ import { concentrationToParticleCount } from '../../utils/concentrationConverter
 import { threeJSBridge } from '../bridge/ThreeJSBridge';
 import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
+import { getMoleculeData } from '../utils/moleculeLookup';
 import { useResizable } from '../hooks/useResizable';
 import { ControlsHelp } from './ControlsHelp';
 import { SettingsModal } from './SettingsModal';
@@ -12,6 +13,7 @@ import { ModeTabs } from './sections/ModeTabs';
 import { RateMetricsCard } from './sections/RateMetricsCard';
 import { RateModeSidebar } from './sections/RateModeSidebar';
 import { SingleCollisionSidebar } from './sections/SingleCollisionSidebar';
+import { SingleMoleculeSidebar } from './sections/SingleMoleculeSidebar';
 import { ThreeViewer } from './ThreeViewer';
 
 interface MainLayoutProps {
@@ -86,7 +88,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   // Resizable bottom panel using hook - different defaults for each mode
   // Single collision mode needs more height for the energy profile graph (350px)
   // Rate mode needs less height for the metric cards (250px)
-  const bottomPanelInitialSize = uiState.simulationMode === 'single' ? 350 : 250;
+  // Molecule mode doesn't need bottom panel (0px)
+  const bottomPanelInitialSize =
+    uiState.simulationMode === 'molecule'
+      ? 0
+      : uiState.simulationMode === 'single'
+        ? 350
+        : 250;
 
   const {
     size: bottomPanelHeight,
@@ -215,7 +223,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             className="relative transition-colors duration-300 min-h-0"
             style={{
               backgroundColor,
-              height: `calc(100% - ${bottomPanelHeight}px)`,
+              height:
+                uiState.simulationMode === 'molecule'
+                  ? '100%'
+                  : `calc(100% - ${bottomPanelHeight}px)`,
             }}
           >
             <ThreeViewer
@@ -227,53 +238,55 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           {/* Bottom Panel - Show different cards based on simulation mode */}
-          <div
-            className="relative flex-shrink-0"
-            style={{ height: `${bottomPanelHeight}px`, minHeight: '150px' }}
-          >
-            {/* Resize Handle */}
+          {uiState.simulationMode !== 'molecule' && (
             <div
-              onMouseDown={handleBottomPanelResizeStart}
-              className={`absolute top-0 left-0 right-0 h-1 z-10 transition-colors ${
-                isBottomPanelResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
-              }`}
-              style={{ cursor: 'row-resize' }}
-              title="Drag to resize bottom panel"
-            />
-            {uiState.simulationMode === 'single' ? (
-              <BottomEnergyPanel
-                height={bottomPanelHeight}
-                thermodynamicData={{
-                  activationEnergy: thermodynamicData.activationEnergy,
-                  enthalpyOfFormation: thermodynamicData.enthalpyChange,
-                  reactantEnergy: thermodynamicData.reactantEnergy,
-                  productEnergy: thermodynamicData.productEnergy,
-                  transitionStateEnergy: thermodynamicData.transitionStateEnergy,
-                }}
-                isPlaying={isPlaying}
-                themeClasses={themeClasses}
-                reactionType={currentReaction}
-                reactionProgress={0}
-                currentVelocity={relativeVelocity}
-                substrate={substrate}
-                nucleophile={nucleophile}
-                substrateMass={thermodynamicData.substrateMass}
-                nucleophileMass={thermodynamicData.nucleophileMass}
-                attackAngle={attackAngle}
-                timeScale={timeScale}
-                reactionProbability={uiState.reactionProbability}
+              className="relative flex-shrink-0"
+              style={{ height: `${bottomPanelHeight}px`, minHeight: '150px' }}
+            >
+              {/* Resize Handle */}
+              <div
+                onMouseDown={handleBottomPanelResizeStart}
+                className={`absolute top-0 left-0 right-0 h-1 z-10 transition-colors ${
+                  isBottomPanelResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
+                }`}
+                style={{ cursor: 'row-resize' }}
+                title="Drag to resize bottom panel"
               />
-            ) : (
-              <RateMetricsCard
-                reactionRate={uiState.reactionRate}
-                remainingReactants={uiState.remainingReactants}
-                productsFormed={uiState.productsFormed || 0}
-                collisionCount={(uiState as any).collisionCount || 0}
-                elapsedTime={(uiState as any).elapsedTime || 0}
-                themeClasses={themeClasses}
-              />
-            )}
-          </div>
+              {uiState.simulationMode === 'single' ? (
+                <BottomEnergyPanel
+                  height={bottomPanelHeight}
+                  thermodynamicData={{
+                    activationEnergy: thermodynamicData.activationEnergy,
+                    enthalpyOfFormation: thermodynamicData.enthalpyChange,
+                    reactantEnergy: thermodynamicData.reactantEnergy,
+                    productEnergy: thermodynamicData.productEnergy,
+                    transitionStateEnergy: thermodynamicData.transitionStateEnergy,
+                  }}
+                  isPlaying={isPlaying}
+                  themeClasses={themeClasses}
+                  reactionType={currentReaction}
+                  reactionProgress={0}
+                  currentVelocity={relativeVelocity}
+                  substrate={substrate}
+                  nucleophile={nucleophile}
+                  substrateMass={thermodynamicData.substrateMass}
+                  nucleophileMass={thermodynamicData.nucleophileMass}
+                  attackAngle={attackAngle}
+                  timeScale={timeScale}
+                  reactionProbability={uiState.reactionProbability}
+                />
+              ) : (
+                <RateMetricsCard
+                  reactionRate={uiState.reactionRate}
+                  remainingReactants={uiState.remainingReactants}
+                  productsFormed={uiState.productsFormed || 0}
+                  collisionCount={(uiState as any).collisionCount || 0}
+                  elapsedTime={(uiState as any).elapsedTime || 0}
+                  themeClasses={themeClasses}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Control Panel - Resizable - Anchored to right edge */}
@@ -302,26 +315,23 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               onSimulationModeChange={async mode => {
                 const previousMode = uiState.simulationMode;
                 updateUIState({ simulationMode: mode });
+                
+                // Update simulation mode in collision event system
+                const { collisionEventSystem } = await import('../../physics/collisionEventSystem');
+                collisionEventSystem.setSimulationMode(mode);
+                
+                // Clear molecules when leaving molecule mode
+                if (previousMode === 'molecule') {
+                  threeJSBridge.clear();
+                }
+                
                 // Animate camera when switching modes
                 if (mode === 'rate') {
                   threeJSBridge.animateCameraToRateView();
                   // Auto-start rate simulation
                   try {
-                    const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
-                      demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
-                      demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
-                      demo_Methanol: { cid: '887', name: 'Methanol' },
-                      demo_Water: { cid: '962', name: 'Water' },
-                    };
-
-                    const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
-                      cid: '6323',
-                      name: 'Methyl bromide',
-                    };
-                    const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
-                      cid: '961',
-                      name: 'Hydroxide ion',
-                    };
+                    const substrateMolecule = getMoleculeData(uiState.substrateMolecule);
+                    const nucleophileMolecule = getMoleculeData(uiState.nucleophileMolecule);
 
                     // Calculate particle count from concentration
                     const particleCount = concentrationToParticleCount(uiState.concentration);
@@ -336,7 +346,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   } catch (error) {
                     console.error('Failed to auto-start rate simulation:', error);
                   }
+                } else if (mode === 'molecule') {
+                  // Single molecule mode - clear any running simulations and molecules
+                  threeJSBridge.animateCameraToSingleView();
+                  
+                  // Clear any running simulations
+                  if (previousMode === 'rate') {
+                    threeJSBridge.stopRateSimulation();
+                    updateUIState({ isPlaying: false, reactionInProgress: false });
+                  }
+                  
+                  // Clear any existing molecules/simulations from other modes
+                  // This ensures a clean state for molecule search
+                  threeJSBridge.clear();
                 } else {
+                  // Single collision mode
                   threeJSBridge.animateCameraToSingleView();
                   // Always clear rate simulation when switching to single mode
                   if (previousMode === 'rate') {
@@ -350,7 +374,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             
             {/* Sidebar Content */}
             <div className="flex-1 overflow-y-auto">
-              {uiState.simulationMode === 'single' ? (
+              {uiState.simulationMode === 'molecule' ? (
+                <SingleMoleculeSidebar themeClasses={themeClasses} />
+              ) : uiState.simulationMode === 'single' ? (
                 <SingleCollisionSidebar
                 currentReaction={currentReaction}
                 substrate={substrate}

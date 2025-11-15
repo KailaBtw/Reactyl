@@ -5,6 +5,7 @@
 
 import type { MolecularData } from '../types';
 import { log } from '../utils/debug';
+import { fetchJsonWithCorsHandling } from '../utils/fetchWithCorsHandling';
 
 export class SimpleCacheService {
   private molecules: Map<string, MolecularData> = new Map();
@@ -26,21 +27,19 @@ export class SimpleCacheService {
       if (this.isDev) {
         // Try to load from backend API first
         try {
-          const response = await fetch('http://localhost:3000/api/molecules');
-          if (response.ok) {
-            const data = await response.json();
+          const data = await fetchJsonWithCorsHandling('http://localhost:3000/api/molecules');
+          if (data && data.count) {
             log(`📖 Found ${data.count} molecules in backend`);
 
             // Load each molecule individually
             for (const cid of data.molecules) {
               try {
-                const molResponse = await fetch(`http://localhost:3000/api/molecule/${cid}`);
-                if (molResponse.ok) {
-                  const molecularData = await molResponse.json();
+                const molecularData = await fetchJsonWithCorsHandling(`http://localhost:3000/api/molecule/${cid}`);
+                if (molecularData) {
                   this.molecules.set(cid, molecularData);
                 }
               } catch (error) {
-                log(`Failed to load molecule ${cid}: ${error}`);
+                // Silently skip CORS errors
               }
             }
 
@@ -48,7 +47,7 @@ export class SimpleCacheService {
             return;
           }
         } catch (_error) {
-          log('Backend not available, trying localStorage...');
+          // Silently fall back to localStorage on CORS errors
         }
       }
 

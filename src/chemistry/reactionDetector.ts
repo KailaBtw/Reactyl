@@ -38,29 +38,37 @@ export class ReactionDetector {
       };
     }
 
-    // 1. Check energy factor (only calculated if energy >= activation energy)
-    const energyFactor = this.calculateEnergyFactor(
-      collision.collisionEnergy,
-      reaction.activationEnergy
-    );
-
-    // 2. Check orientation factor
+    // DETERMINISTIC REACTION DETECTION:
+    // Reaction occurs if BOTH conditions are met:
+    // 1. Collision energy >= activation energy (hard threshold)
+    // 2. Orientation is within acceptable tolerance (angle-dependent)
+    // Temperature affects collision energy through velocity scaling (Maxwell-Boltzmann)
+    // No stochastic probability - if conditions are met, reaction occurs
+    
+    // 1. Check if collision energy exceeds activation energy (hard threshold)
+    const hasSufficientEnergy = collision.collisionEnergy >= reaction.activationEnergy;
+    
+    // 2. Check orientation factor (determines if angle is acceptable)
     const orientationFactor = this.calculateOrientationFactor(
       collision.approachAngle,
       reaction.optimalAngle
     );
-
-    // 3. Temperature is already accounted for in collision energy via velocity scaling
-    // (Maxwell-Boltzmann distribution scales velocities with temperature)
-    // So we don't need to apply Arrhenius factor again - it would be double-counting
-    // The collision energy already reflects the temperature-dependent molecular speeds
     
-    // 4. Combined probability (energy, orientation)
-    // Temperature dependence is built into collision energy through velocity scaling
-    const probability = energyFactor * orientationFactor;
-
-    // 6. Stochastic determination (only if energy threshold passed)
-    const occurs = Math.random() < probability;
+    // 3. Set orientation threshold - reactions occur if orientation factor exceeds this
+    // For SN2 (180° optimal), we require good orientation for reaction to occur
+    // Orientation factor of 0.5 means ~25° deviation, which is more realistic for SN2
+    // Higher threshold = more selective reactions (less common)
+    const orientationThreshold = 0.5; // Require orientation factor >= 0.5 for reaction
+    
+    // 4. Deterministic reaction: occurs if energy threshold AND orientation threshold are met
+    const occurs = hasSufficientEnergy && orientationFactor >= orientationThreshold;
+    
+    // Probability is just for display/debugging - shows how "good" the collision was
+    // It's not used for stochastic determination
+    const energyFactor = hasSufficientEnergy 
+      ? Math.min(1, 1 - Math.exp(-(collision.collisionEnergy - reaction.activationEnergy) / reaction.activationEnergy))
+      : 0;
+    const probability = energyFactor * orientationFactor; // For display only
 
     const result: ReactionResult = {
       occurs,
@@ -123,7 +131,7 @@ export class ReactionDetector {
       deviation = 360 - deviation;
     }
     
-    const sigma = 30; // degrees tolerance (standard deviation)
+    const sigma = 20; // degrees tolerance (standard deviation) - tighter for more selective reactions
     // Gaussian: exp(-(x-μ)²/(2σ²)) where μ = optimal, σ = tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
 

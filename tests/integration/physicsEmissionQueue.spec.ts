@@ -38,3 +38,4 @@ describe('Physics Emission Queue Integration', () => {
     expect(emitSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 });
+

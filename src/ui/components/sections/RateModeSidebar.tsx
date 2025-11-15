@@ -96,3 +96,4 @@ export const RateModeSidebar: React.FC<RateModeSidebarProps> = ({
   );
 };
 
+
