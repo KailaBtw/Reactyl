@@ -387,6 +387,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 isPlaying={isPlaying}
                 timeScale={timeScale}
                 reactionProbability={uiState.reactionProbability}
+                activationEnergy={thermodynamicData.activationEnergy}
                 onReactionChange={onReactionChange}
                 onSubstrateChange={onSubstrateChange}
                 onNucleophileChange={onNucleophileChange}

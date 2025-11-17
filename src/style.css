@@ -18,6 +18,7 @@
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-top: -0.375rem;
   }
 
   .slider::-moz-range-thumb {
@@ -28,6 +29,7 @@
     cursor: pointer;
     border: 0;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-top: -0.375rem;
   }
 
   /* Custom animations for modal/drawer components */

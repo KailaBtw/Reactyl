@@ -46,8 +46,8 @@ const controlCardThemes = {
 const angleZoneColors = {
   excellent: 'bg-emerald-200 dark:bg-emerald-700',  // 135°-180°: Strong orbital overlap
   good: 'bg-lime-200 dark:bg-lime-700',              // 100°-135°: Moderate overlap
-  moderate: 'bg-amber-200 dark:bg-amber-700',        // 70°-100°: Weak overlap
-  poor: 'bg-rose-200 dark:bg-rose-700',              // <70°: Blocked
+  moderate: 'bg-amber-200 dark:bg-amber-300',        // 70°-100°: Weak overlap
+  poor: 'bg-rose-200 dark:bg-rose-600',              // <70°: Blocked
 };
 
 interface ApproachAngleCardProps {

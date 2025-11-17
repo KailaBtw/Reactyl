@@ -49,6 +49,7 @@ export class ReactionRateSimulator {
 
   /**
    * Initialize simulation with N molecule pairs
+   * Clean, sequential initialization with proper error handling
    */
   async initializeSimulation(
     substrateData: any,
@@ -57,125 +58,252 @@ export class ReactionRateSimulator {
     temperature: number,
     reactionType: string
   ): Promise<void> {
-    // Store simulation parameters
+    // Step 1: Reset state (container should already be visible from showContainer() call)
+    this.resetState();
+
+    // Step 2: Configure collision detection system
+    this.configureCollisionSystem(reactionType, temperature);
+
+    // Step 3: Store simulation parameters
     this.substrateData = substrateData;
     this.nucleophileData = nucleophileData;
     this.temperature = temperature;
     this.nextPairIndex = 0;
 
-    // Clear existing molecules and reset state
-    this.clear();
+    // Step 4: Spawn all molecule pairs with proper boundary enforcement
+    await this.spawnAllMolecules(substrateData, nucleophileData, particleCount, temperature);
 
-    // Create container visualization (clear() removes it, so recreate it)
-    this.containerVisualization.create();
+    // Step 5: Initialize timing
+    this.startTime = performance.now();
+    this.nextPairIndex = particleCount;
 
-    // Set up collision event listener
+    console.log(`✅ Rate simulation initialized: ${this.moleculePairs.length} pairs`);
+  }
+
+  /**
+   * Reset simulation state without removing container visualization
+   */
+  private resetState(): void {
+    // Clear all molecules
+    this.moleculeManager.clearAllMolecules(molecule => {
+      if (molecule.hasPhysics && molecule.physicsBody) {
+        this.physicsEngine.removeMolecule(molecule);
+      }
+    });
+
+    // Reset tracking
+    this.moleculePairs = [];
+    this.reactionCount = 0;
+    this.collisionCount = 0;
+    this.startTime = 0;
+    this.nextPairIndex = 0;
+
+    // Unregister previous collision handler if exists
+    if ((this as any).collisionHandler) {
+      collisionEventSystem.unregisterHandler((this as any).collisionHandler);
+      (this as any).collisionHandler = null;
+    }
+  }
+
+  /**
+   * Configure collision detection system
+   */
+  private configureCollisionSystem(reactionType: string, temperature: number): void {
+    // Register collision handler
     const collisionHandler = (event: any) => {
       this.handleCollision(event);
     };
     collisionEventSystem.registerHandler(collisionHandler);
     (this as any).collisionHandler = collisionHandler;
 
-    // Configure collision detection system
+    // Set reaction type and temperature
     const reactionTypeObj = REACTION_TYPES[reactionType.toLowerCase()];
     collisionEventSystem.setReactionType(reactionTypeObj || REACTION_TYPES.sn2);
     collisionEventSystem.setTemperature(temperature);
-
-    // Spawn molecule pairs in batches for efficient initialization
-    const BATCH_SIZE = 10;
-    const spawnPromises: Promise<void>[] = [];
-
-    for (let i = 0; i < particleCount; i++) {
-      spawnPromises.push(
-        this.spawnMoleculePair(substrateData, nucleophileData, i, temperature).catch(error => {
-          console.error(`Failed to spawn molecule pair ${i}:`, error);
-          // Continue with other pairs even if one fails
-        })
-      );
-
-      // Process in batches to avoid overwhelming the system
-      if (spawnPromises.length >= BATCH_SIZE || i === particleCount - 1) {
-        await Promise.all(spawnPromises);
-        spawnPromises.length = 0; // Clear array for next batch
-      }
-    }
-
-    // Update next index and start timer
-    this.nextPairIndex = particleCount;
-    this.startTime = performance.now();
-    
-    console.log(`✅ Initialized rate simulation: ${this.moleculePairs.length} molecule pairs`);
   }
 
   /**
-   * Spawn a single molecule pair at random position with temperature-based velocities
-   * Now uses MoleculeSpawner for consistent spawning logic
+   * Spawn all molecule pairs with proper boundary enforcement
+   * Two-phase approach: spawn with zero velocity in parallel, then apply velocities after all are positioned
+   */
+  private async spawnAllMolecules(
+    substrateData: any,
+    nucleophileData: any,
+    particleCount: number,
+    temperature: number
+  ): Promise<void> {
+    const bounds = this.getContainerBounds();
+
+    // Phase 1: Spawn all molecules in parallel with zero velocity
+    // Molecule data is cached, so parallel spawning is fast after first fetch
+    // Since they have zero velocity, they can't escape during spawn
+    const spawnPromises = Array.from({ length: particleCount }, (_, i) =>
+      this.spawnMoleculePair(substrateData, nucleophileData, i, 0, bounds).catch(error => {
+        console.error(`Failed to spawn pair ${i}:`, error);
+        return null; // Return null on error to allow Promise.all to complete
+      })
+    );
+
+    await Promise.all(spawnPromises);
+
+    // Enforce boundaries once after all molecules are spawned
+    this.enforceBoundariesForAllMolecules();
+
+    // Phase 2: Apply velocities to all molecules now that they're all positioned within bounds
+    this.applyVelocitiesToAllMolecules(temperature);
+  }
+
+  /**
+   * Apply velocities to all molecules after they're positioned
+   */
+  private applyVelocitiesToAllMolecules(temperature: number): void {
+    this.moleculePairs.forEach(pair => {
+      const substrate = this.moleculeManager.getMolecule(pair.substrateId);
+      const nucleophile = this.moleculeManager.getMolecule(pair.nucleophileId);
+
+      if (substrate && substrate.hasPhysics && substrate.physicsBody) {
+        const velocity = this.calculateTemperatureVelocity(temperature, substrate);
+        this.physicsEngine.setVelocity(substrate, velocity);
+      }
+
+      if (nucleophile && nucleophile.hasPhysics && nucleophile.physicsBody) {
+        const velocity = this.calculateTemperatureVelocity(temperature, nucleophile);
+        this.physicsEngine.setVelocity(nucleophile, velocity);
+      }
+    });
+  }
+
+  /**
+   * Calculate velocity based on temperature for a molecule
+   */
+  private calculateTemperatureVelocity(temperature: number, molecule: any): THREE.Vector3 {
+    const molecularMassAmu = molecule.molecularProperties?.totalMass || 50; // Default mass
+    const baseSpeed = 3.0;
+
+    // Use same calculation as MoleculeSpawner
+    const BOLTZMANN_CONSTANT = 1.380649e-23;
+    const AMU_TO_KG = 1.660539e-27;
+    const massKg = molecularMassAmu * AMU_TO_KG;
+
+    const v_rms = Math.sqrt((3 * BOLTZMANN_CONSTANT * temperature) / massKg);
+    const referenceTemp = 298;
+    const referenceVrms = Math.sqrt((3 * BOLTZMANN_CONSTANT * referenceTemp) / massKg);
+    const referenceBaseSpeed = baseSpeed;
+    const speedRatio = v_rms / referenceVrms;
+    const speed = referenceBaseSpeed * speedRatio;
+
+    // Random direction
+    const direction = new THREE.Vector3(
+      Math.random() - 0.5,
+      Math.random() - 0.5,
+      Math.random() - 0.5
+    ).normalize();
+
+    return direction.multiplyScalar(speed);
+  }
+
+  /**
+   * Enforce boundaries for all tracked molecules
+   */
+  private enforceBoundariesForAllMolecules(): void {
+    this.moleculePairs.forEach(pair => {
+      const substrate = this.moleculeManager.getMolecule(pair.substrateId);
+      const nucleophile = this.moleculeManager.getMolecule(pair.nucleophileId);
+      if (substrate) this.clampMoleculeToBounds(substrate);
+      if (nucleophile) this.clampMoleculeToBounds(nucleophile);
+    });
+  }
+
+  /**
+   * Spawn a single molecule pair with zero velocity (velocities applied later)
    */
   private async spawnMoleculePair(
     substrateData: any,
     nucleophileData: any,
     index: number,
-    temperature: number
+    temperature: number, // If 0, spawn with zero velocity
+    bounds: ContainerBounds
   ): Promise<void> {
     const substrateId = `substrate_${index}`;
     const nucleophileId = `nucleophile_${index}`;
 
-    try {
-      // Define container bounds
-      const bounds: ContainerBounds = {
-        size: this.boundarySize,
-        center: { x: 0, y: 0, z: 0 },
-        padding: 0.1,
-      };
+    // Spawn substrate within container bounds
+    // If temperature is 0, molecule spawns with zero velocity
+    const substrateMolecule = await this.moleculeSpawner.spawnMoleculeInContainer(
+      substrateData.cid,
+      substrateId,
+      bounds,
+      {
+        applyRandomRotation: true,
+        temperature: temperature || 0,
+        baseSpeed: temperature ? 3.0 : 0,
+      }
+    );
 
-      // Spawn substrate at random position
-      const substrateMolecule = await this.moleculeSpawner.spawnMoleculeInContainer(
-        substrateData.cid,
-        substrateId,
-        bounds,
-        {
-          applyRandomRotation: true,
-          temperature,
-          baseSpeed: 3.0, // Match updated baseSpeed
-        }
-      );
+    // Spawn nucleophile near substrate, ensuring it stays within bounds
+    const halfSize = this.boundarySize / 2;
+    const safeMargin = 2.0;
+    const safeBoundary = halfSize - safeMargin;
+    const offset = 1.5;
 
-      // Spawn nucleophile near substrate (offset by 1.5 units)
-      // Ensure nucleophile stays within bounds
-      const substratePos = substrateMolecule.group.position;
-      const halfSize = this.boundarySize / 2;
-      const margin = 1.0; // Safety margin to keep within bounds
-      const offset = 1.5;
+    const substratePos = substrateMolecule.group.position;
+    const nucleophilePosition = {
+      x: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.x + offset)),
+      y: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.y)),
+      z: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.z)),
+    };
 
-      // Calculate nucleophile position, clamping to stay within bounds
-      const nucleophilePosition = {
-        x: Math.max(-halfSize + margin, Math.min(halfSize - margin, substratePos.x + offset)),
-        y: Math.max(-halfSize + margin, Math.min(halfSize - margin, substratePos.y)),
-        z: Math.max(-halfSize + margin, Math.min(halfSize - margin, substratePos.z)),
-      };
+    const nucleophileMolecule = await this.moleculeSpawner.spawnMolecule(
+      nucleophileData.cid,
+      nucleophileId,
+      {
+        position: nucleophilePosition,
+        applyRandomRotation: true,
+        temperature: temperature || 0,
+        baseSpeed: temperature ? 3.0 : 0,
+      }
+    );
 
-      const nucleophileMolecule = await this.moleculeSpawner.spawnMolecule(
-        nucleophileData.cid,
-        nucleophileId,
-        {
-          position: nucleophilePosition,
-          applyRandomRotation: true,
-          temperature,
-          baseSpeed: 3.0, // Match updated baseSpeed
-        }
-      );
+    // Ensure both molecules are within bounds immediately
+    this.clampMoleculeToBounds(substrateMolecule);
+    this.clampMoleculeToBounds(nucleophileMolecule);
 
-      // Track pair
-      this.moleculePairs.push({
-        substrateId,
-        nucleophileId,
-        reacted: false,
-      });
+    // Track the pair
+    this.moleculePairs.push({
+      substrateId,
+      nucleophileId,
+      reacted: false,
+    });
+  }
 
-      // Spawned successfully (no verbose logging)
-    } catch (error) {
-      console.error(`Failed to spawn molecule pair ${index}:`, error);
+  /**
+   * Clamp a molecule's position to ensure it stays within bounds
+   */
+  private clampMoleculeToBounds(molecule: any): void {
+    if (!molecule) return;
+
+    const halfSize = this.boundarySize / 2;
+    const margin = 2.0;
+    const safeBoundary = halfSize - margin;
+
+    // Get position from physics body (source of truth) or visual
+    const body = molecule.hasPhysics && molecule.physicsBody ? (molecule.physicsBody as any) : null;
+    const position = body
+      ? { x: body.position.x, y: body.position.y, z: body.position.z }
+      : molecule.group.position;
+
+    // Clamp to safe bounds
+    const clampedPos = {
+      x: Math.max(-safeBoundary, Math.min(safeBoundary, position.x)),
+      y: Math.max(-safeBoundary, Math.min(safeBoundary, position.y)),
+      z: Math.max(-safeBoundary, Math.min(safeBoundary, position.z)),
+    };
+
+    // Update both physics and visual positions
+    if (body) {
+      body.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
     }
+    molecule.group.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
   }
 
   /**
@@ -368,7 +496,7 @@ export class ReactionRateSimulator {
     if (!molecule) return;
 
     const halfSize = this.boundarySize / 2;
-    const margin = 0.5; // Small margin to prevent edge cases
+    const margin = 1.5; // Increased margin to prevent escape
 
     // Get physics body position (source of truth)
     let physicsPos: { x: number; y: number; z: number } | null = null;
@@ -703,15 +831,20 @@ export class ReactionRateSimulator {
     if (difference === 0) return;
 
     if (difference > 0) {
-      // Add molecules - batch spawn for efficiency
+      // Add molecules - spawn with zero velocity first, then apply velocities
+      const bounds = this.getContainerBounds();
       const spawnPromises: Promise<void>[] = [];
       for (let i = 0; i < difference; i++) {
         const index = this.nextPairIndex++;
         spawnPromises.push(
-          this.spawnMoleculePair(this.substrateData, this.nucleophileData, index, spawnTemperature)
+          this.spawnMoleculePair(this.substrateData, this.nucleophileData, index, 0, bounds) // Zero velocity initially
         );
       }
       await Promise.all(spawnPromises);
+      
+      // Enforce boundaries, then apply velocities
+      this.enforceBoundariesForAllMolecules();
+      this.applyVelocitiesToAllMolecules(spawnTemperature);
     } else {
       // Remove molecules - batch removal for efficiency
       const toRemove = Math.abs(difference);
@@ -793,19 +926,15 @@ export class ReactionRateSimulator {
 
   /**
    * Clear all molecules and reset state
-   * Uses moleculeManager.clearAllMolecules() - visual cleanup is automatic, physics cleanup is async
+   * Removes container visualization (call showContainer() separately if needed)
    */
   clear(): void {
-    // Clear all rate simulation molecules
-    // Visual objects are automatically disposed, physics bodies are disposed async
-    this.moleculeManager.clearAllMolecules(
-      // Dispose physics body callback (called async after visual cleanup)
-      molecule => {
-        if (molecule.hasPhysics && molecule.physicsBody) {
-          this.physicsEngine.removeMolecule(molecule);
-        }
+    // Clear all molecules
+    this.moleculeManager.clearAllMolecules(molecule => {
+      if (molecule.hasPhysics && molecule.physicsBody) {
+        this.physicsEngine.removeMolecule(molecule);
       }
-    );
+    });
 
     // Reset state
     this.moleculePairs = [];

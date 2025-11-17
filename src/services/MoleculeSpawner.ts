@@ -50,6 +50,13 @@ export class MoleculeSpawner {
   }
 
   /**
+   * Get chemical data service for pre-fetching
+   */
+  getChemicalDataService(): ChemicalDataService {
+    return this.chemicalDataService;
+  }
+
+  /**
    * Spawn a molecule at a specific position
    */
   async spawnMolecule(cid: string, name: string, options: SpawnOptions = {}): Promise<any> {

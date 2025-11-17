@@ -128,22 +128,20 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
     };
   };
 
-  // Calculate kinetic energy from velocity and temperature - realistic scaling for visualization
+  // Calculate kinetic energy from velocity using reduced mass (kJ/mol)
   const calculateKineticEnergy = () => {
-    if (currentVelocity === 0) return 0;
+    if (currentVelocity <= 0) return 0;
 
-    // Scale velocity to give kinetic energies that can reach activation energy
-    // At 500 m/s (max slider), we want ~40 kJ/mol to be competitive with 30 kJ/mol activation
-    const velocityScale = currentVelocity / 500; // Scale velocity to 0-1 range (500 m/s max)
-    const maxKineticEnergy = 40; // Maximum kinetic energy (kJ/mol) - competitive with activation
-    let kineticEnergy = velocityScale * maxKineticEnergy;
+    const DEFAULT_REDUCED_MASS = 0.028; // kg/mol, approximate for CH3Br collisions
+    const substrateMass = data.substrateMass ?? DEFAULT_REDUCED_MASS;
+    const nucleophileMass = data.nucleophileMass ?? DEFAULT_REDUCED_MASS;
 
-    // Add temperature effects - higher temperature increases kinetic energy
-    const temperature = data.temperature || 298;
-    const temperatureFactor = Math.sqrt(temperature / 298); // Square root relationship
-    kineticEnergy *= temperatureFactor;
+    // Reduced mass for two-body collision
+    const reducedMass = (substrateMass * nucleophileMass) / (substrateMass + nucleophileMass);
 
-    return kineticEnergy;
+    // Convert velocity (m/s) to kinetic energy (kJ/mol)
+    const kineticEnergyJPerMol = 0.5 * reducedMass * currentVelocity ** 2;
+    return kineticEnergyJPerMol / 1000; // J/mol -> kJ/mol
   };
 
   // Calculate overall reaction probability - simplified and realistic

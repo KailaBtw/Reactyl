@@ -92,8 +92,8 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
           className={sliderClasses}
         />
         <div className={`${sliderLabelsClasses} ${themeClasses.textSecondary}`}>
-          <span>Slow Motion</span>
-          <span>Fast Forward</span>
+          <span>Slower</span>
+          <span>Faster</span>
         </div>
       </div>
 

@@ -13,6 +13,7 @@ import {
 import { UIStateProvider } from './context/UIStateContext';
 import { calculateAngleProbability } from './utils/angleProbability';
 import { calculateActivationEnergy } from './utils/thermodynamicCalculator';
+import { getReactionMasses } from './utils/molecularMassLookup';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
@@ -222,6 +223,8 @@ export const App: React.FC = () => {
 
   // Continuously update reaction probability based on current parameters
   useEffect(() => {
+    const DEFAULT_REDUCED_MASS = 0.028; // kg/mol fallback matching kinetic energy UI
+
     const calculateProbability = () => {
       const {
         approachAngle,
@@ -232,10 +235,20 @@ export const App: React.FC = () => {
         nucleophileMolecule,
       } = uiState;
 
-      // Calculate kinetic energy from velocity
-      const velocityScale = relativeVelocity / 500;
-      const maxKineticEnergy = 40; // kJ/mol
-      const kineticEnergy = velocityScale * maxKineticEnergy;
+      // Calculate reduced mass using the same data as the kinetic energy control
+      const { substrateMass, nucleophileMass } = getReactionMasses(
+        substrateMolecule || 'default_substrate',
+        nucleophileMolecule || 'default_nucleophile'
+      );
+      const denominator = substrateMass + nucleophileMass;
+      const reducedMass =
+        substrateMass > 0 && nucleophileMass > 0 && denominator > 0
+          ? (substrateMass * nucleophileMass) / denominator
+          : DEFAULT_REDUCED_MASS;
+
+      // Calculate kinetic energy from velocity (kJ/mol)
+      const velocity = Math.max(0, relativeVelocity || 0);
+      const kineticEnergy = 0.5 * reducedMass * velocity ** 2 / 1000;
 
       // Apply temperature factor
       const temperatureFactor = Math.sqrt(temperature / 298);
