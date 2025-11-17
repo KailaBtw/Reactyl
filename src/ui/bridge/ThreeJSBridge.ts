@@ -513,6 +513,10 @@ export class ThreeJSBridge {
       }
     }
 
+    // Create container visualization immediately (before spawning molecules)
+    // This ensures the square appears right away when switching to rate mode
+    this.reactionRateSimulator.showContainer();
+
     try {
       // Ensure physics engine is running
       physicsEngine.resume();

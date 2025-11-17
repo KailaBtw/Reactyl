@@ -78,8 +78,13 @@ export class ReactionGraphics {
       const { collisionEventSystem } = require('../physics/collisionEventSystem');
       const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
       substrate.isProduct = true;
+      
+      // Add outline immediately in rate mode
       if (isRateMode) {
         addProductOutline(substrate);
+        log(`✅ Added red outline to product ${substrate.name} in rate mode`);
+      } else {
+        log(`✅ Product ${substrate.name} marked (no outline in single mode)`);
       }
 
       log('✅ Minimal SN2 reaction completed');

@@ -509,12 +509,18 @@ export class SN2MechanismAnimation {
             const newMolecule = moleculeManager.getMolecule(newName);
             if (newMolecule) {
               const { collisionEventSystem } = require('../physics/collisionEventSystem');
-              const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
+              const simulationMode = collisionEventSystem.getSimulationMode();
+              const isRateMode = simulationMode === 'rate';
               newMolecule.isProduct = true;
+              
               if (isRateMode) {
                 addProductOutline(newMolecule);
-                log(`Marked ${newName} as product with red outline`);
+                log(`✅ Added red outline to ${newName} in rate mode`);
+              } else {
+                log(`✅ Product ${newName} marked (mode: ${simulationMode}, no outline)`);
               }
+            } else {
+              log(`❌ Failed to find molecule ${newName} for outline`);
             }
           }, 100);
         });

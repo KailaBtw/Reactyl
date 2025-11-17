@@ -239,53 +239,53 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
           {/* Bottom Panel - Show different cards based on simulation mode */}
           {uiState.simulationMode !== 'molecule' && (
+          <div
+            className="relative flex-shrink-0"
+            style={{ height: `${bottomPanelHeight}px`, minHeight: '150px' }}
+          >
+            {/* Resize Handle */}
             <div
-              className="relative flex-shrink-0"
-              style={{ height: `${bottomPanelHeight}px`, minHeight: '150px' }}
-            >
-              {/* Resize Handle */}
-              <div
-                onMouseDown={handleBottomPanelResizeStart}
-                className={`absolute top-0 left-0 right-0 h-1 z-10 transition-colors ${
-                  isBottomPanelResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
-                }`}
-                style={{ cursor: 'row-resize' }}
-                title="Drag to resize bottom panel"
+              onMouseDown={handleBottomPanelResizeStart}
+              className={`absolute top-0 left-0 right-0 h-1 z-10 transition-colors ${
+                isBottomPanelResizing ? 'bg-blue-500' : 'bg-transparent hover:bg-blue-400/50'
+              }`}
+              style={{ cursor: 'row-resize' }}
+              title="Drag to resize bottom panel"
+            />
+            {uiState.simulationMode === 'single' ? (
+              <BottomEnergyPanel
+                height={bottomPanelHeight}
+                thermodynamicData={{
+                  activationEnergy: thermodynamicData.activationEnergy,
+                  enthalpyOfFormation: thermodynamicData.enthalpyChange,
+                  reactantEnergy: thermodynamicData.reactantEnergy,
+                  productEnergy: thermodynamicData.productEnergy,
+                  transitionStateEnergy: thermodynamicData.transitionStateEnergy,
+                }}
+                isPlaying={isPlaying}
+                themeClasses={themeClasses}
+                reactionType={currentReaction}
+                reactionProgress={0}
+                currentVelocity={relativeVelocity}
+                substrate={substrate}
+                nucleophile={nucleophile}
+                substrateMass={thermodynamicData.substrateMass}
+                nucleophileMass={thermodynamicData.nucleophileMass}
+                attackAngle={attackAngle}
+                timeScale={timeScale}
+                reactionProbability={uiState.reactionProbability}
               />
-              {uiState.simulationMode === 'single' ? (
-                <BottomEnergyPanel
-                  height={bottomPanelHeight}
-                  thermodynamicData={{
-                    activationEnergy: thermodynamicData.activationEnergy,
-                    enthalpyOfFormation: thermodynamicData.enthalpyChange,
-                    reactantEnergy: thermodynamicData.reactantEnergy,
-                    productEnergy: thermodynamicData.productEnergy,
-                    transitionStateEnergy: thermodynamicData.transitionStateEnergy,
-                  }}
-                  isPlaying={isPlaying}
-                  themeClasses={themeClasses}
-                  reactionType={currentReaction}
-                  reactionProgress={0}
-                  currentVelocity={relativeVelocity}
-                  substrate={substrate}
-                  nucleophile={nucleophile}
-                  substrateMass={thermodynamicData.substrateMass}
-                  nucleophileMass={thermodynamicData.nucleophileMass}
-                  attackAngle={attackAngle}
-                  timeScale={timeScale}
-                  reactionProbability={uiState.reactionProbability}
-                />
-              ) : (
-                <RateMetricsCard
-                  reactionRate={uiState.reactionRate}
-                  remainingReactants={uiState.remainingReactants}
-                  productsFormed={uiState.productsFormed || 0}
-                  collisionCount={(uiState as any).collisionCount || 0}
-                  elapsedTime={(uiState as any).elapsedTime || 0}
-                  themeClasses={themeClasses}
-                />
-              )}
-            </div>
+            ) : (
+              <RateMetricsCard
+                reactionRate={uiState.reactionRate}
+                remainingReactants={uiState.remainingReactants}
+                productsFormed={uiState.productsFormed || 0}
+                collisionCount={(uiState as any).collisionCount || 0}
+                elapsedTime={(uiState as any).elapsedTime || 0}
+                themeClasses={themeClasses}
+              />
+            )}
+          </div>
           )}
         </div>
 

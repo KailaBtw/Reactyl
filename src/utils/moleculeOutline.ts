@@ -5,16 +5,24 @@ import type { MoleculeGroup } from '../types';
  * Add red outline effect to a molecule by creating edge geometries for each atom
  */
 export function addProductOutline(molecule: MoleculeGroup): void {
-  if (!molecule.group) return;
+  if (!molecule.group) {
+    console.warn('Cannot add outline: molecule.group is null');
+    return;
+  }
 
   // Remove existing outline if present
   removeProductOutline(molecule);
 
-  // Create red outline material
+  // Create bright red outline material with increased visibility
   const outlineMaterial = new THREE.LineBasicMaterial({
-    color: 0xff0000, // Red
-    linewidth: 2,
+    color: 0xff0000, // Bright red
+    linewidth: 3, // Increased from 2
+    transparent: false,
+    depthTest: true,
+    depthWrite: true,
   });
+
+  let outlineCount = 0;
 
   // Traverse all atom meshes in the molecule group
   molecule.group.traverse((child: any) => {
@@ -23,23 +31,26 @@ export function addProductOutline(molecule: MoleculeGroup): void {
       const geometry = child.geometry as THREE.BufferGeometry;
       
       // Create edges geometry from the atom sphere
-      const edgesGeometry = new THREE.EdgesGeometry(geometry);
+      const edgesGeometry = new THREE.EdgesGeometry(geometry, 15); // Lower threshold for more edges
       
       // Create line segments for the outline
       const outline = new THREE.LineSegments(edgesGeometry, outlineMaterial.clone());
       
-      // Position the outline at the same position as the atom
+      // Scale up slightly for better visibility
       outline.position.copy(child.position);
       outline.rotation.copy(child.rotation);
-      outline.scale.copy(child.scale);
+      outline.scale.copy(child.scale).multiplyScalar(1.05);
       
       // Tag it so we can remove it later
       outline.userData = { type: 'productOutline', atomMesh: child };
       
       // Add to the molecule group
       molecule.group.add(outline);
+      outlineCount++;
     }
   });
+
+  console.log(`✅ Added ${outlineCount} red outlines to molecule ${molecule.name}`);
 }
 
 /**

@@ -103,7 +103,7 @@ const initialState: UIState = {
   distance: 0,
   timeToCollision: 0,
   reactionProbability: 0,
-  autoplay: false,
+  autoplay: true, // Default to autoplay in single collision mode
   concentration: 0.1, // Default concentration: 0.1 mol/L
   particleCount: 20, // Will be calculated from concentration when needed
   reactionRate: 0,
@@ -152,13 +152,13 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [uiState.bottomBarExpanded]);
 
-  // Autoplay: restart shortly after a collision completes if enabled and not paused
+  // Autoplay: restart shortly after a collision completes if enabled
   useEffect(() => {
     const handleRestart = () => {
       // Only restart in single mode
       if (uiState.simulationMode !== 'single') return;
       if (!uiState.autoplay) return;
-      if (!uiState.isPlaying) return;
+      // Don't check isPlaying - we want to restart even after collision completes
       
       // Delay after collision/reaction completes before restarting
       const delayMs = 1500;
@@ -166,6 +166,9 @@ export const App: React.FC = () => {
         clearTimeout(autoplayTimeoutRef.current);
       }
       autoplayTimeoutRef.current = window.setTimeout(async () => {
+        // Check again if autoplay is still enabled
+        if (!uiState.autoplay) return;
+        
         try {
           // Apply any pending parameter changes before restarting
           if (pendingParameterChangeRef.current) {
@@ -196,29 +199,16 @@ export const App: React.FC = () => {
       handleRestart();
     };
     
-    // Listen for collision detection - only restart if no reaction occurred
-    // (if reaction occurs, reaction-completed will handle restart)
-    const collisionHandler = (event: any) => {
+    // Listen for collision detection - restart after collisions (whether reaction occurs or not)
+    const collisionHandler = (_event: any) => {
       // Only handle collisions in single mode
       if (uiState.simulationMode !== 'single') {
         return;
       }
       
-      // Check if this collision resulted in a reaction
-      const reactionOccurred = event.data?.reactionProbability === 1.0 || 
-                               (event.data?.reactionProbability && event.data.reactionProbability > 0.95);
-      
-      // Wait a moment to see if a reaction starts (for cases where reaction is detected asynchronously)
-      setTimeout(() => {
-        const orchestrator = (window as any).reactionOrchestrator;
-        const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
-        
-        // Only restart if no reaction occurred (collision but no reaction)
-        // If a reaction occurred, reaction-completed event will handle restart
-        if (!isReactionInProgress && !reactionOccurred) {
-          handleRestart();
-        }
-      }, 500); // Increased delay to ensure reaction detection completes
+      // Always restart after collision, regardless of whether reaction occurred
+      // The handleRestart function already has a delay to let the collision finish
+      handleRestart();
     };
 
     reactionEventBus.on('reaction-completed', reactionHandler);

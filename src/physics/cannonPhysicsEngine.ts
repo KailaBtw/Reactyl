@@ -480,19 +480,19 @@ export class CannonPhysicsEngine {
       const pairs = this.pendingCollisionPairs.slice();
       this.pendingCollisionPairs.length = 0;
 
-      // Debug: Log collision detection
-      if (pairs.length > 0) {
-        console.log(`💥 Detected ${pairs.length} collision(s) this frame`);
-      }
+      // Debug: Log collision detection (disabled for cleaner console)
+      // if (pairs.length > 0) {
+      //   console.log(`💥 Detected ${pairs.length} collision(s) this frame`);
+      // }
 
       for (const { a, b } of pairs) {
         // Skip if either molecule began a reaction since queuing
         if ((a as any).reactionInProgress || (b as any).reactionInProgress) {
-          console.log(`⏭️ Skipping collision: ${a.name} or ${b.name} already reacting`);
+          // console.log(`⏭️ Skipping collision: ${a.name} or ${b.name} already reacting`);
           continue;
         }
         const collisionEvent = createCollisionEvent(a, b);
-        console.log(`📡 Emitting collision: ${a.name} + ${b.name}`);
+        // console.log(`📡 Emitting collision: ${a.name} + ${b.name}`);
         // Fire and forget - don't await to avoid blocking physics loop
         collisionEventSystem.emitCollision(collisionEvent).catch(error => {
           console.error('Error emitting collision:', error);

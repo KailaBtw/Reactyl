@@ -38,37 +38,35 @@ export class ReactionDetector {
       };
     }
 
-    // DETERMINISTIC REACTION DETECTION:
-    // Reaction occurs if BOTH conditions are met:
-    // 1. Collision energy >= activation energy (hard threshold)
-    // 2. Orientation is within acceptable tolerance (angle-dependent)
+    // STOCHASTIC REACTION DETECTION (Arrhenius-based):
+    // Reaction probability depends on:
+    // 1. Energy factor: Higher energy above activation = higher probability
+    // 2. Orientation factor: Better alignment with optimal angle = higher probability
     // Temperature affects collision energy through velocity scaling (Maxwell-Boltzmann)
-    // No stochastic probability - if conditions are met, reaction occurs
     
-    // 1. Check if collision energy exceeds activation energy (hard threshold)
-    const hasSufficientEnergy = collision.collisionEnergy >= reaction.activationEnergy;
+    // 1. Calculate energy factor using smooth exponential
+    // If energy >= activation, factor approaches 1.0
+    // If energy < activation, factor decreases exponentially (Arrhenius)
+    const energyFactor = collision.collisionEnergy >= reaction.activationEnergy
+      ? Math.min(1, 1 - Math.exp(-(collision.collisionEnergy - reaction.activationEnergy) / reaction.activationEnergy))
+      : Math.exp(-(reaction.activationEnergy - collision.collisionEnergy) / (8.314 * temperature / 1000)); // Arrhenius factor with temperature
     
-    // 2. Check orientation factor (determines if angle is acceptable)
+    // 2. Calculate orientation factor (angle-dependent, now with looser tolerance)
     const orientationFactor = this.calculateOrientationFactor(
       collision.approachAngle,
       reaction.optimalAngle
     );
     
-    // 3. Set orientation threshold - reactions occur if orientation factor exceeds this
-    // For SN2 (180° optimal), we require good orientation for reaction to occur
-    // Orientation factor of 0.5 means ~25° deviation, which is more realistic for SN2
-    // Higher threshold = more selective reactions (less common)
-    const orientationThreshold = 0.5; // Require orientation factor >= 0.5 for reaction
+    // 3. Combined probability: product of energy and orientation factors
+    // This gives realistic reaction rates: most collisions don't react, but some do
+    const probability = energyFactor * orientationFactor;
     
-    // 4. Deterministic reaction: occurs if energy threshold AND orientation threshold are met
-    const occurs = hasSufficientEnergy && orientationFactor >= orientationThreshold;
-    
-    // Probability is just for display/debugging - shows how "good" the collision was
-    // It's not used for stochastic determination
-    const energyFactor = hasSufficientEnergy 
-      ? Math.min(1, 1 - Math.exp(-(collision.collisionEnergy - reaction.activationEnergy) / reaction.activationEnergy))
-      : 0;
-    const probability = energyFactor * orientationFactor; // For display only
+    // 4. Stochastic determination: random roll against probability
+    // This creates realistic reaction kinetics where:
+    // - Low energy collisions rarely react
+    // - High energy + good orientation = high chance
+    // - Temperature increases both collision energy AND frequency
+    const occurs = Math.random() < probability;
 
     const result: ReactionResult = {
       occurs,
@@ -131,7 +129,11 @@ export class ReactionDetector {
       deviation = 360 - deviation;
     }
     
-    const sigma = 20; // degrees tolerance (standard deviation) - tighter for more selective reactions
+    // Orientation tolerance: 60° standard deviation (used for both single and rate modes)
+    // This allows reactions within ~120°-180° cone (realistic for SN2 backside attack)
+    // In rate mode: molecules collide from random angles, so this tolerance allows realistic reactions
+    // In single collision mode: user can test different angles and see how orientation affects probability
+    const sigma = 60; // degrees tolerance (standard deviation) - allows ±60° variation from optimal
     // Gaussian: exp(-(x-μ)²/(2σ²)) where μ = optimal, σ = tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
 

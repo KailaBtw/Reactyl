@@ -79,6 +79,7 @@ export const SingleCollisionSidebar: React.FC<SingleCollisionSidebarProps> = ({
       <CollisionVelocityCard
         relativeVelocity={relativeVelocity}
         onRelativeVelocityChange={onRelativeVelocityChange}
+        reactionType={currentReaction}
         themeClasses={themeClasses}
       />
 

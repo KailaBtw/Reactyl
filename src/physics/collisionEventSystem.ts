@@ -366,7 +366,8 @@ class CollisionEventSystem {
       occurs: reactionResult.occurs,
       prob: `${(reactionResult.probability * 100).toFixed(2)}%`,
     };
-    console.log(JSON.stringify(debugInfo));
+    // Collision debug log disabled for cleaner console
+    // console.log(JSON.stringify(debugInfo));
 
     // RAPID OVERRIDE: Use UI-calculated probability instead of forcing 100%
     if (this.testingMode) {

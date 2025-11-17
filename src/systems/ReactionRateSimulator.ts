@@ -57,85 +57,54 @@ export class ReactionRateSimulator {
     temperature: number,
     reactionType: string
   ): Promise<void> {
-    // Wait a moment to ensure scene/backend is ready (prevents abort errors on reload)
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Store simulation parameters for dynamic adjustments
+    // Store simulation parameters
     this.substrateData = substrateData;
     this.nucleophileData = nucleophileData;
     this.temperature = temperature;
     this.nextPairIndex = 0;
 
-    // Clear existing molecules
+    // Clear existing molecules and reset state
     this.clear();
 
-    // Set up collision event listener (registerHandler takes just the handler function)
+    // Create container visualization (clear() removes it, so recreate it)
+    this.containerVisualization.create();
+
+    // Set up collision event listener
     const collisionHandler = (event: any) => {
       this.handleCollision(event);
     };
     collisionEventSystem.registerHandler(collisionHandler);
-
-    // Store handler reference for cleanup
     (this as any).collisionHandler = collisionHandler;
 
-    // Set reaction type for collision detection
-    const reactionTypeObj = REACTION_TYPES[reactionType];
-    if (reactionTypeObj) {
-      collisionEventSystem.setReactionType(reactionTypeObj);
-    } else {
-      collisionEventSystem.setReactionType(REACTION_TYPES.sn2);
-    }
-
-    // Set temperature for reaction calculations
-    // Pressure effects removed - reactions are in solution where pressure has negligible effect
+    // Configure collision detection system
+    const reactionTypeObj = REACTION_TYPES[reactionType.toLowerCase()];
+    collisionEventSystem.setReactionType(reactionTypeObj || REACTION_TYPES.sn2);
     collisionEventSystem.setTemperature(temperature);
 
-    // Spawn molecule pairs in parallel batches for much faster initialization
-    const BATCH_SIZE = 10; // Spawn 10 pairs at a time
-    const batches: Promise<void>[] = [];
-    
-    for (let batchStart = 0; batchStart < particleCount; batchStart += BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + BATCH_SIZE, particleCount);
-      const batchPromises: Promise<void>[] = [];
-      
-      for (let i = batchStart; i < batchEnd; i++) {
-        batchPromises.push(
-          (async () => {
-            try {
-              await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
-              this.nextPairIndex = Math.max(this.nextPairIndex, i + 1);
-            } catch (error: any) {
-              // If it's an abort error, wait a bit longer and retry once
-              if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-                console.warn(`Spawn aborted for pair ${i}, waiting and retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 100));
-                try {
-                  await this.spawnMoleculePair(substrateData, nucleophileData, i, temperature);
-                  this.nextPairIndex = Math.max(this.nextPairIndex, i + 1);
-                } catch (retryError) {
-                  console.error(`Failed to spawn molecule pair ${i} after retry:`, retryError);
-                  // Continue with next pair instead of crashing
-                }
-              } else {
-                console.error(`Failed to spawn molecule pair ${i}:`, error);
-                // Continue with next pair instead of crashing
-              }
-            }
-          })()
-        );
+    // Spawn molecule pairs in batches for efficient initialization
+    const BATCH_SIZE = 10;
+    const spawnPromises: Promise<void>[] = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      spawnPromises.push(
+        this.spawnMoleculePair(substrateData, nucleophileData, i, temperature).catch(error => {
+          console.error(`Failed to spawn molecule pair ${i}:`, error);
+          // Continue with other pairs even if one fails
+        })
+      );
+
+      // Process in batches to avoid overwhelming the system
+      if (spawnPromises.length >= BATCH_SIZE || i === particleCount - 1) {
+        await Promise.all(spawnPromises);
+        spawnPromises.length = 0; // Clear array for next batch
       }
-      
-      // Wait for this batch to complete before starting next batch
-      // This prevents overwhelming the system while still being much faster than sequential
-      batches.push(Promise.all(batchPromises).then(() => {}));
-      await Promise.all(batchPromises);
     }
 
+    // Update next index and start timer
+    this.nextPairIndex = particleCount;
     this.startTime = performance.now();
-    console.log(`Spawned ${this.moleculePairs.length} molecule pairs`);
-
-    // Create container visualization
-    this.containerVisualization.create();
+    
+    console.log(`✅ Initialized rate simulation: ${this.moleculePairs.length} molecule pairs`);
   }
 
   /**
@@ -239,7 +208,8 @@ export class ReactionRateSimulator {
       const moleculeAId = event.moleculeA?.name || event.moleculeA?.id;
       const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
 
-      console.log(`🔬 ReactionRateSimulator.handleCollision: ${moleculeAId} + ${moleculeBId}, reactionResult.occurs=${reactionOccurred}`);
+      // Collision debug log disabled for cleaner console
+      // console.log(`🔬 ReactionRateSimulator.handleCollision: ${moleculeAId} + ${moleculeBId}, reactionResult.occurs=${reactionOccurred}`);
 
       if (moleculeAId && moleculeBId) {
         // Mark the pair as reacted
@@ -798,6 +768,13 @@ export class ReactionRateSimulator {
    */
   getMoleculeSpawner(): MoleculeSpawner {
     return this.moleculeSpawner;
+  }
+
+  /**
+   * Get container visualization instance
+   */
+  getContainerVisualization(): ContainerVisualization {
+    return this.containerVisualization;
   }
 
   /**
