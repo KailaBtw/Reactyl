@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useRafThrottledCallback } from '../../../hooks/useRafThrottledCallback';
 
 // Shared card classes
 const controlCardClasses = 'p-4 rounded-lg border flex flex-col';
@@ -44,6 +45,7 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
   themeClasses,
 }) => {
   const theme = controlCardThemes.slate;
+  const emitTimeScaleChange = useRafThrottledCallback(onTimeScaleChange);
 
   // Reaction probability color based on value
   const getProbabilityColor = () => {
@@ -88,7 +90,7 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
           max="2.0"
           step="0.1"
           value={timeScale}
-          onChange={e => onTimeScaleChange(parseFloat(e.target.value))}
+          onChange={e => emitTimeScaleChange(parseFloat(e.target.value))}
           className={sliderClasses}
         />
         <div className={`${sliderLabelsClasses} ${themeClasses.textSecondary}`}>

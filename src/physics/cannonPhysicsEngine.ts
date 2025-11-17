@@ -353,6 +353,9 @@ export class CannonPhysicsEngine {
    * Step physics simulation using worker
    */
   private async stepWithWorker(deltaTime: number): Promise<void> {
+    if (this.timeScale === 0) {
+      return;
+    }
     try {
       // Send all body states to worker
       const bodyStates: SerializableBodyData[] = [];
@@ -363,7 +366,7 @@ export class CannonPhysicsEngine {
       // Send step message to worker
       const message: PhysicsWorkerMessage = {
         type: 'step',
-        deltaTime: deltaTime * this.timeScale,
+        deltaTime,
       };
 
       // Batch update bodies in worker (more efficient)
@@ -411,14 +414,16 @@ export class CannonPhysicsEngine {
    * Step physics simulation on main thread (original implementation)
    */
   private stepOnMainThread(deltaTime: number): void {
-    // Apply time scale
-    const scaledDeltaTime = deltaTime * this.timeScale;
+    if (this.timeScale === 0) {
+      return;
+    }
 
     // Accumulate time and step with fixed timestep for stability and performance
-    this.accumulator += Math.min(scaledDeltaTime, 0.1); // avoid spiral of death
+    this.accumulator += Math.min(deltaTime, 0.1); // avoid spiral of death
     let substeps = 0;
+    const effectiveStep = Math.max(this.fixedTimeStep * this.timeScale, 1e-5);
     while (this.accumulator >= this.fixedTimeStep && substeps < this.maxSubSteps) {
-      this.world.step(this.fixedTimeStep);
+      this.world.step(effectiveStep);
       this.accumulator -= this.fixedTimeStep;
       substeps++;
     }
@@ -783,6 +788,14 @@ export class CannonPhysicsEngine {
   setTimeScale(scale: number): void {
     this.timeScale = Math.max(0, scale); // Ensure non-negative
     log(`Physics time scale set to: ${this.timeScale}`);
+    if (this.useWorker && this.workerInitialized && workerManager.isPhysicsWorkerEnabled()) {
+      workerManager
+        .sendPhysicsMessage({
+          type: 'setTimeScale',
+          timeScale: this.timeScale,
+        })
+        .catch(error => console.warn('Failed to sync time scale to physics worker:', error));
+    }
   }
 
   /**

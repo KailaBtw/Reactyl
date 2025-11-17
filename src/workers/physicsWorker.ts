@@ -96,6 +96,16 @@ class PhysicsWorker {
           }
           break;
 
+        case 'setTimeScale':
+          if (typeof message.timeScale === 'number') {
+            this.timeScale = Math.max(0, message.timeScale);
+            this.sendResponse({
+              type: 'stepComplete',
+              id: message.id,
+            });
+          }
+          break;
+
         case 'setVelocity':
           if (message.id && message.velocity) {
             this.setVelocity(message.id, message.velocity);
@@ -174,13 +184,16 @@ class PhysicsWorker {
    */
   private async step(deltaTime: number): Promise<void> {
     if (!this.world) return;
+    if (this.timeScale === 0) {
+      return;
+    }
 
-    const scaledDeltaTime = deltaTime * this.timeScale;
-    this.accumulator += Math.min(scaledDeltaTime, 0.1); // Avoid spiral of death
+    this.accumulator += Math.min(deltaTime, 0.1); // Avoid spiral of death
 
     let substeps = 0;
+    const effectiveStep = Math.max(this.fixedTimeStep * this.timeScale, 1e-5);
     while (this.accumulator >= this.fixedTimeStep && substeps < this.maxSubSteps) {
-      this.world.step(this.fixedTimeStep);
+      this.world.step(effectiveStep);
       this.accumulator -= this.fixedTimeStep;
       substeps++;
     }

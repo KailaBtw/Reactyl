@@ -25,30 +25,6 @@ export const ModeTabs: React.FC<ModeTabsProps> = ({
           if ((e.target as HTMLElement).closest('[data-infobubble]')) {
             return;
           }
-          onSimulationModeChange('molecule');
-        }}
-        className={`${tabButtonClasses} ${
-          simulationMode === 'molecule'
-            ? themeClasses.text
-            : `${themeClasses.textSecondary} hover:${themeClasses.text}`
-        }`}
-      >
-        Single Molecule
-        <span data-infobubble>
-          <InfoBubble
-            term="Single Molecule"
-            explanation="Search for and visualize individual molecules. Use autocomplete to find molecules by name, CID, SMILES, or InChIKey. Perfect for exploring molecular structures and properties."
-            size="small"
-          />
-        </span>
-        {simulationMode === 'molecule' && <div className={tabIndicatorClasses} />}
-      </button>
-      <button
-        onClick={e => {
-          // Don't switch tabs if clicking on InfoBubble
-          if ((e.target as HTMLElement).closest('[data-infobubble]')) {
-            return;
-          }
           onSimulationModeChange('single');
         }}
         className={`${tabButtonClasses} ${

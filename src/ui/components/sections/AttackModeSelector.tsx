@@ -1,5 +1,6 @@
 import type React from 'react';
 import { IdealButton } from './IdealButton';
+import { useRafThrottledCallback } from '../../hooks/useRafThrottledCallback';
 
 interface AttackModeSelectorProps {
   attackAngle: number;
@@ -24,6 +25,7 @@ export const AttackModeSelector: React.FC<AttackModeSelectorProps> = ({
 
   const idealAngle = getIdealAngle();
   const isIdeal = Math.abs(attackAngle - idealAngle) <= 5; // Within 5 degrees
+  const emitAngleChange = useRafThrottledCallback(onAttackAngleChange);
 
   return (
     <div>
@@ -33,7 +35,7 @@ export const AttackModeSelector: React.FC<AttackModeSelectorProps> = ({
         </label>
         <IdealButton
           isActive={isIdeal}
-          onClick={() => onAttackAngleChange(idealAngle)}
+          onClick={() => emitAngleChange(idealAngle)}
           activeText="Ideal"
           inactiveText="Ideal"
           themeClasses={themeClasses}
@@ -47,7 +49,7 @@ export const AttackModeSelector: React.FC<AttackModeSelectorProps> = ({
           min="0"
           max="180"
           value={attackAngle}
-          onChange={e => onAttackAngleChange(parseInt(e.target.value))}
+          onChange={e => emitAngleChange(parseInt(e.target.value))}
           className="slider w-full"
         />
         <div className="flex justify-between text-xs text-gray-500 mt-1">

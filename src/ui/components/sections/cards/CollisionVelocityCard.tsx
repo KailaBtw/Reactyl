@@ -1,25 +1,17 @@
 import type React from 'react';
-import { useMemo, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IdealButton } from '../IdealButton';
 import { InfoBubble } from '../../common/InfoBubble';
 import { REACTION_TYPES } from '../../../../chemistry/reactionDatabase';
-import { getReactionMasses } from '../../../utils/molecularMassLookup';
+import {
+  energyFromVelocityScaled,
+  velocityFromEnergyScaled,
+  getEnergyRange,
+} from '../../../utils/kineticEnergyScaling';
+import { useRafThrottledCallback } from '../../../hooks/useRafThrottledCallback';
 
 // Constants for Kinetic Energy
 const ENERGY_STEP = 0.5; // kJ/mol
-const DEFAULT_REDUCED_MASS = 0.028; // kg/mol fallback
-
-// Calculate velocity from kinetic energy: KE = 0.5 * m * v², so v = sqrt(2 * KE / m)
-// KE in kJ/mol, convert to J/mol, then solve for v in m/s
-const velocityFromEnergy = (energyKJ: number, massKG: number): number => {
-  const energyJ = energyKJ * 1000; // Convert kJ/mol to J/mol
-  return Math.sqrt((2 * energyJ) / massKG);
-};
-
-// Calculate kinetic energy from velocity: KE = 0.5 * m * v²
-const energyFromVelocity = (velocity: number, massKG: number): number => {
-  return (0.5 * massKG * velocity ** 2) / 1000; // Convert J/mol to kJ/mol
-};
 
 // Shared card classes
 const controlCardClasses = 'p-4 rounded-lg border flex flex-col';
@@ -40,8 +32,6 @@ interface CollisionVelocityCardProps {
   relativeVelocity: number;
   onRelativeVelocityChange: (value: number) => void;
   reactionType: string;
-  substrate: string;
-  nucleophile: string;
   activationEnergy?: number;
   themeClasses: any;
 }
@@ -50,29 +40,10 @@ export const CollisionVelocityCard: React.FC<CollisionVelocityCardProps> = ({
   relativeVelocity,
   onRelativeVelocityChange,
   reactionType,
-  substrate,
-  nucleophile,
   activationEnergy: activationEnergyOverride,
   themeClasses,
 }) => {
   const theme = controlCardThemes.red;
-
-  // Calculate reduced mass for the current substrate/nucleophile pair
-  const { substrateMass, nucleophileMass } = useMemo(
-    () => getReactionMasses(substrate, nucleophile),
-    [substrate, nucleophile]
-  );
-
-  const reducedMass = useMemo(() => {
-    if (!substrateMass || !nucleophileMass) {
-      return DEFAULT_REDUCED_MASS;
-    }
-    const denominator = substrateMass + nucleophileMass;
-    if (denominator === 0) {
-      return DEFAULT_REDUCED_MASS;
-    }
-    return (substrateMass * nucleophileMass) / denominator;
-  }, [substrateMass, nucleophileMass]);
 
   // Get activation energy, preferring thermodynamic data override
   const activationEnergy = useMemo(() => {
@@ -83,10 +54,15 @@ export const CollisionVelocityCard: React.FC<CollisionVelocityCardProps> = ({
     return reaction?.activationEnergy || 30; // Default to SN2 if not found
   }, [activationEnergyOverride, reactionType]);
 
-  // Calculate kinetic energy from velocity
+  const { min: kineticEnergyMin, max: kineticEnergyMax } = useMemo(
+    () => getEnergyRange(activationEnergy),
+    [activationEnergy]
+  );
+
+  // Calculate kinetic energy from velocity using demo-friendly scaling
   const kineticEnergy = useMemo(() => {
-    return energyFromVelocity(relativeVelocity, reducedMass);
-  }, [relativeVelocity, reducedMass]);
+    return energyFromVelocityScaled(relativeVelocity, activationEnergy);
+  }, [relativeVelocity, activationEnergy]);
 
   const [displayEnergy, setDisplayEnergy] = useState(kineticEnergy);
 
@@ -95,6 +71,7 @@ export const CollisionVelocityCard: React.FC<CollisionVelocityCardProps> = ({
   }, [kineticEnergy]);
 
   const hasSufficientEnergy = displayEnergy >= activationEnergy;
+  const emitVelocityChange = useRafThrottledCallback(onRelativeVelocityChange);
 
   // Determine bar color: red -> yellow -> green as energy increases
   const getBarColor = (): string => {
@@ -109,26 +86,17 @@ export const CollisionVelocityCard: React.FC<CollisionVelocityCardProps> = ({
 
   // Calculate ideal kinetic energy (~5 kJ/mol above activation energy)
   const idealKineticEnergy = useMemo(() => {
-    return activationEnergy + 5;
-  }, [activationEnergy]);
-
-  // Calculate max kinetic energy for slider range
-  const kineticEnergyMax = useMemo(() => {
-    return activationEnergy + 10;
-  }, [activationEnergy]);
-
-  // Calculate min kinetic energy for slider range
-  const kineticEnergyMin = useMemo(() => {
-    return Math.max(5, activationEnergy * 0.5);
-  }, [activationEnergy]);
+    const ideal = activationEnergy + 5;
+    return Math.min(Math.max(ideal, kineticEnergyMin), kineticEnergyMax);
+  }, [activationEnergy, kineticEnergyMax, kineticEnergyMin]);
 
   // Handle slider change: convert kinetic energy to velocity for parent callback
-  const handleEnergyChange = (energyKJ: number) => {
+  const handleEnergyChange = useCallback((energyKJ: number) => {
     const clampedEnergy = Math.min(Math.max(energyKJ, kineticEnergyMin), kineticEnergyMax);
     setDisplayEnergy(clampedEnergy);
-    const velocity = velocityFromEnergy(clampedEnergy, reducedMass);
-    onRelativeVelocityChange(velocity);
-  };
+    const velocity = velocityFromEnergyScaled(clampedEnergy, activationEnergy);
+    emitVelocityChange(velocity);
+  }, [activationEnergy, emitVelocityChange, kineticEnergyMax, kineticEnergyMin]);
 
   // Calculate progress bar width based on kinetic energy position in the range
   // This directly maps kinetic energy to the progress bar position
@@ -168,14 +136,7 @@ export const CollisionVelocityCard: React.FC<CollisionVelocityCardProps> = ({
         <label className={`${cardTitleClasses} ${themeClasses.text}`}>Kinetic Energy</label>
         <InfoBubble
           term="Kinetic Energy & Activation Energy"
-          explanation={`Kinetic energy (KE) is the energy of motion. For a reaction to occur, molecules must collide with enough kinetic energy to overcome the activation energy barrier (Eₐ).
-
-Kinetic Energy Formula:
-KE = ½mv²
-
-Where:
-• m = reduced mass of the collision pair
-• v = relative velocity between molecules
+          explanation={`For demo clarity we scale kinetic energy to the visually trackable velocity range (0-500 m/s) while keeping the activation-energy targets intact.
 
 Energy Comparison:
 • Current KE: ${displayEnergy.toFixed(1)} kJ/mol
@@ -187,7 +148,7 @@ Reaction Requirements:
 • KE ≥ Eₐ: Reaction possible (energy barrier overcome)
 • KE ≥ Eₐ + 5 kJ/mol: Ideal conditions (reliable reactions)
 
-The slider controls collision velocity, which determines the kinetic energy available for the reaction.`}
+The slider controls the scaled kinetic energy, mapping it back to a manageable collision velocity for the 3D scene.`}
           size="small"
         />
       </div>

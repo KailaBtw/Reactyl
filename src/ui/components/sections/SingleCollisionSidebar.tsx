@@ -82,8 +82,6 @@ export const SingleCollisionSidebar: React.FC<SingleCollisionSidebarProps> = ({
         relativeVelocity={relativeVelocity}
         onRelativeVelocityChange={onRelativeVelocityChange}
         reactionType={currentReaction}
-        substrate={substrate}
-        nucleophile={nucleophile}
         activationEnergy={activationEnergy}
         themeClasses={themeClasses}
       />

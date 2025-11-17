@@ -25,7 +25,15 @@ export interface SerializablePosition {
 
 // Physics worker message types
 export interface PhysicsWorkerMessage {
-  type: 'step' | 'addBody' | 'removeBody' | 'updateBody' | 'setVelocity' | 'setPosition' | 'init';
+  type:
+    | 'step'
+    | 'addBody'
+    | 'removeBody'
+    | 'updateBody'
+    | 'setVelocity'
+    | 'setPosition'
+    | 'init'
+    | 'setTimeScale';
   id?: string;
   deltaTime?: number;
   bodyData?: SerializableBodyData;
@@ -33,6 +41,7 @@ export interface PhysicsWorkerMessage {
   velocity?: SerializableVector3;
   quaternion?: SerializableQuaternion;
   worldConfig?: SerializableWorldConfig;
+  timeScale?: number;
 }
 
 export interface PhysicsWorkerResponse {

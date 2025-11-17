@@ -25,14 +25,22 @@ export class ReactionDetector {
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup
   ): ReactionResult {
+    const collisionEnergy = this.ensureFinite(collision.collisionEnergy);
+    const approachAngle = this.normalizeAngle(collision.approachAngle);
+    const sanitizedCollision: CollisionData = {
+      ...collision,
+      collisionEnergy,
+      approachAngle,
+    };
+
     // CRITICAL: Hard threshold - if collision energy < activation energy, NO reaction ever
     // Molecules just bounce apart if insufficient energy
-    if (collision.collisionEnergy < reaction.activationEnergy) {
+    if (collisionEnergy < reaction.activationEnergy) {
       return {
         occurs: false,
         probability: 0,
         reactionType: reaction,
-        collisionData: collision,
+        collisionData: sanitizedCollision,
         substrate,
         nucleophile,
       };
@@ -47,32 +55,35 @@ export class ReactionDetector {
     // 1. Calculate energy factor using smooth exponential
     // If energy >= activation, factor approaches 1.0
     // If energy < activation, factor decreases exponentially (Arrhenius)
-    const energyFactor = collision.collisionEnergy >= reaction.activationEnergy
-      ? Math.min(1, 1 - Math.exp(-(collision.collisionEnergy - reaction.activationEnergy) / reaction.activationEnergy))
-      : Math.exp(-(reaction.activationEnergy - collision.collisionEnergy) / (8.314 * temperature / 1000)); // Arrhenius factor with temperature
+    const energyFactor =
+      collisionEnergy >= reaction.activationEnergy
+        ? Math.min(1, 1 - Math.exp(-(collisionEnergy - reaction.activationEnergy) / reaction.activationEnergy))
+        : Math.exp(
+            -((reaction.activationEnergy - collisionEnergy) * 1000) / (this.R * temperature)
+          );
     
     // 2. Calculate orientation factor (angle-dependent, now with looser tolerance)
     const orientationFactor = this.calculateOrientationFactor(
-      collision.approachAngle,
+      approachAngle,
       reaction.optimalAngle
     );
     
     // 3. Combined probability: product of energy and orientation factors
     // This gives realistic reaction rates: most collisions don't react, but some do
-    const probability = energyFactor * orientationFactor;
+    const probability = Math.min(Math.max(energyFactor * orientationFactor, 0), 1);
     
     // 4. Stochastic determination: random roll against probability
     // This creates realistic reaction kinetics where:
     // - Low energy collisions rarely react
     // - High energy + good orientation = high chance
     // - Temperature increases both collision energy AND frequency
-    const occurs = Math.random() < probability;
+    const occurs = probability > 0 ? Math.random() < probability : false;
 
     const result: ReactionResult = {
       occurs,
       probability,
       reactionType: reaction,
-      collisionData: collision,
+      collisionData: sanitizedCollision,
       substrate,
       nucleophile,
     };
@@ -124,7 +135,9 @@ export class ReactionDetector {
 
     // Gaussian distribution around optimal angle
     // Handle angle wrapping: 338.8° is 21.2° away from 180°, not 158.8°
-    let deviation = Math.abs(actual - optimal);
+    const normalizedActual = this.normalizeAngle(actual);
+    const normalizedOptimal = this.normalizeAngle(optimal);
+    let deviation = Math.abs(normalizedActual - normalizedOptimal);
     if (deviation > 180) {
       deviation = 360 - deviation;
     }
@@ -177,7 +190,8 @@ export class ReactionDetector {
     // Scale factor: how much faster real molecules move compared to visualization
     const visualizationToRealScale = realVrms_at_ref / VISUALIZATION_BASE_SPEED;
     const temperatureScaleFactor = realVrms_at_T / realVrms_at_ref;
-    const realVelocity = relativeVelocity * visualizationToRealScale * temperatureScaleFactor;
+    const sanitizedVelocity = Number.isFinite(relativeVelocity) ? relativeVelocity : 0;
+    const realVelocity = sanitizedVelocity * visualizationToRealScale * temperatureScaleFactor;
 
     // Calculate collision energy using reduced mass
     const mass1_kg = mass1 * AMU_TO_KG;
@@ -206,7 +220,7 @@ export class ReactionDetector {
     // For now, return a random angle for demonstration
     const angle = Math.random() * 360;
 
-    return angle;
+    return this.normalizeAngle(angle);
   }
 
   /**
@@ -297,5 +311,23 @@ export class ReactionDetector {
       },
       overallProbability: energyFactor * orientationFactor * tempFactor,
     };
+  }
+
+  /**
+   * Ensure numbers are finite to avoid NaNs propagating
+   */
+  private ensureFinite(value: number, fallback = 0): number {
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  /**
+   * Normalize angles to 0-360°
+   */
+  private normalizeAngle(angle: number): number {
+    if (!Number.isFinite(angle)) {
+      return 0;
+    }
+    const normalized = angle % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
   }
 }

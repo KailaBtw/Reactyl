@@ -1,5 +1,6 @@
 import type React from 'react';
 import { InfoBubble } from '../../common/InfoBubble';
+import { useRafThrottledCallback } from '../../../hooks/useRafThrottledCallback';
 
 // Constants for Temperature Slider
 const TEMP_MIN = 200; // K
@@ -67,6 +68,7 @@ export const TemperatureCard: React.FC<TemperatureCardProps> = ({
   };
 
   const theme = controlCardThemes.orange;
+  const emitTemperatureChange = useRafThrottledCallback(onTemperatureChange);
 
   return (
     <div
@@ -144,7 +146,7 @@ Where reaction rate k increases exponentially with temperature T.`}
         max={TEMP_MAX}
         step={TEMP_STEP}
         value={temperature}
-        onChange={e => onTemperatureChange(parseInt(e.target.value))}
+        onChange={e => emitTemperatureChange(parseInt(e.target.value))}
         className={sliderClasses}
         style={{
           background: `linear-gradient(to right, 

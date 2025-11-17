@@ -1,5 +1,6 @@
 import type React from 'react';
 import { concentrationToParticleCount } from '../../../../utils/concentrationConverter';
+import { useRafThrottledCallback } from '../../../hooks/useRafThrottledCallback';
 
 // Constants for Concentration Slider
 const CONCENTRATION_MIN = 0.001; // mol/L
@@ -35,6 +36,7 @@ export const ConcentrationCard: React.FC<ConcentrationCardProps> = ({
 }) => {
   const theme = controlCardThemes.purple;
   const calculatedParticleCount = concentrationToParticleCount(concentration);
+  const emitConcentrationChange = useRafThrottledCallback(onConcentrationChange);
 
   return (
     <div
@@ -59,7 +61,7 @@ export const ConcentrationCard: React.FC<ConcentrationCardProps> = ({
         max={CONCENTRATION_MAX}
         step={CONCENTRATION_STEP}
         value={concentration}
-        onChange={e => onConcentrationChange(parseFloat(e.target.value))}
+        onChange={e => emitConcentrationChange(parseFloat(e.target.value))}
         className={sliderClasses}
       />
       <div className={`${sliderLabelsClasses} ${themeClasses.textSecondary}`}>

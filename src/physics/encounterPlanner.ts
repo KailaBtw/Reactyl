@@ -224,8 +224,7 @@ export function applyEncounter(
       approachAngleRad
     );
 
-    // Substrate stays still, nucleophile moves toward it at educational speed
-    const substrateVelocity = new THREE.Vector3(0, 0, 0);
+    const substrateVelocity = direction.clone().multiplyScalar(-scaledVelocity);
     const nucleophileVelocity = direction.clone().multiplyScalar(scaledVelocity);
 
     if (substrateObj) {

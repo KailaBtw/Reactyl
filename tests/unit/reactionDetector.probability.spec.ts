@@ -67,4 +67,29 @@ describe('ReactionDetector probability composition', () => {
       expect(pGood).toBeGreaterThan(pPoor);
     }
   });
+
+  it('sanitizes invalid collision inputs to zero-probability outcomes', () => {
+    const det = new ReactionDetector();
+    const reactionType = REACTION_TYPES.sn2;
+    const substrate: any = { name: 'Sub' };
+    const nucleophile: any = { name: 'Nuc' };
+
+    const collision = {
+      relativeVelocity: new THREE.Vector3(),
+      collisionEnergy: Number.NaN,
+      approachAngle: Number.NaN,
+      impactPoint: new THREE.Vector3(),
+      moleculeOrientations: {
+        substrate: new THREE.Quaternion(),
+        nucleophile: new THREE.Quaternion(),
+      },
+    } as any;
+
+    const result = det.detectReaction(collision, reactionType, 298, substrate, nucleophile);
+
+    expect(result.probability).toBe(0);
+    expect(result.occurs).toBe(false);
+    expect(result.collisionData.collisionEnergy).toBe(0);
+    expect(result.collisionData.approachAngle).toBe(0);
+  });
 });

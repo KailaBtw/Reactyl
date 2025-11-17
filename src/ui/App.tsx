@@ -5,6 +5,7 @@ import { reactionEventBus } from '../events/ReactionEventBus';
 import { concentrationToParticleCount } from '../utils/concentrationConverter';
 import { threeJSBridge } from './bridge/ThreeJSBridge';
 import { MainLayout } from './components/MainLayout';
+import { AutoplayManager } from './components/AutoplayManager';
 import {
   AVAILABLE_MOLECULES,
   DEFAULT_NUCLEOPHILE,
@@ -13,8 +14,9 @@ import {
 import { UIStateProvider } from './context/UIStateContext';
 import { calculateAngleProbability } from './utils/angleProbability';
 import { calculateActivationEnergy } from './utils/thermodynamicCalculator';
-import { getReactionMasses } from './utils/molecularMassLookup';
+import { energyFromVelocityScaled } from './utils/kineticEnergyScaling';
 import { physicsEngine } from '../physics/cannonPhysicsEngine';
+import { workerManager } from '../services/workerManager';
 // import './App.css'; // Temporarily disabled to fix layout conflicts
 
 export interface UIState {
@@ -116,8 +118,6 @@ export const App: React.FC = () => {
   const [uiState, setUIState] = useState<UIState>(initialState);
   const sceneRef = useRef<HTMLDivElement>(null);
   const threeSceneRef = useRef<THREE.Scene | null>(null);
-  const autoplayTimeoutRef = useRef<number | null>(null);
-  const pendingParameterChangeRef = useRef<{ type: 'angle' | 'velocity'; value: number } | null>(null);
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -129,6 +129,135 @@ export const App: React.FC = () => {
   const updateUIState = useCallback((updates: Partial<UIState>) => {
     setUIState(prev => ({ ...prev, ...updates }));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof Worker === 'undefined') {
+      return;
+    }
+
+    workerManager.enableChemistryWorker().catch(error => {
+      console.warn('[UI] Failed to enable chemistry worker:', error);
+    });
+  }, []);
+
+  const handleAttackAngleChange = useCallback(
+    (angle: number) => {
+      updateUIState({ approachAngle: angle });
+    },
+    [updateUIState]
+  );
+
+  const handleRelativeVelocityChange = useCallback(
+    (value: number) => {
+      updateUIState({ relativeVelocity: value });
+    },
+    [updateUIState]
+  );
+
+  const handleAutoplayChange = useCallback(
+    (enabled: boolean) => {
+      updateUIState({ autoplay: enabled });
+    },
+    [updateUIState]
+  );
+
+  const handleReset = useCallback(async () => {
+    if (uiState.simulationMode === 'rate') {
+      threeJSBridge.stopRateSimulation();
+      updateUIState({
+        isPlaying: false,
+        reactionInProgress: false,
+        reactionRate: 0,
+        remainingReactants: 100,
+        productsFormed: 0,
+      });
+    } else {
+      threeJSBridge.clear();
+      updateUIState({
+        isPlaying: false,
+        reactionInProgress: false,
+        distance: 0,
+        timeToCollision: 0,
+      });
+    }
+  }, [uiState.simulationMode, updateUIState]);
+
+  const handlePlay = useCallback(async () => {
+    try {
+      if (uiState.simulationMode === 'rate') {
+        const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
+          demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
+          demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
+          demo_Methanol: { cid: '887', name: 'Methanol' },
+          demo_Water: { cid: '962', name: 'Water' },
+        };
+
+        const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
+          cid: '6323',
+          name: 'Methyl bromide',
+        };
+        const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
+          cid: '961',
+          name: 'Hydroxide ion',
+        };
+
+        const particleCount = concentrationToParticleCount(uiState.concentration);
+        await threeJSBridge.startRateSimulation(
+          particleCount,
+          uiState.temperature,
+          uiState.reactionType,
+          substrateMolecule,
+          nucleophileMolecule
+        );
+        updateUIState({ isPlaying: true, reactionInProgress: true });
+      } else {
+        if (uiState.reactionInProgress) {
+          threeJSBridge.clear();
+        }
+        await threeJSBridge.startReactionAnimation();
+        updateUIState({ isPlaying: true, reactionInProgress: true });
+      }
+    } catch (e) {
+      console.error('Error handling Play:', e);
+    }
+  }, [
+    uiState.simulationMode,
+    uiState.reactionInProgress,
+    uiState.substrateMolecule,
+    uiState.nucleophileMolecule,
+    uiState.concentration,
+    uiState.temperature,
+    uiState.reactionType,
+    updateUIState,
+  ]);
+
+  const handlePause = useCallback(() => {
+    updateUIState({ isPlaying: false });
+  }, [updateUIState]);
+
+  // Ensure autoplay state aligns with playback (start automatically when expected)
+  useEffect(() => {
+    if (uiState.simulationMode !== 'single') return;
+    if (!uiState.autoplay) return;
+    if (uiState.isPlaying || uiState.reactionInProgress) return;
+
+    const startAutoplayRun = async () => {
+      try {
+        await threeJSBridge.startReactionAnimation();
+        updateUIState({ isPlaying: true, reactionInProgress: true });
+      } catch (err) {
+        console.error('Failed to start autoplay run on mount:', err);
+      }
+    };
+
+    startAutoplayRun();
+  }, [
+    uiState.simulationMode,
+    uiState.autoplay,
+    uiState.isPlaying,
+    uiState.reactionInProgress,
+    updateUIState,
+  ]);
 
   // Expose updateUIState and uiState globally for non-React components
   useEffect(() => {
@@ -153,78 +282,8 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [uiState.bottomBarExpanded]);
 
-  // Autoplay: restart shortly after a collision completes if enabled
-  useEffect(() => {
-    const handleRestart = () => {
-      // Only restart in single mode
-      if (uiState.simulationMode !== 'single') return;
-      if (!uiState.autoplay) return;
-      // Don't check isPlaying - we want to restart even after collision completes
-      
-      // Delay after collision/reaction completes before restarting
-      const delayMs = 1500;
-      if (autoplayTimeoutRef.current) {
-        clearTimeout(autoplayTimeoutRef.current);
-      }
-      autoplayTimeoutRef.current = window.setTimeout(async () => {
-        // Check again if autoplay is still enabled
-        if (!uiState.autoplay) return;
-        
-        try {
-          // Apply any pending parameter changes before restarting
-          if (pendingParameterChangeRef.current) {
-            const pending = pendingParameterChangeRef.current;
-            if (pending.type === 'angle') {
-              updateUIState({ approachAngle: pending.value });
-            } else if (pending.type === 'velocity') {
-              updateUIState({ relativeVelocity: pending.value });
-            }
-            pendingParameterChangeRef.current = null;
-          }
-          
-          threeJSBridge.clear();
-          await threeJSBridge.startReactionAnimation();
-          updateUIState({ isPlaying: true, reactionInProgress: true });
-        } catch (err) {
-          console.error('Autoplay restart failed:', err);
-        }
-      }, delayMs);
-    };
-
-    // Listen for reaction completion (successful reaction)
-    const reactionHandler = (_event: any) => {
-      // Only handle reactions in single mode
-      if (uiState.simulationMode !== 'single') {
-        return;
-      }
-      handleRestart();
-    };
-    
-    // Listen for collision detection - restart after collisions (whether reaction occurs or not)
-    const collisionHandler = (_event: any) => {
-      // Only handle collisions in single mode
-      if (uiState.simulationMode !== 'single') {
-        return;
-      }
-      
-      // Always restart after collision, regardless of whether reaction occurred
-      // The handleRestart function already has a delay to let the collision finish
-      handleRestart();
-    };
-
-    reactionEventBus.on('reaction-completed', reactionHandler);
-    reactionEventBus.on('collision-detected', collisionHandler);
-    
-    return () => {
-      reactionEventBus.off('reaction-completed', reactionHandler);
-      reactionEventBus.off('collision-detected', collisionHandler);
-    };
-  }, [uiState.autoplay, uiState.isPlaying, uiState.reactionInProgress, uiState.simulationMode, updateUIState]);
-
   // Continuously update reaction probability based on current parameters
   useEffect(() => {
-    const DEFAULT_REDUCED_MASS = 0.028; // kg/mol fallback matching kinetic energy UI
-
     const calculateProbability = () => {
       const {
         approachAngle,
@@ -235,20 +294,15 @@ export const App: React.FC = () => {
         nucleophileMolecule,
       } = uiState;
 
-      // Calculate reduced mass using the same data as the kinetic energy control
-      const { substrateMass, nucleophileMass } = getReactionMasses(
-        substrateMolecule || 'default_substrate',
-        nucleophileMolecule || 'default_nucleophile'
+      // Get activation energy for this specific molecule combination
+      const activationEnergy = calculateActivationEnergy(
+        substrateMolecule || 'demo_Methyl_bromide',
+        nucleophileMolecule || 'demo_Hydroxide_ion',
+        reactionType
       );
-      const denominator = substrateMass + nucleophileMass;
-      const reducedMass =
-        substrateMass > 0 && nucleophileMass > 0 && denominator > 0
-          ? (substrateMass * nucleophileMass) / denominator
-          : DEFAULT_REDUCED_MASS;
 
-      // Calculate kinetic energy from velocity (kJ/mol)
-      const velocity = Math.max(0, relativeVelocity || 0);
-      const kineticEnergy = 0.5 * reducedMass * velocity ** 2 / 1000;
+      // Calculate kinetic energy from velocity (kJ/mol) using visualization scaling
+      const kineticEnergy = energyFromVelocityScaled(relativeVelocity, activationEnergy);
 
       // Apply temperature factor
       const temperatureFactor = Math.sqrt(temperature / 298);
@@ -256,13 +310,6 @@ export const App: React.FC = () => {
 
       // Get angle probability
       const angleResult = calculateAngleProbability(approachAngle, reactionType);
-
-      // Get activation energy for this specific molecule combination
-      const activationEnergy = calculateActivationEnergy(
-        substrateMolecule || 'demo_Methyl_bromide',
-        nucleophileMolecule || 'demo_Hydroxide_ion',
-        reactionType
-      );
 
       const energyRatio = adjustedKineticEnergy / activationEnergy;
 
@@ -337,172 +384,26 @@ export const App: React.FC = () => {
     onSubstrateChange: (substrate: string) => updateUIState({ substrateMolecule: substrate }),
     onNucleophileChange: (nucleophile: string) =>
       updateUIState({ nucleophileMolecule: nucleophile }),
-    onAttackAngleChange: (angle: number) => {
-      updateUIState({ approachAngle: angle });
-      // Reset and restart simulation when approach angle changes (single collision mode only)
-      if (uiState.isPlaying && uiState.simulationMode === 'single') {
-        const orchestrator = (window as any).reactionOrchestrator;
-        const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
-        
-        if (isReactionInProgress && uiState.autoplay) {
-          // Reaction in progress with autoplay - queue the change to apply after collision completes
-          pendingParameterChangeRef.current = { type: 'angle', value: angle };
-        } else {
-          // No reaction in progress or autoplay disabled - reset immediately after debounce
-          if ((window as any).angleChangeTimeout) {
-            clearTimeout((window as any).angleChangeTimeout);
-          }
-          (window as any).angleChangeTimeout = setTimeout(async () => {
-            try {
-              threeJSBridge.clear();
-              await threeJSBridge.startReactionAnimation();
-              updateUIState({ isPlaying: true, reactionInProgress: true });
-            } catch (e) {
-              console.error('Failed to reset on angle change:', e);
-            }
-          }, 500);
-        }
-      }
-    },
+    onAttackAngleChange: handleAttackAngleChange,
     onTimeScaleChange: (scale: number) => updateUIState({ timeScale: scale }),
-    onRelativeVelocityChange: (value: number) => {
-      updateUIState({ relativeVelocity: value });
-      // If autoplay is active and simulation is playing, queue reset after collision completes
-      if (uiState.autoplay && uiState.isPlaying && uiState.simulationMode === 'single') {
-        const orchestrator = (window as any).reactionOrchestrator;
-        const isReactionInProgress = orchestrator?.isReactionInProgress() || uiState.reactionInProgress;
-        
-        if (isReactionInProgress) {
-          // Reaction in progress - queue the change to apply after collision completes
-          pendingParameterChangeRef.current = { type: 'velocity', value: value };
-        } else {
-          // No reaction in progress - reset immediately after debounce
-          if ((window as any).velocityChangeTimeout) {
-            clearTimeout((window as any).velocityChangeTimeout);
-          }
-          (window as any).velocityChangeTimeout = setTimeout(async () => {
-            try {
-              threeJSBridge.clear();
-              await threeJSBridge.startReactionAnimation();
-              updateUIState({ isPlaying: true, reactionInProgress: true });
-            } catch (e) {
-              console.error('Failed to reset on velocity change:', e);
-            }
-          }, 500);
-        }
-      }
-    },
+    onRelativeVelocityChange: handleRelativeVelocityChange,
     onTemperatureChange: (value: number) => updateUIState({ temperature: value }),
     autoplay: uiState.autoplay,
-    onAutoplayChange: async (enabled: boolean) => {
-      updateUIState({ autoplay: enabled });
-      if (enabled) {
-        // Only start autoplay in single mode
-        if (uiState.simulationMode !== 'single') {
-          return;
-        }
-        try {
-          if (!uiState.reactionInProgress) {
-            await threeJSBridge.startReactionAnimation();
-            updateUIState({ isPlaying: true, reactionInProgress: true });
-          } else if (!uiState.isPlaying) {
-            threeJSBridge.clear();
-            await threeJSBridge.startReactionAnimation();
-            updateUIState({ isPlaying: true, reactionInProgress: true });
-          }
-        } catch (e) {
-          console.error('Failed to start autoplay run:', e);
-        }
-      } else {
-        if (autoplayTimeoutRef.current) {
-          clearTimeout(autoplayTimeoutRef.current);
-          autoplayTimeoutRef.current = null;
-        }
-      }
-    },
-    onPlay: async () => {
-      try {
-        if (uiState.simulationMode === 'rate') {
-          // Rate simulation mode
-          const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
-            demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
-            demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
-            demo_Methanol: { cid: '887', name: 'Methanol' },
-            demo_Water: { cid: '962', name: 'Water' },
-          };
-
-          const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
-            cid: '6323',
-            name: 'Methyl bromide',
-          };
-          const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
-            cid: '961',
-            name: 'Hydroxide ion',
-          };
-
-          // Calculate particle count from concentration
-          const particleCount = concentrationToParticleCount(uiState.concentration);
-          await threeJSBridge.startRateSimulation(
-            particleCount,
-            uiState.temperature,
-            uiState.reactionType,
-            substrateMolecule,
-            nucleophileMolecule
-          );
-          updateUIState({ isPlaying: true, reactionInProgress: true });
-        } else {
-          // Single collision mode
-          if (!uiState.reactionInProgress) {
-            await threeJSBridge.startReactionAnimation();
-            updateUIState({ isPlaying: true, reactionInProgress: true });
-          } else {
-            // If paused with an existing reaction, clear and restart to avoid overlap
-            threeJSBridge.clear();
-            await threeJSBridge.startReactionAnimation();
-            updateUIState({ isPlaying: true, reactionInProgress: true });
-          }
-        }
-      } catch (e) {
-        console.error('Error handling Play:', e);
-      }
-    },
-    onPause: () => {
-      if (autoplayTimeoutRef.current) {
-        clearTimeout(autoplayTimeoutRef.current);
-        autoplayTimeoutRef.current = null;
-      }
-
-      if (uiState.simulationMode === 'rate') {
-        // Rate simulation doesn't need special pause handling
-        // Metrics polling will stop automatically when isPlaying = false
-      }
-
-      updateUIState({ isPlaying: false });
-    },
-    onReset: () => {
-      if (uiState.simulationMode === 'rate') {
-        threeJSBridge.stopRateSimulation();
-        updateUIState({
-          isPlaying: false,
-          reactionInProgress: false,
-          reactionRate: 0,
-          remainingReactants: 100,
-          productsFormed: 0,
-        });
-      } else {
-        threeJSBridge.clear();
-        updateUIState({
-          isPlaying: false,
-          reactionInProgress: false,
-          distance: 0,
-          timeToCollision: 0,
-        });
-      }
-    },
+    onAutoplayChange: handleAutoplayChange,
+    onPlay: handlePlay,
+    onPause: handlePause,
+    onReset: handleReset,
   };
 
   return (
     <UIStateProvider value={{ uiState, updateUIState }}>
+      <AutoplayManager
+        autoplay={uiState.autoplay}
+        simulationMode={uiState.simulationMode}
+        isPlaying={uiState.isPlaying}
+        onReset={handleReset}
+        onPlay={handlePlay}
+      />
       <MainLayout {...mainLayoutProps} />
     </UIStateProvider>
   );

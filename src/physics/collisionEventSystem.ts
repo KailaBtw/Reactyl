@@ -6,11 +6,7 @@ import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
 import { calculateAngleProbability } from '../ui/utils/angleProbability';
 import { log } from '../utils/debug';
 import type { ChemistryWorkerMessage, SerializableReactionType } from '../workers/types';
-import {
-  deserializeReactionResult,
-  serializeCollisionData,
-  serializeReactionResult,
-} from '../workers/utils';
+import { deserializeReactionResult, serializeCollisionData } from '../workers/utils';
 // reactionDemo removed - using chemistry reaction system
 
 /**
@@ -39,14 +35,14 @@ class CollisionEventSystem {
   private eventHandlers: CollisionEventHandler[] = [];
   private collisionHistory: Map<string, number> = new Map(); // Prevent duplicate events
   private readonly baseCollisionCooldown = 0.1; // 100ms base cooldown between same molecule collisions
+  private readonly minRelativeSpeed = 1e-3; // Ignore effectively-stationary collisions
   private reactionDetector: ReactionDetector;
   private currentReactionType: ReactionType | null = null;
+  private serializedReactionType: SerializableReactionType | null = null;
   private testingMode: boolean = false;
   private temperature: number = 298; // Default room temperature
   private pressure: number = 1.0; // Default pressure: 1 atm
   private demoEasyMode: boolean = false; // Forces high reaction probability for demos
-  private hasShownDemoProduct: boolean = false; // Prevent duplicate product spawns in demos
-  private reactionOccurred: boolean = false; // Prevent duplicate reaction processing
   private simulationMode: 'molecule' | 'single' | 'rate' = 'single'; // Current simulation mode
 
   constructor() {
@@ -58,6 +54,7 @@ class CollisionEventSystem {
    */
   setReactionType(reactionType: ReactionType): void {
     this.currentReactionType = reactionType;
+    this.serializedReactionType = this.serializeReactionType(reactionType);
     log(`Reaction type set: ${reactionType.name} (${reactionType.id})`);
   }
 
@@ -108,8 +105,6 @@ class CollisionEventSystem {
    * Reset reaction state for new reaction
    */
   resetReactionState(): void {
-    this.reactionOccurred = false;
-    this.hasShownDemoProduct = false;
     this.collisionHistory.clear();
   }
 
@@ -173,26 +168,9 @@ class CollisionEventSystem {
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup
   ): Promise<ReactionResult> {
-    // Serialize reaction type
-    const serializedReactionType: SerializableReactionType = {
-      id: reactionType.id,
-      name: reactionType.name,
-      mechanism: reactionType.mechanism,
-      activationEnergy: reactionType.activationEnergy,
-      optimalAngle: reactionType.optimalAngle,
-      requiredFeatures: {
-        substrate: reactionType.requiredFeatures.substrate.map(f => ({
-          type: f.type,
-          atoms: f.atoms,
-          strength: f.strength,
-        })),
-        nucleophile: reactionType.requiredFeatures.nucleophile.map(f => ({
-          type: f.type,
-          atoms: f.atoms,
-          strength: f.strength,
-        })),
-      },
-    };
+    // Serialize reaction type (cached)
+    const serializedReactionType =
+      this.serializedReactionType ?? this.serializeReactionType(reactionType);
 
     // Send to chemistry worker
     const message: ChemistryWorkerMessage = {
@@ -228,9 +206,6 @@ class CollisionEventSystem {
       return;
     }
 
-    // NOTE: Removed global reactionOccurred check - it was blocking all reactions after the first
-    // Individual molecule reactionInProgress flags prevent duplicate processing per molecule pair
-
     // Check cooldown to prevent spam
     // Pressure effects removed - reactions are in solution where pressure has negligible effect
     const effectiveCooldown = this.baseCollisionCooldown;
@@ -248,6 +223,12 @@ class CollisionEventSystem {
     // Update collision history
     this.collisionHistory.set(key, now);
 
+    // Skip effectively-static encounters to avoid unnecessary work
+    if (this.shouldSkipCollision(event)) {
+      this.populateIdleCollisionResult(event);
+      return;
+    }
+
     // Process reaction detection FIRST (before emitting to handlers)
     // This ensures reactionResult is set on the event before handlers receive it
     // CRITICAL: Must await this async function so reactionResult is set before handlers run
@@ -259,18 +240,9 @@ class CollisionEventSystem {
       );
     }
 
-    // NOTE: Removed reactionOccurred check - allow handlers to process all reactions
-    // Individual molecule reactionInProgress flags prevent duplicate processing per pair
-
     // Emit to all handlers AFTER processing reaction detection
     // This ensures event.reactionResult is available to handlers
-    for (const handler of this.eventHandlers) {
-      try {
-        handler(event);
-      } catch (error) {
-        console.error('Error in collision event handler:', error);
-      }
-    }
+    this.emitToHandlers(event);
   }
 
   /**
@@ -331,43 +303,6 @@ class CollisionEventSystem {
         event.moleculeB
       );
     }
-
-    // Calculate factors for debugging (before testing mode override)
-    const energyFactor = collisionData.collisionEnergy >= this.currentReactionType.activationEnergy
-      ? Math.min(1, 1 - Math.exp(-(collisionData.collisionEnergy - this.currentReactionType.activationEnergy) / this.currentReactionType.activationEnergy))
-      : 0;
-    
-    // Calculate angle deviation with proper wrapping (angles are modulo 360)
-    const optimalAngle = this.currentReactionType.optimalAngle || 180;
-    let angleDeviation = Math.abs(collisionData.approachAngle - optimalAngle);
-    // Handle wrapping: 338.8° is 21.2° away from 180°, not 158.8°
-    if (angleDeviation > 180) {
-      angleDeviation = 360 - angleDeviation;
-    }
-    
-    const orientationFactor = this.currentReactionType.optimalAngle === 0
-      ? 1.0
-      : Math.exp(-(angleDeviation ** 2) / (2 * 20 ** 2)); // Tighter sigma (20°) for consistency with reaction detector
-    // Temperature is already accounted for in collision energy via velocity scaling
-    // No separate tempFactor needed - it would double-count temperature effects
-
-    // Single-line JSON debug log per collision
-    const debugInfo = {
-      collision: `${event.moleculeA.name} + ${event.moleculeB.name}`,
-      type: this.currentReactionType.id,
-      temp: `${this.temperature}K`,
-      relVel: `${collisionData.relativeVelocity.length().toFixed(2)} m/s`,
-      E_collision: `${collisionData.collisionEnergy.toFixed(2)} kJ/mol`,
-      E_activation: `${this.currentReactionType.activationEnergy} kJ/mol`,
-      angle: `${collisionData.approachAngle.toFixed(1)}°`,
-      angleDev: `${angleDeviation.toFixed(1)}°`,
-      energyFactor: energyFactor.toFixed(3),
-      orientFactor: orientationFactor.toFixed(3),
-      occurs: reactionResult.occurs,
-      prob: `${(reactionResult.probability * 100).toFixed(2)}%`,
-    };
-    // Collision debug log disabled for cleaner console
-    // console.log(JSON.stringify(debugInfo));
 
     // RAPID OVERRIDE: Use UI-calculated probability instead of forcing 100%
     if (this.testingMode) {
@@ -440,9 +375,14 @@ class CollisionEventSystem {
       reactionResult.probability
     );
 
-    // Add collision data and reaction result to event
-    event.collisionData = collisionData;
-    event.reactionResult = reactionResult;
+    // Add collision data and reaction result to event (sanitized)
+    const sanitizedResult = this.sanitizeReactionResult({
+      ...reactionResult,
+      collisionData,
+    });
+    event.collisionData = sanitizedResult.collisionData;
+    event.reactionResult = sanitizedResult;
+    reactionResult = sanitizedResult;
 
     // Emit reaction event if reaction occurs
     if (reactionResult.occurs) {
@@ -455,8 +395,6 @@ class CollisionEventSystem {
       // NOTE: Product generation disabled for rate simulation mode
       // In rate mode, we track reactions but don't generate visual products
       // Product generation is only for single collision mode (handled by ReactionOrchestrator)
-      // The hasShownDemoProduct flag was blocking all reactions after the first - removed for rate mode
-    } else {
     }
   }
 
@@ -538,13 +476,22 @@ class CollisionEventSystem {
    */
   private calculateApproachAngle(event: CollisionEvent): number {
     // Calculate direction from moleculeA to moleculeB
-    const directionAB = new THREE.Vector3()
-      .subVectors(event.moleculeB.group.position, event.moleculeA.group.position)
-      .normalize();
-    
+    const directionAB = new THREE.Vector3().subVectors(
+      event.moleculeB.group.position,
+      event.moleculeA.group.position
+    );
+    if (directionAB.lengthSq() === 0) {
+      return 0;
+    }
+    directionAB.normalize();
+
     // Get relative velocity direction (normalized)
-    const relativeVelDir = event.relativeVelocity.clone().normalize();
-    
+    const relativeVelDir = event.relativeVelocity.clone();
+    if (relativeVelDir.lengthSq() === 0) {
+      return 0;
+    }
+    relativeVelDir.normalize();
+
     // Calculate angle between direction vector and relative velocity
     // For SN2, we want backside attack (180°), so we measure angle from the collision direction
     const dot = directionAB.dot(relativeVelDir);
@@ -566,23 +513,6 @@ class CollisionEventSystem {
     // For SN2, 180° is optimal (backside attack)
     
     return angleDeg;
-  }
-
-  /**
-   * Transform existing molecules to show reaction products
-   */
-  private generateReactionProducts(event: CollisionEvent): void {
-    if (!event.reactionResult) return;
-
-    try {
-      // Reaction transformation handled by chemistry reaction system
-    } catch (error) {
-      console.error('Error transforming molecules for reaction:', error);
-    } finally {
-      // Clear reaction flags
-      event.moleculeA.reactionInProgress = false;
-      event.moleculeB.reactionInProgress = false;
-    }
   }
 
   /**
@@ -615,6 +545,113 @@ class CollisionEventSystem {
     // Sort by name to ensure consistent key regardless of order
     const names = [molA.name, molB.name].sort();
     return `${names[0]}-${names[1]}`;
+  }
+
+  /**
+   * Determine if the collision can be ignored due to negligible motion
+   */
+  private shouldSkipCollision(event: CollisionEvent): boolean {
+    const speed = event.relativeVelocity.length();
+    return !Number.isFinite(speed) || speed < this.minRelativeSpeed;
+  }
+
+  /**
+   * Populate event with a no-op reaction result for skipped collisions
+   */
+  private populateIdleCollisionResult(event: CollisionEvent): void {
+    if (!this.currentReactionType) {
+      this.emitToHandlers(event);
+      return;
+    }
+
+    const collisionData: CollisionData = {
+      relativeVelocity: event.relativeVelocity.clone(),
+      collisionEnergy: 0,
+      approachAngle: 0,
+      impactPoint: event.collisionPoint.clone(),
+      moleculeOrientations: {
+        substrate: event.moleculeA.group.quaternion.clone(),
+        nucleophile: event.moleculeB.group.quaternion.clone(),
+      },
+    };
+
+    const sanitized = this.sanitizeReactionResult({
+      occurs: false,
+      probability: 0,
+      reactionType: this.currentReactionType,
+      collisionData,
+      substrate: event.moleculeA,
+      nucleophile: event.moleculeB,
+    });
+
+    event.collisionData = sanitized.collisionData;
+    event.reactionResult = sanitized;
+    this.emitToHandlers(event);
+  }
+
+  /**
+   * Clamp reaction result numbers to safe ranges
+   */
+  private sanitizeReactionResult(result: ReactionResult): ReactionResult {
+    const probability = Number.isFinite(result.probability)
+      ? Math.min(Math.max(result.probability, 0), 1)
+      : 0;
+    const occurs = probability > 0 ? Boolean(result.occurs) : false;
+    const collisionEnergy = Number.isFinite(result.collisionData.collisionEnergy)
+      ? Math.max(result.collisionData.collisionEnergy, 0)
+      : 0;
+    const approachAngle = Number.isFinite(result.collisionData.approachAngle)
+      ? ((result.collisionData.approachAngle % 360) + 360) % 360
+      : 0;
+
+    return {
+      ...result,
+      occurs,
+      probability,
+      collisionData: {
+        ...result.collisionData,
+        collisionEnergy,
+        approachAngle,
+      },
+    };
+  }
+
+  /**
+   * Emit event to registered handlers
+   */
+  private emitToHandlers(event: CollisionEvent): void {
+    for (const handler of this.eventHandlers) {
+      try {
+        handler(event);
+      } catch (error) {
+        console.error('Error in collision event handler:', error);
+      }
+    }
+  }
+
+  /**
+   * Serialize reaction type once for worker usage
+   */
+  private serializeReactionType(reactionType: ReactionType): SerializableReactionType {
+    return {
+      id: reactionType.id,
+      name: reactionType.name,
+      mechanism: reactionType.mechanism,
+      activationEnergy: reactionType.activationEnergy,
+      optimalAngle: reactionType.optimalAngle,
+      requiredFeatures: {
+        substrate: reactionType.requiredFeatures.substrate.map(f => ({
+          type: f.type,
+          atoms: f.atoms,
+          strength: f.strength,
+        })),
+        nucleophile: reactionType.requiredFeatures.nucleophile.map(f => ({
+          type: f.type,
+          atoms: f.atoms,
+          strength: f.strength,
+        })),
+      },
+    };
   }
 
   /**

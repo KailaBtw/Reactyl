@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useMemo } from 'react';
+import { useRafThrottledCallback } from '../../../hooks/useRafThrottledCallback';
 import { IdealButton } from '../IdealButton';
 import { InfoBubble } from '../../common/InfoBubble';
 
@@ -116,6 +117,8 @@ export const ApproachAngleCard: React.FC<ApproachAngleCardProps> = ({
     return 'Poor approach - sterically blocked, minimal reaction';
   };
 
+  const emitAngleChange = useRafThrottledCallback(onAttackAngleChange);
+
   return (
     <div
       className={`${controlCardClasses} ${themeClasses.card} ${theme.border} ${theme.gradient}`}
@@ -148,7 +151,7 @@ Where σ = 60° (standard deviation matching realistic reaction conditions)`}
         </div>
         <IdealButton
           isActive={isIdeal}
-          onClick={() => onAttackAngleChange(idealAngle)}
+          onClick={() => emitAngleChange(idealAngle)}
           activeText="Ideal"
           inactiveText="Ideal"
           themeClasses={themeClasses}
@@ -177,7 +180,7 @@ Where σ = 60° (standard deviation matching realistic reaction conditions)`}
           min="0"
           max="180"
           value={attackAngle}
-          onChange={e => onAttackAngleChange(parseInt(e.target.value))}
+          onChange={e => emitAngleChange(parseInt(e.target.value))}
           className={`${sliderClasses} bg-transparent`}
           style={{
             background: 'transparent',
