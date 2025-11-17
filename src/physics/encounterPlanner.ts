@@ -6,12 +6,7 @@
  */
 
 import * as THREE from 'three';
-import {
-  getDefaultImpactParameter,
-  getDefaultRelativeVelocity,
-  getDefaultSpawnDistance,
-  type PhysicsConfig,
-} from '../config/physicsSettings';
+import { getDefaultSpawnDistance } from '../config/physicsSettings';
 import type { MoleculeManager } from '../types';
 import type { CannonPhysicsEngine } from './cannonPhysicsEngine';
 
@@ -102,12 +97,10 @@ export function computeSpawnPositions(params: SpawnParams): {
     .applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad)
     .normalize();
 
-  const substratePosition = new THREE.Vector3(0, 0, 0);
-  // Place nucleophile behind along -direction, with lateral impact offset
-  const nucleophilePosition = direction
-    .clone()
-    .multiplyScalar(-spawnDistance)
-    .add(right.clone().multiplyScalar(params.impactParameter));
+  const halfDistance = spawnDistance * 0.5;
+  const impactOffset = right.clone().multiplyScalar(params.impactParameter);
+  const substratePosition = direction.clone().multiplyScalar(halfDistance).add(impactOffset);
+  const nucleophilePosition = direction.clone().multiplyScalar(-halfDistance).sub(impactOffset);
 
   return { substratePosition, nucleophilePosition };
 }
@@ -152,7 +145,6 @@ export function computeEncounter(params: EncounterParams): {
   const r = new THREE.Vector3(1, 0, 0)
     .applyAxisAngle(new THREE.Vector3(0, 1, 0), yawRad)
     .normalize();
-  const center = new THREE.Vector3(0, 0, 0);
 
   if (params.mode === 'perpendicular') {
     // Start on opposite sides along the right vector, move toward center along ±right
@@ -164,15 +156,14 @@ export function computeEncounter(params: EncounterParams): {
     return { substratePosition, nucleophilePosition, substrateVelocity, nucleophileVelocity };
   }
 
-  // Inline (backside/inline) default: nucleophile behind substrate along -d with lateral impact offset
-  const substratePosition = center.clone();
-  const nucleophilePosition = d
-    .clone()
-    .multiplyScalar(-distance)
-    .add(r.clone().multiplyScalar(params.impactParameter));
-  const substrateVelocity = new THREE.Vector3(0, 0, 0);
-  // Velocity toward substrate (origin) from nucleophile position is +d scaled
-  const nucleophileVelocity = d.clone().multiplyScalar(params.relativeVelocity);
+  // Inline (backside/inline) default: symmetric positions along ±d with lateral impact offset
+  const halfDistance = distance * 0.5;
+  const impactOffset = r.clone().multiplyScalar(params.impactParameter);
+  const substratePosition = d.clone().multiplyScalar(halfDistance).add(impactOffset);
+  const nucleophilePosition = d.clone().multiplyScalar(-halfDistance).sub(impactOffset);
+  const halfVelocity = params.relativeVelocity / 2;
+  const substrateVelocity = d.clone().multiplyScalar(-halfVelocity);
+  const nucleophileVelocity = d.clone().multiplyScalar(halfVelocity);
 
   console.log(
     `Computed encounter - relativeVelocity: ${params.relativeVelocity}, nucleophileVelocity:`,

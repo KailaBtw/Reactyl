@@ -233,31 +233,11 @@ export const App: React.FC = () => {
 
   const handlePause = useCallback(() => {
     updateUIState({ isPlaying: false });
+    physicsEngine.pause();
+    threeJSBridge.pauseReactionAnimation();
   }, [updateUIState]);
 
-  // Ensure autoplay state aligns with playback (start automatically when expected)
-  useEffect(() => {
-    if (uiState.simulationMode !== 'single') return;
-    if (!uiState.autoplay) return;
-    if (uiState.isPlaying || uiState.reactionInProgress) return;
-
-    const startAutoplayRun = async () => {
-      try {
-        await threeJSBridge.startReactionAnimation();
-        updateUIState({ isPlaying: true, reactionInProgress: true });
-      } catch (err) {
-        console.error('Failed to start autoplay run on mount:', err);
-      }
-    };
-
-    startAutoplayRun();
-  }, [
-    uiState.simulationMode,
-    uiState.autoplay,
-    uiState.isPlaying,
-    uiState.reactionInProgress,
-    updateUIState,
-  ]);
+  // Autoplay is now handled by AutoplayManager component
 
   // Expose updateUIState and uiState globally for non-React components
   useEffect(() => {

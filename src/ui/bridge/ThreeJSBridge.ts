@@ -9,6 +9,7 @@ import { ReactionOrchestrator } from '../../systems/ReactionOrchestrator';
 import { ReactionRateSimulator } from '../../systems/ReactionRateSimulator';
 import { CameraAnimator } from '../../utils/CameraAnimator';
 import { addObjectDebug, DEBUG_MODE, initFpsDebug, updateFpsDebug } from '../../utils/debug';
+import { getMoleculeData } from '../utils/moleculeLookup';
 import type { UIState } from '../App';
 
 // Demo functions are now handled by the chemistry reaction system
@@ -249,23 +250,13 @@ export class ThreeJSBridge {
     }
 
     // Only handle play/pause if the playing state actually changed
-    // Don't pause if a reaction is in progress
+    // Respect user pause even during reactions
     if (!previousState || previousState.isPlaying !== uiState.isPlaying) {
-      const reactionOrchestrator = this.reactionOrchestrator;
-      const isReactionInProgress =
-        (reactionOrchestrator && reactionOrchestrator.isReactionInProgress()) ||
-        uiState.reactionInProgress;
-
       if (uiState.isPlaying) {
         physicsEngine.resume();
-      } else if (!isReactionInProgress) {
-        physicsEngine.pause();
       } else {
-        // Reaction in progress - keep physics running
-        physicsEngine.resume();
-        if (typeof (window as any).updateUIState === 'function') {
-          (window as any).updateUIState({ isPlaying: true });
-        }
+        // User explicitly paused - always respect it
+        physicsEngine.pause();
       }
     }
 
@@ -416,22 +407,10 @@ export class ThreeJSBridge {
 
     // (removed verbose UI state debug log)
 
-    // Map UI molecule selections to actual molecule data
-    const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
-      demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
-      demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
-      demo_Methanol: { cid: '887', name: 'Methanol' },
-      demo_Water: { cid: '962', name: 'Water' },
-    };
-
-    const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
-      cid: '6323',
-      name: 'Methyl bromide',
-    };
-    const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
-      cid: '961',
-      name: 'Hydroxide ion',
-    };
+    // Map UI molecule selections to actual molecule data using utility function
+    // This supports demo molecules, CIDs, and searched molecules
+    const substrateMolecule = getMoleculeData(uiState.substrateMolecule);
+    const nucleophileMolecule = getMoleculeData(uiState.nucleophileMolecule);
 
     // (removed verbose mapped molecules debug log)
 

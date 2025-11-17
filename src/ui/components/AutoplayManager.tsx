@@ -12,6 +12,7 @@ interface AutoplayManagerProps {
 
 const AUTOPLAY_DELAY_MS = 2000;
 const INITIAL_AUTOPLAY_DELAY_MS = 1500;
+const AUTOPLAY_WATCHDOG_MS = 8000;
 
 export const AutoplayManager: React.FC<AutoplayManagerProps> = ({
   autoplay,
@@ -21,6 +22,8 @@ export const AutoplayManager: React.FC<AutoplayManagerProps> = ({
   onPlay,
 }) => {
   const timeoutRef = useRef<number | null>(null);
+  const watchdogRef = useRef<number | null>(null);
+  const hasInitialRunRef = useRef(false);
   const latestPropsRef = useRef({
     autoplay,
     isPlaying,
@@ -71,26 +74,63 @@ export const AutoplayManager: React.FC<AutoplayManagerProps> = ({
     };
   }, [autoplay, isPlaying, simulationMode, onReset, onPlay]);
 
+  const clearScheduledRuns = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+      watchdogRef.current = null;
+    }
+  };
+
+  const armWatchdog = () => {
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+    }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    watchdogRef.current = window.setTimeout(async () => {
+      watchdogRef.current = null;
+      const current = latestPropsRef.current;
+      if (!current.autoplay || current.simulationMode !== 'single') {
+        return;
+      }
+
+      await current.onReset();
+
+      const afterReset = latestPropsRef.current;
+      if (!afterReset.autoplay || afterReset.simulationMode !== 'single') {
+        return;
+      }
+
+      await afterReset.onPlay();
+      armWatchdog();
+    }, AUTOPLAY_WATCHDOG_MS);
+  };
+
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      clearScheduledRuns();
     };
   }, []);
 
   useEffect(() => {
     if (!autoplay || simulationMode !== 'single') {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      clearScheduledRuns();
+      hasInitialRunRef.current = false;
       return;
     }
 
-    if (!isPlaying) {
+    // Only schedule initial run once when autoplay is first enabled and not playing
+    // Don't auto-restart when user manually pauses
+    if (!isPlaying && !hasInitialRunRef.current) {
       scheduleImmediateRun();
+      hasInitialRunRef.current = true;
     }
 
     const scheduleNextRun = () => {
@@ -99,9 +139,7 @@ export const AutoplayManager: React.FC<AutoplayManagerProps> = ({
         return;
       }
 
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      clearScheduledRuns();
 
       if (typeof window === 'undefined') {
         return;
@@ -129,6 +167,7 @@ export const AutoplayManager: React.FC<AutoplayManagerProps> = ({
     const handler: ReactionEventHandler = event => {
       if (event.type === 'collision-detected' || event.type === 'reaction-completed') {
         scheduleNextRun();
+        armWatchdog();
       }
     };
 
@@ -138,17 +177,15 @@ export const AutoplayManager: React.FC<AutoplayManagerProps> = ({
     return () => {
       reactionEventBus.off('collision-detected', handler);
       reactionEventBus.off('reaction-completed', handler);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      clearScheduledRuns();
     };
   }, [autoplay, simulationMode, isPlaying]);
 
   useEffect(() => {
-    if (!isPlaying && timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+    if (!isPlaying) {
+      clearScheduledRuns();
+    } else {
+      armWatchdog();
     }
   }, [isPlaying]);
 

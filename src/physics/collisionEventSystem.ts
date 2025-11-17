@@ -484,14 +484,14 @@ class CollisionEventSystem {
       return 0;
     }
     directionAB.normalize();
-
+    
     // Get relative velocity direction (normalized)
     const relativeVelDir = event.relativeVelocity.clone();
     if (relativeVelDir.lengthSq() === 0) {
       return 0;
     }
     relativeVelDir.normalize();
-
+    
     // Calculate angle between direction vector and relative velocity
     // For SN2, we want backside attack (180°), so we measure angle from the collision direction
     const dot = directionAB.dot(relativeVelDir);
