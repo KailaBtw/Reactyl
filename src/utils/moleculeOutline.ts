@@ -103,14 +103,15 @@ export function addProductOutline(molecule: MoleculeGroup): void {
     }
   });
 
-  if (haloCount === 0) {
-    console.warn(
-      `⚠️ No halos added to ${molecule.name}: ` +
-      `found ${meshCount} meshes (${bondCount} bonds, ${meshCount - bondCount} atoms)`
-    );
-  } else {
-    console.log(`✅ Added ${haloCount} red halos to molecule ${molecule.name} (${meshCount - bondCount} atoms)`);
-  }
+  // Debug logging disabled for performance in rate mode
+  // if (haloCount === 0) {
+  //   console.warn(
+  //     `⚠️ No halos added to ${molecule.name}: ` +
+  //     `found ${meshCount} meshes (${bondCount} bonds, ${meshCount - bondCount} atoms)`
+  //   );
+  // } else {
+  //   console.log(`✅ Added ${haloCount} red halos to molecule ${molecule.name} (${meshCount - bondCount} atoms)`);
+  // }
 }
 
 /**

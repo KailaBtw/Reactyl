@@ -397,19 +397,19 @@ export class ReactionRateSimulator {
       this.collisionCount++;
     }
 
-    // Debug logging - log every 100th collision or all reactions
-    if (this.collisionCount % 100 === 0 || reactionOccurred || (reactionResult && reactionResult.probability > 0.05)) {
-      const prob = reactionResult?.probability ? (reactionResult.probability * 100).toFixed(2) : 'N/A';
-      const energy = collisionData?.collisionEnergy ? collisionData.collisionEnergy.toFixed(2) : 'N/A';
-      const angle = collisionData?.approachAngle ? collisionData.approachAngle.toFixed(1) : 'N/A';
-      console.log(
-        `💥 Collision #${this.collisionCount}: ${moleculeAId} + ${moleculeBId} | ` +
-        `Reaction: ${reactionOccurred ? 'YES' : 'NO'} | ` +
-        `Prob: ${prob}% | ` +
-        `Energy: ${energy} kJ/mol | ` +
-        `Angle: ${angle}°`
-      );
-    }
+    // Debug logging - DISABLED for performance in rate mode
+    // if (this.collisionCount % 100 === 0 || reactionOccurred || (reactionResult && reactionResult.probability > 0.05)) {
+    //   const prob = reactionResult?.probability ? (reactionResult.probability * 100).toFixed(2) : 'N/A';
+    //   const energy = collisionData?.collisionEnergy ? collisionData.collisionEnergy.toFixed(2) : 'N/A';
+    //   const angle = collisionData?.approachAngle ? collisionData.approachAngle.toFixed(1) : 'N/A';
+    //   console.log(
+    //     `💥 Collision #${this.collisionCount}: ${moleculeAId} + ${moleculeBId} | ` +
+    //     `Reaction: ${reactionOccurred ? 'YES' : 'NO'} | ` +
+    //     `Prob: ${prob}% | ` +
+    //     `Energy: ${energy} kJ/mol | ` +
+    //     `Angle: ${angle}°`
+    //   );
+    // }
 
     if (reactionOccurred) {
       if (moleculeAId && moleculeBId) {
@@ -431,7 +431,7 @@ export class ReactionRateSimulator {
             this.reactedMolecules.add(moleculeBId);
           this.reactionCount++;
             
-            console.log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
+            // console.log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
 
             // Execute visual reaction animation
             this.executeVisualReaction(event, moleculeAId, moleculeBId);

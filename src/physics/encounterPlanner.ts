@@ -165,10 +165,10 @@ export function computeEncounter(params: EncounterParams): {
   const substrateVelocity = d.clone().multiplyScalar(-halfVelocity);
   const nucleophileVelocity = d.clone().multiplyScalar(halfVelocity);
 
-  console.log(
-    `Computed encounter - relativeVelocity: ${params.relativeVelocity}, nucleophileVelocity:`,
-    nucleophileVelocity
-  );
+  // console.log(
+  //   `Computed encounter - relativeVelocity: ${params.relativeVelocity}, nucleophileVelocity:`,
+  //   nucleophileVelocity
+  // );
 
   return { substratePosition, nucleophilePosition, substrateVelocity, nucleophileVelocity };
 }
@@ -204,9 +204,9 @@ export function applyEncounter(
     const visualScale = 0.1; // Scale down by 10x for visual education
     const scaledVelocity = uiState.relativeVelocity * visualScale;
 
-    console.log(
-      `Visual override: UI velocity ${uiState.relativeVelocity} m/s scaled to ${scaledVelocity} m/s for education`
-    );
+    // console.log(
+    //   `Visual override: UI velocity ${uiState.relativeVelocity} m/s scaled to ${scaledVelocity} m/s for education`
+    // );
 
     // Create velocity vectors based on scaled UI velocity
     const approachAngleRad = (uiState.approachAngle * Math.PI) / 180;
@@ -220,14 +220,14 @@ export function applyEncounter(
 
     if (substrateObj) {
       physicsEngine.setVelocity(substrateObj as any, substrateVelocity);
-      console.log(`Override substrate velocity:`, substrateVelocity);
+      // console.log(`Override substrate velocity:`, substrateVelocity);
       // Ensure physics body is awake for movement
       const body = physicsEngine.getPhysicsBody(substrateObj);
       if (body) body.wakeUp();
     }
     if (nucleophileObj) {
       physicsEngine.setVelocity(nucleophileObj as any, nucleophileVelocity);
-      console.log(`Override nucleophile velocity:`, nucleophileVelocity);
+      // console.log(`Override nucleophile velocity:`, nucleophileVelocity);
       // Ensure physics body is awake for movement
       const body = physicsEngine.getPhysicsBody(nucleophileObj);
       if (body) body.wakeUp();
@@ -236,11 +236,11 @@ export function applyEncounter(
     // Fallback to original plan
     if (substrateObj) {
       physicsEngine.setVelocity(substrateObj as any, plan.substrateVelocity);
-      console.log(`Setting substrate velocity:`, plan.substrateVelocity);
+      // console.log(`Setting substrate velocity:`, plan.substrateVelocity);
     }
     if (nucleophileObj) {
       physicsEngine.setVelocity(nucleophileObj as any, plan.nucleophileVelocity);
-      console.log(`Setting nucleophile velocity:`, plan.nucleophileVelocity);
+      // console.log(`Setting nucleophile velocity:`, plan.nucleophileVelocity);
     }
   }
 }

@@ -23,7 +23,7 @@ export const AVAILABLE_MOLECULES = [
   'demo_Water',
 ] as const;
 
-export const DEFAULT_SUBSTRATE = 'demo_Methyl_bromide';
+export const DEFAULT_SUBSTRATE = 'demo_Methyl_chloride';
 export const DEFAULT_NUCLEOPHILE = 'demo_Hydroxide_ion';
 
 

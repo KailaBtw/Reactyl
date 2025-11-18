@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { CollisionData, MoleculeGroup, ReactionType } from '../types';
 import { log } from '../utils/debug';
+import { collisionEventSystem } from '../physics/collisionEventSystem';
 
 export interface ReactionResult {
   occurs: boolean;
@@ -164,7 +165,7 @@ export class ReactionDetector {
     // Orientation tolerance:
     // - Single collision mode: STRICT ±10° tolerance (realistic physical chemistry)
     // - Rate mode: LENIENT ±90° tolerance (educational, shows more reactions)
-    const sigma = isRateMode ? 60 : 10; // degrees tolerance (standard deviation)
+    const sigma = isRateMode ? 90 : 10; // degrees tolerance (standard deviation)
     // Gaussian: exp(-(x-μ)²/(2σ²)) where μ = optimal, σ = tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
 
@@ -210,7 +211,12 @@ export class ReactionDetector {
     const visualizationToRealScale = realVrms_at_ref / VISUALIZATION_BASE_SPEED;
     const temperatureScaleFactor = realVrms_at_T / realVrms_at_ref;
     const sanitizedVelocity = Number.isFinite(relativeVelocity) ? relativeVelocity : 0;
-    const realVelocity = sanitizedVelocity * visualizationToRealScale * temperatureScaleFactor;
+    
+    // RATE MODE BOOST: Multiply by 3x to ensure realistic collision energies (30+ kJ/mol)
+    const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
+    const rateModeBoost = isRateMode ? 2.0 : 1.0;
+    
+    const realVelocity = sanitizedVelocity * visualizationToRealScale * temperatureScaleFactor * rateModeBoost;
 
     // Calculate collision energy using reduced mass
     const mass1_kg = mass1 * AMU_TO_KG;

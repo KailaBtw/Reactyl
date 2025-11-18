@@ -334,6 +334,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 // Animate camera when switching modes
                 if (mode === 'rate') {
                   threeJSBridge.animateCameraToRateView();
+                  // Reset timeScale to 0.3 for rate mode
+                  updateUIState({ timeScale: 0.3 });
+                  // Apply timeScale immediately to physics engine
+                  const { physicsEngine } = await import('../../physics/cannonPhysicsEngine');
+                  physicsEngine.setTimeScale(0.3);
                   // Auto-start rate simulation
                   try {
                     const substrateMolecule = getMoleculeData(uiState.substrateMolecule);

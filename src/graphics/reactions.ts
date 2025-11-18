@@ -19,7 +19,7 @@ export class ReactionGraphics {
    * Creates leaving group molecule with proper physics and momentum conservation
    */
   executeSN2Reaction(substrate: MoleculeGroup, _nucleophile: MoleculeGroup): boolean {
-    log('🧪 SN2 reaction with leaving group separation...');
+    // log('🧪 SN2 reaction with leaving group separation...');
 
     try {
       // Step 1: Find leaving group and its bonded carbon BEFORE edits
@@ -105,25 +105,25 @@ export class ReactionGraphics {
       // Add outline immediately in rate mode for all products
       if (isRateMode) {
         substrate.addOutline();
-        log(`✅ Added red outline to product ${substrate.name} in rate mode`);
+        // log(`✅ Added red outline to product ${substrate.name} in rate mode`);
         
         if (_nucleophile) {
           _nucleophile.addOutline();
-          log(`✅ Added red outline to product ${_nucleophile.name} in rate mode`);
+          // log(`✅ Added red outline to product ${_nucleophile.name} in rate mode`);
         }
         
         if (leavingGroupMolecule.addOutline) {
           leavingGroupMolecule.addOutline();
-          log(`✅ Added red outline to leaving group ${leavingGroupMolecule.name} in rate mode`);
+          // log(`✅ Added red outline to leaving group ${leavingGroupMolecule.name} in rate mode`);
         }
       } else {
-        log(`✅ Product ${substrate.name} marked (no outline in single mode)`);
+        // log(`✅ Product ${substrate.name} marked (no outline in single mode)`);
         if (_nucleophile) {
-          log(`✅ Product ${_nucleophile.name} marked (no outline in single mode)`);
+          // log(`✅ Product ${_nucleophile.name} marked (no outline in single mode)`);
         }
       }
 
-      log('✅ SN2 reaction completed with leaving group separation');
+      // log('✅ SN2 reaction completed with leaving group separation');
       return true;
     } catch (error) {
       log(`❌ SN2 reaction failed: ${error}`);
@@ -180,10 +180,10 @@ export class ReactionGraphics {
     try {
       if (scene && scene.type === 'Scene') {
         scene.add(leavingGroupMolecule.group);
-        log(`✅ Added leaving group molecule to scene: ${leavingGroupMolecule.name}`);
+        // log(`✅ Added leaving group molecule to scene: ${leavingGroupMolecule.name}`);
       } else if (substrate.group.parent) {
         substrate.group.parent.add(leavingGroupMolecule.group);
-        log(`✅ Added leaving group molecule to substrate parent: ${leavingGroupMolecule.name}`);
+        // log(`✅ Added leaving group molecule to substrate parent: ${leavingGroupMolecule.name}`);
       }
     } catch (error) {
       log(`Error adding leaving group to scene: ${error}`);
@@ -238,8 +238,20 @@ export class ReactionGraphics {
         .addScaledVector(nucleophileVel, leavingGroupMass);
       
       // Leaving group velocity: flies backward with significant speed (5-8 m/s in leaving group direction)
-      const leavingGroupSpeed = 6.0; // m/s - moderate speed for visibility
+      // Boost speed in rate mode for better visibility
+      const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
+      const leavingGroupSpeed = isRateMode ? 15.0 : 6.0; // m/s - higher speed in rate mode for visibility
       const leavingGroupVelocity = leavingGroupDirection.clone().multiplyScalar(leavingGroupSpeed);
+      
+      // Add random perpendicular component in rate mode for more natural dispersion
+      if (isRateMode) {
+        const perpendicular = new THREE.Vector3(
+          (Math.random() - 0.5) * 8.0,
+          (Math.random() - 0.5) * 8.0,
+          (Math.random() - 0.5) * 8.0
+        );
+        leavingGroupVelocity.add(perpendicular);
+      }
       
       // Product velocity: calculated from momentum conservation
       // p_total = p_product + p_leaving
@@ -250,17 +262,36 @@ export class ReactionGraphics {
       const productVelocity = productMomentum.divideScalar(substrateMass);
       
       // Step 4: Apply velocities
+      // Set velocity on molecule object first
+      leavingGroupMolecule.velocity = leavingGroupVelocity.clone();
+      
+      // Then apply to physics body with proper wake-up
       physicsEngine.setVelocity(leavingGroupMolecule, leavingGroupVelocity);
-      log(
-        `🚀 Leaving group velocity: (${leavingGroupVelocity.x.toFixed(2)}, ${leavingGroupVelocity.y.toFixed(2)}, ${leavingGroupVelocity.z.toFixed(2)}) m/s`
-      );
+      
+      // CRITICAL: Force body to stay awake and prevent sleeping
+      const leavingGroupBody = physicsEngine.getPhysicsBody(leavingGroupMolecule);
+      if (leavingGroupBody) {
+        leavingGroupBody.wakeUp();
+        leavingGroupBody.allowSleep = false; // Never sleep
+        leavingGroupBody.sleepSpeedLimit = 0.0;
+        leavingGroupBody.linearDamping = 0.0;
+        leavingGroupBody.angularDamping = 0.0;
+        // log(`✅ Leaving group body configured: allowSleep=false, velocity set on body`);
+        // log(`✅ Body velocity: (${leavingGroupBody.velocity.x.toFixed(2)}, ${leavingGroupBody.velocity.y.toFixed(2)}, ${leavingGroupBody.velocity.z.toFixed(2)})`);
+      } else {
+        log(`❌ WARNING: Could not get physics body for leaving group!`);
+      }
+      
+      // log(
+      //   `🚀 Leaving group velocity: (${leavingGroupVelocity.x.toFixed(2)}, ${leavingGroupVelocity.y.toFixed(2)}, ${leavingGroupVelocity.z.toFixed(2)}) m/s`
+      // );
       
       // Apply product velocity (substrate now contains the nucleophile, so it's the main product)
       if (substrate.hasPhysics) {
         physicsEngine.setVelocity(substrate, productVelocity);
-        log(
-          `🚀 Product recoil velocity: (${productVelocity.x.toFixed(2)}, ${productVelocity.y.toFixed(2)}, ${productVelocity.z.toFixed(2)}) m/s`
-        );
+        // log(
+        //   `🚀 Product recoil velocity: (${productVelocity.x.toFixed(2)}, ${productVelocity.y.toFixed(2)}, ${productVelocity.z.toFixed(2)}) m/s`
+        // );
       }
       
       // Remove nucleophile physics body since it's been consumed (becomes part of product)
@@ -269,13 +300,13 @@ export class ReactionGraphics {
           physicsEngine.removeMolecule(nucleophile);
           nucleophile.hasPhysics = false;
           nucleophile.physicsBody = null;
-          log('✅ Nucleophile physics removed (consumed in reaction)');
+          // log('✅ Nucleophile physics removed (consumed in reaction)');
         } catch (error) {
           log(`⚠️ Error removing nucleophile physics: ${error}`);
         }
       }
 
-      log('✅ Reaction momentum applied successfully');
+      // log('✅ Reaction momentum applied successfully');
     } catch (error) {
       log(`❌ Error applying reaction momentum: ${error}`);
     }

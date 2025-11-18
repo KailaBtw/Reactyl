@@ -82,7 +82,7 @@ const getInitialBottomBarState = (): boolean => {
 const initialState: UIState = {
   simulationMode: 'single', // Start in single collision mode
   isPlaying: false,
-  timeScale: 0.2,
+  timeScale: 0.3,
   temperature: 298,
   pressure: 1.0, // Standard pressure: 1 atm
   approachAngle: 100,
@@ -233,6 +233,11 @@ export const App: React.FC = () => {
           updateUIState({ isPlaying: true });
         } else {
           // Start new simulation
+          // Ensure timeScale is 0.3 for rate mode
+          updateUIState({ timeScale: 0.3 });
+          // Apply timeScale immediately to physics engine
+          physicsEngine.setTimeScale(0.3);
+          
         const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
           demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
           demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
