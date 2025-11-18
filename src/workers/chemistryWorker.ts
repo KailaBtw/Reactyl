@@ -194,11 +194,10 @@ class ChemistryWorker {
       reaction.optimalAngle
     );
 
-    // 3. Calculate temperature factor (Arrhenius equation)
-    const tempFactor = this.calculateTemperatureFactor(reaction, temperature);
-
-    // 4. Combined probability (energy, orientation, temperature)
-    const probability = energyFactor * orientationFactor * tempFactor;
+    // 3. Combined probability (energy, orientation)
+    // NOTE: Temperature is already accounted for in collision energy via velocity scaling (Maxwell-Boltzmann)
+    // So we don't need a separate temperature factor - it would double-count temperature effects
+    const probability = energyFactor * orientationFactor;
 
     // 6. Stochastic determination
     const occurs = Math.random() < probability;

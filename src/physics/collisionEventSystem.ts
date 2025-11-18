@@ -45,16 +45,7 @@ class CollisionEventSystem {
   private demoEasyMode: boolean = false; // Forces high reaction probability for demos
   private simulationMode: 'molecule' | 'single' | 'rate' = 'single'; // Current simulation mode
 
-  // Batching queue for worker messages
-  private pendingCollisionBatch: Array<{
-    event: CollisionEvent;
-    collisionData: CollisionData;
-    resolve: (result: ReactionResult) => void;
-    reject: (error: Error) => void;
-  }> = [];
-  private batchProcessingScheduled = false;
-  private readonly batchSize = 10; // Process up to 10 collisions per batch
-  private readonly batchDelay = 16; // ~1 frame at 60fps
+  // REMOVED: Worker batching - always use main thread for reaction detection
 
   constructor() {
     this.reactionDetector = new ReactionDetector();
@@ -169,160 +160,7 @@ class CollisionEventSystem {
     this.eventHandlers = [];
   }
 
-  /**
-   * Detect reaction using chemistry worker (batched)
-   */
-  private async detectReactionWithWorker(
-    collisionData: CollisionData,
-    reactionType: ReactionType,
-    temperature: number,
-    substrate: MoleculeGroup,
-    nucleophile: MoleculeGroup
-  ): Promise<ReactionResult> {
-    // If worker is not enabled, use main thread
-    if (!workerManager.isChemistryWorkerEnabled()) {
-      return this.reactionDetector.detectReaction(
-        collisionData,
-        reactionType,
-        temperature,
-        substrate,
-        nucleophile
-      );
-    }
-
-    // Queue for batch processing
-    return new Promise((resolve, reject) => {
-      // Create a dummy event for batching (we only need collisionData)
-      const dummyEvent: CollisionEvent = {
-        moleculeA: substrate,
-        moleculeB: nucleophile,
-        collisionPoint: collisionData.impactPoint,
-        collisionNormal: new THREE.Vector3(),
-        relativeVelocity: collisionData.relativeVelocity,
-        timestamp: performance.now() / 1000,
-      };
-
-      this.pendingCollisionBatch.push({
-        event: dummyEvent,
-        collisionData,
-        resolve,
-        reject,
-      });
-
-      // Schedule batch processing if not already scheduled
-      if (!this.batchProcessingScheduled) {
-        this.batchProcessingScheduled = true;
-        // Process immediately if batch is full, otherwise wait a bit
-        if (this.pendingCollisionBatch.length >= this.batchSize) {
-          // Use microtask to process immediately but not block current execution
-          Promise.resolve().then(() => this.processBatch());
-        } else {
-          // Use setTimeout for smaller batches to allow more to accumulate
-          setTimeout(() => this.processBatch(), this.batchDelay);
-        }
-      }
-    });
-  }
-
-  /**
-   * Process batched collision detection requests
-   */
-  private async processBatch(): Promise<void> {
-    this.batchProcessingScheduled = false;
-
-    if (this.pendingCollisionBatch.length === 0) {
-      return;
-    }
-
-    // Take up to batchSize items from the queue
-    const batch = this.pendingCollisionBatch.splice(0, this.batchSize);
-
-    if (batch.length === 0) {
-      return;
-    }
-
-    // If worker is not enabled, process on main thread
-    if (!workerManager.isChemistryWorkerEnabled()) {
-      for (const item of batch) {
-        try {
-          const result = this.reactionDetector.detectReaction(
-            item.collisionData,
-            this.currentReactionType!,
-            this.temperature,
-            item.event.moleculeA,
-            item.event.moleculeB
-          );
-          item.resolve(result);
-        } catch (error) {
-          item.reject(error as Error);
-        }
-      }
-      // Schedule next batch if there are more items
-      if (this.pendingCollisionBatch.length > 0) {
-        this.batchProcessingScheduled = true;
-        setTimeout(() => this.processBatch(), this.batchDelay);
-      }
-      return;
-    }
-
-    // Serialize reaction type (cached)
-    const serializedReactionType =
-      this.serializedReactionType ?? this.serializeReactionType(this.currentReactionType!);
-
-    // Create batch messages
-    const messages: ChemistryWorkerMessage[] = batch.map(item => ({
-      type: 'detectReaction',
-      collisionData: serializeCollisionData(item.collisionData),
-      reactionType: serializedReactionType,
-      temperature: this.temperature,
-    }));
-
-    try {
-      // Send batch to worker
-      const responses = await workerManager.batchSendChemistryMessages(messages);
-
-      // Process responses
-      for (let i = 0; i < batch.length; i++) {
-        const item = batch[i];
-        const response = responses[i];
-
-        if (response && response.type === 'reactionResult' && response.reactionResult) {
-          // Deserialize and restore molecule references
-          const result = deserializeReactionResult(
-            response.reactionResult,
-            item.event.moleculeA,
-            item.event.moleculeB
-          );
-          item.resolve(result);
-        } else {
-          item.reject(new Error('Invalid response from chemistry worker'));
-        }
-      }
-    } catch (error) {
-      // Fallback to main thread for all items in batch
-      console.warn('Batch worker failed, falling back to main thread:', error);
-      for (const item of batch) {
-        try {
-          const result = this.reactionDetector.detectReaction(
-            item.collisionData,
-            this.currentReactionType!,
-            this.temperature,
-            item.event.moleculeA,
-            item.event.moleculeB
-          );
-          item.resolve(result);
-        } catch (fallbackError) {
-          item.reject(fallbackError as Error);
-        }
-      }
-    }
-
-    // Schedule next batch if there are more items
-    if (this.pendingCollisionBatch.length > 0) {
-      this.batchProcessingScheduled = true;
-      setTimeout(() => this.processBatch(), this.batchDelay);
-    }
-  }
+  // REMOVED: Worker-based reaction detection - always use main thread for reliability and debugging
 
   /**
    * Emit a collision event to all registered handlers
@@ -392,6 +230,43 @@ class CollisionEventSystem {
       return;
     }
 
+    // CRITICAL: In rate mode, filter out same-type collisions (substrate-substrate, nucleophile-nucleophile)
+    // Only substrate-nucleophile collisions can react
+    if (this.simulationMode === 'rate') {
+      const nameA = event.moleculeA.name || '';
+      const nameB = event.moleculeB.name || '';
+      const isSubstrateA = nameA.startsWith('substrate_');
+      const isNucleophileA = nameA.startsWith('nucleophile_');
+      const isSubstrateB = nameB.startsWith('substrate_');
+      const isNucleophileB = nameB.startsWith('nucleophile_');
+      
+      // Skip if both are same type (substrate-substrate or nucleophile-nucleophile)
+      if ((isSubstrateA && isSubstrateB) || (isNucleophileA && isNucleophileB)) {
+        // Set zero probability result for same-type collisions
+        const collisionData: CollisionData = {
+          relativeVelocity: event.relativeVelocity,
+          collisionEnergy: this.calculateCollisionEnergy(event),
+          approachAngle: this.calculateApproachAngle(event),
+          impactPoint: event.collisionPoint,
+          moleculeOrientations: {
+            substrate: event.moleculeA.group.quaternion,
+            nucleophile: event.moleculeB.group.quaternion,
+          },
+        };
+        const sanitized = this.sanitizeReactionResult({
+          occurs: false,
+          probability: 0,
+          reactionType: this.currentReactionType,
+          collisionData,
+          substrate: event.moleculeA,
+          nucleophile: event.moleculeB,
+        });
+        event.collisionData = sanitized.collisionData;
+        event.reactionResult = sanitized;
+        return;
+      }
+    }
+
     // Calculate collision data
     const collisionData: CollisionData = {
       relativeVelocity: event.relativeVelocity,
@@ -404,42 +279,34 @@ class CollisionEventSystem {
       },
     };
 
-    let reactionResult: ReactionResult;
-
-    // Use chemistry worker if enabled
-    if (workerManager.isChemistryWorkerEnabled()) {
-      try {
-        reactionResult = await this.detectReactionWithWorker(
-          collisionData,
-          this.currentReactionType,
-          this.temperature,
-          event.moleculeA,
-          event.moleculeB
-        );
-      } catch (error) {
-        console.error('Chemistry worker failed, falling back to main thread:', error);
-        // Fallback to main thread
-        reactionResult = this.reactionDetector.detectReaction(
-          collisionData,
-          this.currentReactionType,
-          this.temperature,
-          event.moleculeA,
-          event.moleculeB
-        );
-      }
-    } else {
-      // Use main thread
-      reactionResult = this.reactionDetector.detectReaction(
-        collisionData,
-        this.currentReactionType,
-        this.temperature,
-        event.moleculeA,
-        event.moleculeB
-      );
-    }
+    // ALWAYS use main thread for reaction detection (workers cause issues with batching/debugging)
+    // This ensures consistent behavior and proper debug logging
+    let reactionResult: ReactionResult = this.reactionDetector.detectReaction(
+      collisionData,
+      this.currentReactionType,
+      this.temperature,
+      event.moleculeA,
+      event.moleculeB
+    );
+    
+    // CRITICAL: Create a defensive copy to prevent mutation
+    // The original result might be getting modified somewhere
+    const originalResult: ReactionResult = {
+      occurs: reactionResult.occurs,
+      probability: reactionResult.probability,
+      reactionType: reactionResult.reactionType,
+      collisionData: { ...reactionResult.collisionData },
+      substrate: reactionResult.substrate,
+      nucleophile: reactionResult.nucleophile,
+    };
+    
+    // Use the defensive copy going forward
+    reactionResult = originalResult;
 
     // RAPID OVERRIDE: Use UI-calculated probability instead of forcing 100%
-    if (this.testingMode) {
+    // CRITICAL: Only apply testingMode in single collision mode, NOT in rate mode
+    // In rate mode, we want to use the actual calculated probabilities from the detector
+    if (this.testingMode && this.simulationMode !== 'rate') {
       // Get UI state for real probability calculation
       const uiState = (window as any).uiState;
       if (uiState) {
@@ -516,6 +383,7 @@ class CollisionEventSystem {
     });
     event.collisionData = sanitizedResult.collisionData;
     event.reactionResult = sanitizedResult;
+    
     reactionResult = sanitizedResult;
 
     // Emit reaction event if reaction occurs

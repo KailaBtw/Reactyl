@@ -21,6 +21,7 @@ export class ReactionRateSimulator {
     nucleophileId: string;
     reacted: boolean;
   }> = [];
+  private reactedMolecules: Set<string> = new Set(); // Track which individual molecules have reacted
 
   private boundarySize = 50; // 50 units cubic volume - much larger for better visualization
   private reactionCount = 0;
@@ -107,6 +108,7 @@ export class ReactionRateSimulator {
   private resetState(): void {
     // Reset tracking (molecules are cleared separately)
     this.moleculePairs = [];
+    this.reactedMolecules.clear(); // Clear reacted molecules tracking
     this.reactionCount = 0;
     this.collisionCount = 0;
     this.escapeCount = 0; // Reset escape counter
@@ -124,6 +126,9 @@ export class ReactionRateSimulator {
    * Configure collision detection system
    */
   private configureCollisionSystem(reactionType: string, temperature: number): void {
+    // CRITICAL: Set simulation mode to 'rate' so collision system knows to filter same-type collisions
+    collisionEventSystem.setSimulationMode('rate');
+    
     // Register collision handler
     const collisionHandler = (event: any) => {
       this.handleCollision(event);
@@ -193,7 +198,9 @@ export class ReactionRateSimulator {
    */
   private calculateTemperatureVelocity(temperature: number, molecule: any): THREE.Vector3 {
     const molecularMassAmu = molecule.molecularProperties?.totalMass || 50; // Default mass
-    const baseSpeed = 3.0;
+    // Increased baseSpeed for better visibility at high temperatures
+    // Higher baseSpeed means less scaling down, making temperature effects more dramatic
+    const baseSpeed = 12.0;
 
     // Use same calculation as MoleculeSpawner
     const BOLTZMANN_CONSTANT = 1.380649e-23;
@@ -251,7 +258,7 @@ export class ReactionRateSimulator {
       {
         applyRandomRotation: true,
         temperature: temperature || 0,
-        baseSpeed: temperature ? 3.0 : 0,
+        baseSpeed: temperature ? 12.0 : 0,
       }
     );
 
@@ -284,7 +291,7 @@ export class ReactionRateSimulator {
         position: nucleophilePosition,
         applyRandomRotation: true,
         temperature: temperature || 0,
-        baseSpeed: temperature ? 3.0 : 0,
+        baseSpeed: temperature ? 12.0 : 0,
       }
     );
 
@@ -368,45 +375,77 @@ export class ReactionRateSimulator {
    * Handle collision events
    */
   private handleCollision(event: any): void {
-    this.collisionCount++;
-
     // Check if this collision resulted in a reaction
     // Event structure: { moleculeA, moleculeB, reactionResult: { occurs, ... } }
     const reactionOccurred = event.reactionResult?.occurs === true;
+    const reactionResult = event.reactionResult;
+    const collisionData = event.collisionData;
+
+    // Get molecule IDs from the event
+    const moleculeAId = event.moleculeA?.name || event.moleculeA?.id;
+    const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
+
+    // Only count valid substrate-nucleophile collisions (invalid collisions are filtered earlier)
+    const isSubstrateA = moleculeAId?.startsWith('substrate_');
+    const isNucleophileA = moleculeAId?.startsWith('nucleophile_');
+    const isSubstrateB = moleculeBId?.startsWith('substrate_');
+    const isNucleophileB = moleculeBId?.startsWith('nucleophile_');
+    const isValidCollision = (isSubstrateA && isNucleophileB) || (isNucleophileA && isSubstrateB);
+    
+    // Only increment collision count for valid substrate-nucleophile collisions
+    if (isValidCollision) {
+      this.collisionCount++;
+    }
+
+    // Debug logging - log every 100th collision or all reactions
+    if (this.collisionCount % 100 === 0 || reactionOccurred || (reactionResult && reactionResult.probability > 0.05)) {
+      const prob = reactionResult?.probability ? (reactionResult.probability * 100).toFixed(2) : 'N/A';
+      const energy = collisionData?.collisionEnergy ? collisionData.collisionEnergy.toFixed(2) : 'N/A';
+      const angle = collisionData?.approachAngle ? collisionData.approachAngle.toFixed(1) : 'N/A';
+      console.log(
+        `💥 Collision #${this.collisionCount}: ${moleculeAId} + ${moleculeBId} | ` +
+        `Reaction: ${reactionOccurred ? 'YES' : 'NO'} | ` +
+        `Prob: ${prob}% | ` +
+        `Energy: ${energy} kJ/mol | ` +
+        `Angle: ${angle}°`
+      );
+    }
 
     if (reactionOccurred) {
-      // Get molecule IDs from the event
-      const moleculeAId = event.moleculeA?.name || event.moleculeA?.id;
-      const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
-
-      // Collision debug log disabled for cleaner console
-      // console.log(`🔬 ReactionRateSimulator.handleCollision: ${moleculeAId} + ${moleculeBId}, reactionResult.occurs=${reactionOccurred}`);
-
       if (moleculeAId && moleculeBId) {
-        // Mark the pair as reacted
-        const pair = this.moleculePairs.find(
-          p =>
-            (p.substrateId === moleculeAId && p.nucleophileId === moleculeBId) ||
-            (p.substrateId === moleculeBId && p.nucleophileId === moleculeAId)
-        );
-
-        if (pair) {
-          if (!pair.reacted) {
-          pair.reacted = true;
-          this.reactionCount++;
+        // In rate mode, any substrate can react with any nucleophile (cross-pair reactions)
+        // Check if either molecule has already reacted (prevent double-counting)
+        const isSubstrateA = moleculeAId.startsWith('substrate_');
+        const isNucleophileA = moleculeAId.startsWith('nucleophile_');
+        const isSubstrateB = moleculeBId.startsWith('substrate_');
+        const isNucleophileB = moleculeBId.startsWith('nucleophile_');
+        
+        // Only process if it's a valid substrate-nucleophile pair
+        const isValidPair = (isSubstrateA && isNucleophileB) || (isNucleophileA && isSubstrateB);
+        
+        if (isValidPair) {
+          // Check if either molecule has already reacted
+          if (!this.reactedMolecules.has(moleculeAId) && !this.reactedMolecules.has(moleculeBId)) {
+            // Mark both molecules as reacted
+            this.reactedMolecules.add(moleculeAId);
+            this.reactedMolecules.add(moleculeBId);
+            this.reactionCount++;
+            
             console.log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
 
             // Execute visual reaction animation
             this.executeVisualReaction(event, moleculeAId, moleculeBId);
+            
+            // UI state will be updated automatically via polling in App.tsx (every 500ms)
           } else {
-            console.log(`⏭️ Pair already reacted: ${moleculeAId} + ${moleculeBId}`);
+            // One or both molecules already reacted
+            if (this.reactedMolecules.has(moleculeAId) || this.reactedMolecules.has(moleculeBId)) {
+              // Silently skip - molecule already reacted
+            }
           }
         } else {
-          console.log(`⚠️ Pair not found in moleculePairs: ${moleculeAId} + ${moleculeBId} (Total pairs: ${this.moleculePairs.length})`);
-          // Debug: show some example pairs
-          if (this.moleculePairs.length > 0) {
-            console.log(`   Example pairs: ${this.moleculePairs.slice(0, 3).map(p => `${p.substrateId}+${p.nucleophileId}`).join(', ')}`);
-          }
+          // Invalid pair (same-type collision) - should have been filtered earlier
+          console.warn(`⚠️ Invalid reaction pair: ${moleculeAId} + ${moleculeBId} (not substrate-nucleophile)`);
         }
       } else {
         console.log(`⚠️ Missing molecule IDs: A=${moleculeAId}, B=${moleculeBId}`);
@@ -465,24 +504,33 @@ export class ReactionRateSimulator {
         const reactionTypeLower = reactionType.toLowerCase();
 
         // Execute appropriate reaction based on reaction type
-        console.log(`🎬 Executing ${reactionTypeLower} reaction for ${moleculeAId} + ${moleculeBId}`);
 
         if (reactionTypeLower === 'sn2') {
+          // Mark both molecules as products immediately (they were detected as reacting)
+          substrate.isProduct = true;
+          nucleophile.isProduct = true;
+          
+          // Apply outlines immediately - even if reaction execution fails, they're still products
+          try {
+            substrate.addOutline();
+          } catch (outlineError) {
+            console.error(`❌ Error applying outline to ${moleculeAId}: ${outlineError}`);
+          }
+          
+          try {
+            nucleophile.addOutline();
+          } catch (outlineError) {
+            console.error(`❌ Error applying outline to ${moleculeBId}: ${outlineError}`);
+          }
+          
           // Use simpler ReactionGraphics for rate mode - modifies molecule in place, more reliable
           import('../graphics/reactions').then(({ reactionGraphics }) => {
             try {
-              const success = reactionGraphics.executeSN2Reaction(substrate, nucleophile);
-              if (success) {
-                console.log(`✅ Reaction completed for ${moleculeAId} + ${moleculeBId}`);
-                // Clear reaction flags - molecule is now a product and won't react again
-                substrate.reactionInProgress = false;
-                nucleophile.reactionInProgress = false;
-              } else {
-                console.log(`❌ Reaction failed for ${moleculeAId} + ${moleculeBId} - clearing flags`);
-                // Clear flags on failure so they can try again
-                substrate.reactionInProgress = false;
-                nucleophile.reactionInProgress = false;
-              }
+              reactionGraphics.executeSN2Reaction(substrate, nucleophile);
+              
+              // Clear reaction flags - molecule is now a product and won't react again
+              substrate.reactionInProgress = false;
+              nucleophile.reactionInProgress = false;
             } catch (error) {
               console.error(`❌ Error executing reaction: ${error}`);
               // Clear flags on error
@@ -759,12 +807,17 @@ export class ReactionRateSimulator {
     // Average reaction rate: total reactions / elapsed time
     // Note: This is average rate. Instantaneous rate would require tracking concentration changes over time intervals
     const reactionRate = elapsedTime > 0 ? this.reactionCount / elapsedTime : 0;
-    const remainingPairs = this.moleculePairs.filter(p => !p.reacted).length;
-    const remainingReactants = (remainingPairs / this.moleculePairs.length) * 100;
+    
+    // Calculate remaining reactants based on individual molecules that have reacted
+    // Each reaction consumes 1 substrate and 1 nucleophile
+    const totalMolecules = this.moleculePairs.length * 2; // Each pair has 2 molecules
+    const reactedMoleculeCount = this.reactedMolecules.size;
+    const remainingMolecules = totalMolecules - reactedMoleculeCount;
+    const remainingReactants = totalMolecules > 0 ? (remainingMolecules / totalMolecules) * 100 : 100;
 
     const metrics: any = {
       reactionRate, // reactions per second
-      remainingReactants, // percentage of unreacted pairs
+      remainingReactants, // percentage of unreacted molecules
       productsFormed: this.reactionCount,
       collisionCount: this.collisionCount,
       elapsedTime,

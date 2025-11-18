@@ -203,6 +203,9 @@ export class ThreeJSBridge {
           (window as any).enableRateDebug = (enabled: boolean = true) => {
             this.setRateSimulationDebugMode(enabled);
           };
+          (window as any).enableReactionDebug = (enabled: boolean = true) => {
+            this.setReactionDebugMode(enabled);
+          };
           (window as any).getEscapeStats = () => this.getEscapeStats();
         }
       } catch (error) {
@@ -557,6 +560,15 @@ export class ThreeJSBridge {
     if (this.reactionRateSimulator) {
       this.reactionRateSimulator.setDebugMode(enabled);
       console.log(`🔍 Rate simulation debug mode: ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    }
+  }
+
+  /**
+   * Enable/disable debug mode for reactions
+   */
+  setReactionDebugMode(enabled: boolean): void {
+    if (this.reactionRateSimulator) {
+      this.reactionRateSimulator.setReactionDebugMode(enabled);
     }
   }
 

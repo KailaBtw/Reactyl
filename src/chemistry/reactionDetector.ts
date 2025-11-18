@@ -25,6 +25,17 @@ export class ReactionDetector {
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup
   ): ReactionResult {
+    if (!reaction || !reaction.activationEnergy) {
+      return {
+        occurs: false,
+        probability: 0,
+        reactionType: reaction || { id: 'unknown', activationEnergy: 0, optimalAngle: 0 },
+        collisionData: collision,
+        substrate,
+        nucleophile,
+      };
+    }
+    
     const collisionEnergy = this.ensureFinite(collision.collisionEnergy);
     const approachAngle = this.normalizeAngle(collision.approachAngle);
     const sanitizedCollision: CollisionData = {
@@ -70,7 +81,17 @@ export class ReactionDetector {
     
     // 3. Combined probability: product of energy and orientation factors
     // This gives realistic reaction rates: most collisions don't react, but some do
-    const probability = Math.min(Math.max(energyFactor * orientationFactor, 0), 1);
+    let probability = Math.min(Math.max(energyFactor * orientationFactor, 0), 1);
+    
+    // Boost probability for rate mode to make reactions more visible/educational
+    // In rate mode, we want to see more reactions happening, so multiply by 2-3x
+    // This is still realistic but makes the simulation more engaging
+    // Check if we're in rate mode by looking at molecule names (they have substrate_/nucleophile_ prefix)
+    const isRateMode = substrate?.name?.startsWith('substrate_') || substrate?.name?.startsWith('nucleophile_');
+    if (isRateMode && probability > 0) {
+      // Boost probability by 2.5x, but cap at 50% max (still realistic)
+      probability = Math.min(probability * 2.5, 0.5);
+    }
     
     // 4. Stochastic determination: random roll against probability
     // This creates realistic reaction kinetics where:
@@ -142,11 +163,12 @@ export class ReactionDetector {
       deviation = 360 - deviation;
     }
     
-    // Orientation tolerance: 60° standard deviation (used for both single and rate modes)
-    // This allows reactions within ~120°-180° cone (realistic for SN2 backside attack)
-    // In rate mode: molecules collide from random angles, so this tolerance allows realistic reactions
-    // In single collision mode: user can test different angles and see how orientation affects probability
-    const sigma = 60; // degrees tolerance (standard deviation) - allows ±60° variation from optimal
+    // Orientation tolerance: Wider tolerance for rate mode to allow more reactions
+    // In rate mode, we want more visible reactions for educational purposes
+    // Check if we're in rate mode by checking if the molecule names follow rate mode pattern
+    // For now, use wider tolerance (90° instead of 60°) to allow more reactions
+    const sigma = 90; // degrees tolerance (standard deviation) - allows ±90° variation from optimal
+    // This gives higher orientation factors, making reactions more frequent
     // Gaussian: exp(-(x-μ)²/(2σ²)) where μ = optimal, σ = tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
 
@@ -175,9 +197,10 @@ export class ReactionDetector {
     const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
     const BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
     const REFERENCE_TEMP = 298; // K
-    // NOTE: Rate mode uses baseSpeed 3.0 m/s, but we need to scale to real molecular speeds
-    // Real molecular speeds are ~100-1000 m/s, so visualization speeds are scaled down significantly
-    const VISUALIZATION_BASE_SPEED = 3.0; // m/s - actual baseSpeed used in rate mode
+    // NOTE: Rate mode uses baseSpeed 12.0 m/s for visualization, but we need to scale to real molecular speeds
+    // Real molecular speeds are ~100-1000 m/s, so visualization speeds are scaled down
+    // IMPORTANT: Use the same baseSpeed as ReactionRateSimulator (12.0 m/s) for consistency
+    const VISUALIZATION_BASE_SPEED = 12.0; // m/s - matches ReactionRateSimulator baseSpeed
 
     // Calculate real molecular RMS velocity using Maxwell-Boltzmann: v_rms = sqrt(3kT/m)
     const avgMass = (mass1 + mass2) / 2;
@@ -186,7 +209,7 @@ export class ReactionDetector {
     const realVrms_at_ref = Math.sqrt((3 * BOLTZMANN_CONSTANT * REFERENCE_TEMP) / mass_kg);
     
     // Scale visualization velocity UP to real molecular velocity
-    // Visualization speeds are scaled down for display (3 m/s), real speeds are much higher (~280 m/s for 95 AMU)
+    // Visualization speeds are scaled down for display (12 m/s), real speeds are much higher (~280 m/s for 95 AMU at 298K)
     // Scale factor: how much faster real molecules move compared to visualization
     const visualizationToRealScale = realVrms_at_ref / VISUALIZATION_BASE_SPEED;
     const temperatureScaleFactor = realVrms_at_T / realVrms_at_ref;

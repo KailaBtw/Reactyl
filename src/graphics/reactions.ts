@@ -74,17 +74,33 @@ export class ReactionGraphics {
       // Step 3: Add OH group at the computed positions, bonded to the original carbon index
       this.addOHGroup(substrate, carbonIndex, oPos, hPos);
 
-      // Step 4: Mark substrate as product and add red outline (only in rate mode)
+      // Step 4: Mark both molecules as products and add red outline (only in rate mode)
       const { collisionEventSystem } = require('../physics/collisionEventSystem');
       const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
+      
+      // Mark substrate as product (it's been transformed)
       substrate.isProduct = true;
       
-      // Add outline immediately in rate mode
+      // Mark nucleophile as product too (it's been consumed in the reaction)
+      // In SN2, the nucleophile becomes part of the product, so it's also "consumed"
+      if (_nucleophile) {
+        _nucleophile.isProduct = true;
+      }
+      
+      // Add outline immediately in rate mode for both molecules
       if (isRateMode) {
-        addProductOutline(substrate);
+        substrate.addOutline();
         log(`✅ Added red outline to product ${substrate.name} in rate mode`);
+        
+        if (_nucleophile) {
+          _nucleophile.addOutline();
+          log(`✅ Added red outline to product ${_nucleophile.name} in rate mode`);
+        }
       } else {
         log(`✅ Product ${substrate.name} marked (no outline in single mode)`);
+        if (_nucleophile) {
+          log(`✅ Product ${_nucleophile.name} marked (no outline in single mode)`);
+        }
       }
 
       log('✅ Minimal SN2 reaction completed');

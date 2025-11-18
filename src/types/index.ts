@@ -76,6 +76,8 @@ export interface MoleculeGroup {
   reactionFeatures?: ReactionFeatures; // Reaction compatibility features
   compatibleReactions?: string[]; // List of compatible reaction types
   isProduct?: boolean; // Flag to indicate if molecule is a reaction product
+  addOutline: () => void; // Add red halo/glow outline to mark as product
+  removeOutline: () => void; // Remove outline effect
 }
 
 export interface MoleculeManager {

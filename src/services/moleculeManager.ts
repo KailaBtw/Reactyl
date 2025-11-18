@@ -19,6 +19,9 @@ export const createMoleculeGroup = (
 ): MoleculeGroup => {
   const group = new THREE.Group();
   const id = `${name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Store halo meshes for cleanup
+  const haloMeshes: THREE.Mesh[] = [];
 
   return {
     name, // The name of the molecule.
@@ -32,6 +35,116 @@ export const createMoleculeGroup = (
     velocity: new THREE.Vector3(0, 0, 0), // The molecule's velocity (as a THREE.Vector3).
     radius: radius, // The molecule's radius for collision detection.
     molObject: null, // Store the parsed molecule data for future use.
+    
+    // Add red halo/glow outline to mark as product
+    addOutline: () => {
+      // Remove existing outlines first
+      if (haloMeshes.length > 0) {
+        haloMeshes.forEach(halo => {
+          if (halo.parent) halo.parent.remove(halo);
+          if (halo.geometry) halo.geometry.dispose();
+          if (halo.material) {
+            if (Array.isArray(halo.material)) {
+              halo.material.forEach((mat: THREE.Material) => mat.dispose());
+            } else {
+              halo.material.dispose();
+            }
+          }
+        });
+        haloMeshes.length = 0;
+      }
+
+      // Traverse all atom meshes and add halos
+      group.traverse((child: any) => {
+        if (child instanceof THREE.Mesh) {
+          // Check if it's a bond - skip bonds
+          const userData = child.userData || {};
+          const isBond = userData.type === 'bond' || 
+                         child.geometry?.type === 'CylinderGeometry';
+          
+          if (!isBond) {
+            // This is an atom mesh - add halo effect
+            try {
+              const geometry = child.geometry as THREE.BufferGeometry;
+              
+              if (!geometry) return;
+              
+              // Get the radius from the geometry's bounding sphere or use a default
+              let radius = 0.5;
+              if (geometry.boundingSphere) {
+                radius = geometry.boundingSphere.radius;
+              } else {
+                geometry.computeBoundingSphere();
+                if (geometry.boundingSphere) {
+                  radius = geometry.boundingSphere.radius;
+                }
+              }
+              
+              // Create a NEW sphere geometry (don't clone shared geometries)
+              // Make it 25% larger for visible halo
+              const haloRadius = radius * 1.25;
+              const haloGeometry = new THREE.SphereGeometry(haloRadius, 32, 32);
+              
+              // Create bright red emissive material for the halo effect
+              const haloMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000, // Bright red
+                emissive: 0xff3333, // Red glow
+                emissiveIntensity: 1.5, // Strong glow
+                transparent: true,
+                opacity: 0.8, // More opaque for visibility
+                side: THREE.DoubleSide, // Render both sides
+                depthWrite: false, // Don't write to depth buffer for proper blending
+                blending: THREE.AdditiveBlending, // Additive blending for glow effect
+              });
+              
+              // Create a halo mesh
+              const haloMesh = new THREE.Mesh(haloGeometry, haloMaterial);
+              
+              // Position to match the original atom (in group space)
+              haloMesh.position.copy(child.position);
+              haloMesh.rotation.copy(child.rotation);
+              
+              // Use the same scale as the original if it has one
+              if (child.scale && child.scale.x !== 1) {
+                haloMesh.scale.copy(child.scale);
+              }
+              
+              // Render behind the original mesh to create glow effect
+              haloMesh.renderOrder = -1;
+              
+              // Tag it for cleanup
+              haloMesh.userData = { 
+                type: 'productHalo', 
+                atomMesh: child
+              };
+              
+              // Add directly to the molecule group (same parent as atoms)
+              group.add(haloMesh);
+              
+              haloMeshes.push(haloMesh);
+            } catch (error) {
+              // Silently handle errors
+            }
+          }
+        }
+      });
+    },
+    
+    // Remove outline effect
+    removeOutline: () => {
+      haloMeshes.forEach(halo => {
+        if (halo.parent) halo.parent.remove(halo);
+        if (halo.geometry) halo.geometry.dispose();
+        if (halo.material) {
+          if (Array.isArray(halo.material)) {
+            halo.material.forEach((mat: THREE.Material) => mat.dispose());
+          } else {
+            halo.material.dispose();
+          }
+        }
+      });
+      haloMeshes.length = 0;
+    },
   };
 };
 
