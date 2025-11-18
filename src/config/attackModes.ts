@@ -23,7 +23,7 @@ export function getAttackModeConfig(
           nucleophileYaw: Math.PI / 2,
           substrateYaw: Math.PI / 2,
           substrateFacesNucleophile: true,
-          productYaw: Math.PI / 2, // Flip product 180° for proper orientation
+          productYaw: 0, // Flip product 180° for proper orientation
         };
       case 'frontside':
         return {

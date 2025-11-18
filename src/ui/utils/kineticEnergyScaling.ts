@@ -3,7 +3,7 @@ const MAX_VISUAL_VELOCITY = 500; // m/s cap for visually trackable collisions
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export const getEnergyRange = (activationEnergy: number) => {
-  const min = Math.max(5, activationEnergy * 0.5);
+  const min = 0; // Start from 0 so graph baseline matches slider minimum
   const max = activationEnergy + 10;
   return { min, max };
 };

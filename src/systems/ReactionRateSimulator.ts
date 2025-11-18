@@ -200,7 +200,7 @@ export class ReactionRateSimulator {
     const molecularMassAmu = molecule.molecularProperties?.totalMass || 50; // Default mass
     // Increased baseSpeed for better visibility at high temperatures
     // Higher baseSpeed means less scaling down, making temperature effects more dramatic
-    const baseSpeed = 12.0;
+    const baseSpeed = 60.0;
 
     // Use same calculation as MoleculeSpawner
     const BOLTZMANN_CONSTANT = 1.380649e-23;
@@ -258,7 +258,7 @@ export class ReactionRateSimulator {
       {
         applyRandomRotation: true,
         temperature: temperature || 0,
-        baseSpeed: temperature ? 12.0 : 0,
+        baseSpeed: temperature ? 60.0 : 0,
       }
     );
 
@@ -291,7 +291,7 @@ export class ReactionRateSimulator {
         position: nucleophilePosition,
         applyRandomRotation: true,
         temperature: temperature || 0,
-        baseSpeed: temperature ? 12.0 : 0,
+        baseSpeed: temperature ? 60.0 : 0,
       }
     );
 
@@ -381,9 +381,9 @@ export class ReactionRateSimulator {
     const reactionResult = event.reactionResult;
     const collisionData = event.collisionData;
 
-    // Get molecule IDs from the event
-    const moleculeAId = event.moleculeA?.name || event.moleculeA?.id;
-    const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
+      // Get molecule IDs from the event
+      const moleculeAId = event.moleculeA?.name || event.moleculeA?.id;
+      const moleculeBId = event.moleculeB?.name || event.moleculeB?.id;
 
     // Only count valid substrate-nucleophile collisions (invalid collisions are filtered earlier)
     const isSubstrateA = moleculeAId?.startsWith('substrate_');
@@ -422,14 +422,14 @@ export class ReactionRateSimulator {
         
         // Only process if it's a valid substrate-nucleophile pair
         const isValidPair = (isSubstrateA && isNucleophileB) || (isNucleophileA && isSubstrateB);
-        
+
         if (isValidPair) {
           // Check if either molecule has already reacted
           if (!this.reactedMolecules.has(moleculeAId) && !this.reactedMolecules.has(moleculeBId)) {
             // Mark both molecules as reacted
             this.reactedMolecules.add(moleculeAId);
             this.reactedMolecules.add(moleculeBId);
-            this.reactionCount++;
+          this.reactionCount++;
             
             console.log(`✅ Reaction tracked: ${moleculeAId} + ${moleculeBId} (Total: ${this.reactionCount})`);
 
@@ -528,9 +528,9 @@ export class ReactionRateSimulator {
             try {
               reactionGraphics.executeSN2Reaction(substrate, nucleophile);
               
-              // Clear reaction flags - molecule is now a product and won't react again
-              substrate.reactionInProgress = false;
-              nucleophile.reactionInProgress = false;
+                // Clear reaction flags - molecule is now a product and won't react again
+                substrate.reactionInProgress = false;
+                nucleophile.reactionInProgress = false;
             } catch (error) {
               console.error(`❌ Error executing reaction: ${error}`);
               // Clear flags on error
@@ -682,31 +682,31 @@ export class ReactionRateSimulator {
     if (Math.abs(position.x) > safeBoundary) {
       // Only reverse if velocity is pointing outward
       if ((position.x > 0 && currentVelocity.x > 0) || (position.x < 0 && currentVelocity.x < 0)) {
-        currentVelocity.x *= -1.0; // Perfectly elastic bounce - energy conserved
+      currentVelocity.x *= -1.0; // Perfectly elastic bounce - energy conserved
       }
       bounced = true;
     }
 
     if (Math.abs(position.y) > safeBoundary) {
       if ((position.y > 0 && currentVelocity.y > 0) || (position.y < 0 && currentVelocity.y < 0)) {
-        currentVelocity.y *= -1.0; // Perfectly elastic bounce - energy conserved
+      currentVelocity.y *= -1.0; // Perfectly elastic bounce - energy conserved
       }
       bounced = true;
     }
 
     if (Math.abs(position.z) > safeBoundary) {
       if ((position.z > 0 && currentVelocity.z > 0) || (position.z < 0 && currentVelocity.z < 0)) {
-        currentVelocity.z *= -1.0; // Perfectly elastic bounce - energy conserved
+      currentVelocity.z *= -1.0; // Perfectly elastic bounce - energy conserved
       }
       bounced = true;
     }
 
     // ALWAYS update positions (even if no bounce) to prevent escape
-    // Update physics body position and velocity
-    if (molecule.hasPhysics && molecule.physicsBody) {
-      const body = molecule.physicsBody as any;
+      // Update physics body position and velocity
+      if (molecule.hasPhysics && molecule.physicsBody) {
+        const body = molecule.physicsBody as any;
       // Always update physics body position to clamped position
-      body.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
+        body.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
       
       // If molecule escaped, reduce velocity to prevent immediate re-escape
       if (escaped) {
@@ -765,23 +765,23 @@ export class ReactionRateSimulator {
             angularDirection.z * angularSpeed
           );
         }
-      }
+        }
 
-      body.wakeUp(); // Ensure body stays active
-    }
+        body.wakeUp(); // Ensure body stays active
+      }
 
     // ALWAYS update visual position to match clamped position (critical for preventing escape)
     // This ensures visual and physics positions stay in sync
-    molecule.group.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
+      molecule.group.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
     
     // Update velocity if there was a bounce
     if (bounced) {
       if (molecule.velocity) {
-        molecule.velocity.copy(currentVelocity);
+      molecule.velocity.copy(currentVelocity);
       }
       // Also update through physics engine for consistency (if molecule has physics)
       if (molecule.hasPhysics) {
-        this.physicsEngine.setVelocity(molecule, currentVelocity);
+      this.physicsEngine.setVelocity(molecule, currentVelocity);
       }
     }
   }
@@ -967,9 +967,9 @@ export class ReactionRateSimulator {
 
     // Use baseSpeed as the reference visualization speed at room temperature
     // Then scale proportionally based on the ratio of v_rms values
-    // Increased base speed for better visibility (was 3.0 m/s, now 12.0 m/s)
-    // This makes temperature differences much more noticeable
-    const referenceBaseSpeed = baseSpeed || 12.0; // Default 12 m/s at room temp for better visibility
+    // Increased base speed for more realistic motion (was 12.0 m/s, now 60.0 m/s)
+    // This reduces scaling factor and makes visualization closer to real molecular speeds
+    const referenceBaseSpeed = baseSpeed || 60.0; // Default 60 m/s at room temp for more accuracy
     const speedRatio = v_rms / referenceVrms; // How much faster/slower than room temp
 
     // Final speed: scale baseSpeed by the temperature ratio

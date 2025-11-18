@@ -32,7 +32,7 @@ export const CollisionInfoBubble: React.FC<CollisionInfoBubbleProps> = ({
         </div>
         
         <div>
-          <strong>Molecular Speed:</strong> Molecules move at ~{Math.round(Math.sqrt(temperature / 298) * 500)} m/s
+          <strong>Molecular Speed:</strong> Molecules move at ~{Math.round(Math.sqrt(temperature / 298) * 280)} m/s (real), {Math.round(Math.sqrt(temperature / 298) * 60)} m/s (visualization)
           <br />
           <span className="text-xs opacity-75">
             (scales with √temperature via Maxwell-Boltzmann distribution)

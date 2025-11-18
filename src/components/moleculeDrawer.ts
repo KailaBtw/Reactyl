@@ -49,16 +49,16 @@ const moleculeGeometries: Record<string, THREE.SphereGeometry> = {
  * realistic lighting.
  */
 const moleculeMaterials: Record<string, THREE.MeshStandardMaterial> = {
-  C: new THREE.MeshStandardMaterial({ color: 0x333333 }), // Dark Gray
-  H: new THREE.MeshStandardMaterial({ color: 0xffffff }), // White
-  O: new THREE.MeshStandardMaterial({ color: 0xff0000 }), // Red
-  N: new THREE.MeshStandardMaterial({ color: 0x0000ff }), // Blue
-  S: new THREE.MeshStandardMaterial({ color: 0xffff00 }), // Yellow
-  P: new THREE.MeshStandardMaterial({ color: 0xff00ff }), // Magenta
-  F: new THREE.MeshStandardMaterial({ color: 0x00ff00 }), // Green
-  Cl: new THREE.MeshStandardMaterial({ color: 0x00ff00 }), // Green
-  Br: new THREE.MeshStandardMaterial({ color: 0x00ff00 }), // Green
-  I: new THREE.MeshStandardMaterial({ color: 0x00ff00 }), // Green
+  C: new THREE.MeshStandardMaterial({ color: 0x333333 }), // Dark Gray - CPK
+  H: new THREE.MeshStandardMaterial({ color: 0xffffff }), // White - CPK
+  O: new THREE.MeshStandardMaterial({ color: 0xff0000 }), // Red - CPK
+  N: new THREE.MeshStandardMaterial({ color: 0x0000ff }), // Blue - CPK
+  S: new THREE.MeshStandardMaterial({ color: 0xffff00 }), // Yellow - CPK
+  P: new THREE.MeshStandardMaterial({ color: 0xffa500 }), // Orange - CPK
+  F: new THREE.MeshStandardMaterial({ color: 0x00ff00 }), // Green - CPK
+  Cl: new THREE.MeshStandardMaterial({ color: 0x00ff00 }), // Green - CPK
+  Br: new THREE.MeshStandardMaterial({ color: 0xa52a2a }), // Dark red - CPK
+  I: new THREE.MeshStandardMaterial({ color: 0x940094 }), // Dark violet - CPK
 };
 
 /**

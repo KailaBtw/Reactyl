@@ -19,7 +19,7 @@ export const createMoleculeGroup = (
 ): MoleculeGroup => {
   const group = new THREE.Group();
   const id = `${name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   // Store halo meshes for cleanup
   const haloMeshes: THREE.Mesh[] = [];
 

@@ -351,9 +351,9 @@ export class MoleculeSpawner {
 
     // Use baseSpeed as the reference visualization speed at room temperature
     // Then scale proportionally based on the ratio of v_rms values
-    // Increased base speed for better visibility (was 3.0 m/s, now 12.0 m/s)
-    // This makes temperature differences much more noticeable
-    const referenceBaseSpeed = baseSpeed || 12.0; // Default 12 m/s at room temp for better visibility
+    // Increased base speed for more realistic motion (was 12.0 m/s, now 60.0 m/s)
+    // This reduces scaling factor and makes visualization closer to real molecular speeds
+    const referenceBaseSpeed = baseSpeed || 60.0; // Default 60 m/s at room temp for more accuracy
     const speedRatio = v_rms / referenceVrms; // How much faster/slower than room temp
 
     // Final speed: scale baseSpeed by the temperature ratio

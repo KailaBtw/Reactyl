@@ -44,8 +44,9 @@ export class ReactionDetector {
       approachAngle,
     };
 
-    // CRITICAL: Hard threshold - if collision energy < activation energy, NO reaction ever
-    // Molecules just bounce apart if insufficient energy
+    // DETERMINISTIC ENERGY CHECK: Below activation energy = NO reaction EVER
+    // This is realistic physical chemistry - no thermal fluctuations can overcome a barrier
+    // if the collision energy is fundamentally insufficient
     if (collisionEnergy < reaction.activationEnergy) {
       return {
         occurs: false,
@@ -57,26 +58,25 @@ export class ReactionDetector {
       };
     }
 
-    // STOCHASTIC REACTION DETECTION (Arrhenius-based):
+    // STOCHASTIC REACTION DETECTION (for collisions with sufficient energy):
     // Reaction probability depends on:
     // 1. Energy factor: Higher energy above activation = higher probability
     // 2. Orientation factor: Better alignment with optimal angle = higher probability
     // Temperature affects collision energy through velocity scaling (Maxwell-Boltzmann)
     
-    // 1. Calculate energy factor using smooth exponential
-    // If energy >= activation, factor approaches 1.0
-    // If energy < activation, factor decreases exponentially (Arrhenius)
-    const energyFactor =
-      collisionEnergy >= reaction.activationEnergy
-        ? Math.min(1, 1 - Math.exp(-(collisionEnergy - reaction.activationEnergy) / reaction.activationEnergy))
-        : Math.exp(
-            -((reaction.activationEnergy - collisionEnergy) * 1000) / (this.R * temperature)
-          );
+    // Detect rate mode by checking molecule naming convention
+    const isRateMode = substrate?.name?.startsWith('substrate_') || substrate?.name?.startsWith('nucleophile_');
     
-    // 2. Calculate orientation factor (angle-dependent, now with looser tolerance)
+    // 1. Calculate energy factor using smooth exponential
+    // Since we already confirmed collisionEnergy >= activationEnergy, factor is always > 0
+    const energyFactor = Math.min(1, 1 - Math.exp(-(collisionEnergy - reaction.activationEnergy) / reaction.activationEnergy));
+    
+    // 2. Calculate orientation factor (angle-dependent)
+    // Pass isRateMode flag to use appropriate tolerance: strict for single collision, lenient for rate mode
     const orientationFactor = this.calculateOrientationFactor(
       approachAngle,
-      reaction.optimalAngle
+      reaction.optimalAngle,
+      isRateMode
     );
     
     // 3. Combined probability: product of energy and orientation factors
@@ -84,10 +84,7 @@ export class ReactionDetector {
     let probability = Math.min(Math.max(energyFactor * orientationFactor, 0), 1);
     
     // Boost probability for rate mode to make reactions more visible/educational
-    // In rate mode, we want to see more reactions happening, so multiply by 2-3x
-    // This is still realistic but makes the simulation more engaging
-    // Check if we're in rate mode by looking at molecule names (they have substrate_/nucleophile_ prefix)
-    const isRateMode = substrate?.name?.startsWith('substrate_') || substrate?.name?.startsWith('nucleophile_');
+    // In rate mode, we want to see more reactions happening for better visualization
     if (isRateMode && probability > 0) {
       // Boost probability by 2.5x, but cap at 50% max (still realistic)
       probability = Math.min(probability * 2.5, 0.5);
@@ -95,7 +92,7 @@ export class ReactionDetector {
     
     // 4. Stochastic determination: random roll against probability
     // This creates realistic reaction kinetics where:
-    // - Low energy collisions rarely react
+    // - Collisions with just enough energy may still not react (orientation matters!)
     // - High energy + good orientation = high chance
     // - Temperature increases both collision energy AND frequency
     const occurs = probability > 0 ? Math.random() < probability : false;
@@ -146,9 +143,10 @@ export class ReactionDetector {
    * Uses Gaussian distribution: factor decreases as deviation from optimal increases
    * @param actual - Actual approach angle in degrees
    * @param optimal - Optimal angle for reaction (e.g., 180° for SN2)
+   * @param isRateMode - Whether we're in rate simulation mode (lenient) or single collision mode (strict)
    * @returns Orientation factor (0-1), where 1 = perfect orientation
    */
-  private calculateOrientationFactor(actual: number, optimal: number): number {
+  private calculateOrientationFactor(actual: number, optimal: number, isRateMode: boolean = false): number {
     // If no optimal angle specified (optimal = 0), orientation doesn't matter
     if (optimal === 0) {
       return 1.0;
@@ -163,12 +161,10 @@ export class ReactionDetector {
       deviation = 360 - deviation;
     }
     
-    // Orientation tolerance: Wider tolerance for rate mode to allow more reactions
-    // In rate mode, we want more visible reactions for educational purposes
-    // Check if we're in rate mode by checking if the molecule names follow rate mode pattern
-    // For now, use wider tolerance (90° instead of 60°) to allow more reactions
-    const sigma = 90; // degrees tolerance (standard deviation) - allows ±90° variation from optimal
-    // This gives higher orientation factors, making reactions more frequent
+    // Orientation tolerance:
+    // - Single collision mode: STRICT ±10° tolerance (realistic physical chemistry)
+    // - Rate mode: LENIENT ±90° tolerance (educational, shows more reactions)
+    const sigma = isRateMode ? 60 : 10; // degrees tolerance (standard deviation)
     // Gaussian: exp(-(x-μ)²/(2σ²)) where μ = optimal, σ = tolerance
     const orientationFactor = Math.exp(-(deviation ** 2) / (2 * sigma ** 2));
 
@@ -197,10 +193,10 @@ export class ReactionDetector {
     const AMU_TO_KG = 1.660539e-27; // kg per atomic mass unit
     const BOLTZMANN_CONSTANT = 1.380649e-23; // J/K
     const REFERENCE_TEMP = 298; // K
-    // NOTE: Rate mode uses baseSpeed 12.0 m/s for visualization, but we need to scale to real molecular speeds
-    // Real molecular speeds are ~100-1000 m/s, so visualization speeds are scaled down
-    // IMPORTANT: Use the same baseSpeed as ReactionRateSimulator (12.0 m/s) for consistency
-    const VISUALIZATION_BASE_SPEED = 12.0; // m/s - matches ReactionRateSimulator baseSpeed
+    // NOTE: Rate mode uses baseSpeed 60.0 m/s for visualization, but we need to scale to real molecular speeds
+    // Real molecular speeds are ~100-1000 m/s, so visualization speeds are scaled down less now
+    // IMPORTANT: Use the same baseSpeed as ReactionRateSimulator (60.0 m/s) for consistency
+    const VISUALIZATION_BASE_SPEED = 60.0; // m/s - matches ReactionRateSimulator baseSpeed
 
     // Calculate real molecular RMS velocity using Maxwell-Boltzmann: v_rms = sqrt(3kT/m)
     const avgMass = (mass1 + mass2) / 2;

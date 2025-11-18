@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IdealButton } from '../IdealButton';
 import { InfoBubble } from '../../common/InfoBubble';
 import { REACTION_TYPES } from '../../../../chemistry/reactionDatabase';
@@ -60,14 +60,23 @@ export const CollisionVelocityCard: React.FC<CollisionVelocityCardProps> = ({
   );
 
   // Calculate kinetic energy from velocity using demo-friendly scaling
+  // This is the source of truth - always reflects the current velocity prop
   const kineticEnergy = useMemo(() => {
     return energyFromVelocityScaled(relativeVelocity, activationEnergy);
   }, [relativeVelocity, activationEnergy]);
 
+  // Local state for display during slider drag (for smooth UX)
+  // When slider is released, parent updates velocity prop which updates kineticEnergy
   const [displayEnergy, setDisplayEnergy] = useState(kineticEnergy);
-
+  
+  // Sync display energy when velocity prop changes (but not during user interaction)
+  const isDraggingRef = useRef(false);
+  
   useEffect(() => {
-    setDisplayEnergy(kineticEnergy);
+    // Only sync if we're not actively dragging the slider
+    if (!isDraggingRef.current) {
+      setDisplayEnergy(kineticEnergy);
+    }
   }, [kineticEnergy]);
 
   const hasSufficientEnergy = displayEnergy >= activationEnergy;
@@ -92,10 +101,18 @@ export const CollisionVelocityCard: React.FC<CollisionVelocityCardProps> = ({
 
   // Handle slider change: convert kinetic energy to velocity for parent callback
   const handleEnergyChange = useCallback((energyKJ: number) => {
+    // Mark as dragging to prevent prop sync from overriding local state during interaction
+    isDraggingRef.current = true;
+    
     const clampedEnergy = Math.min(Math.max(energyKJ, kineticEnergyMin), kineticEnergyMax);
     setDisplayEnergy(clampedEnergy);
     const velocity = velocityFromEnergyScaled(clampedEnergy, activationEnergy);
     emitVelocityChange(velocity);
+    
+    // Reset dragging flag after a short delay to allow prop updates to sync
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 100);
   }, [activationEnergy, emitVelocityChange, kineticEnergyMax, kineticEnergyMin]);
 
   // Calculate progress bar width based on kinetic energy position in the range

@@ -82,7 +82,7 @@ const getInitialBottomBarState = (): boolean => {
 const initialState: UIState = {
   simulationMode: 'single', // Start in single collision mode
   isPlaying: false,
-  timeScale: 0.8,
+  timeScale: 0.2,
   temperature: 298,
   pressure: 1.0, // Standard pressure: 1 atm
   approachAngle: 100,
@@ -118,6 +118,7 @@ export const App: React.FC = () => {
   const [uiState, setUIState] = useState<UIState>(initialState);
   const sceneRef = useRef<HTMLDivElement>(null);
   const threeSceneRef = useRef<THREE.Scene | null>(null);
+  const hasAutoStartedRef = useRef(false);
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -155,8 +156,9 @@ export const App: React.FC = () => {
   );
 
   const handleAutoplayChange = useCallback(
-    (enabled: boolean) => {
-      updateUIState({ autoplay: enabled });
+    (_enabled: boolean) => {
+      // Autoplay is always enabled - ignore changes, force to true
+      updateUIState({ autoplay: true });
     },
     [updateUIState]
   );
@@ -231,31 +233,31 @@ export const App: React.FC = () => {
           updateUIState({ isPlaying: true });
         } else {
           // Start new simulation
-          const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
-            demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
-            demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
-            demo_Methanol: { cid: '887', name: 'Methanol' },
-            demo_Water: { cid: '962', name: 'Water' },
-          };
+        const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
+          demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
+          demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
+          demo_Methanol: { cid: '887', name: 'Methanol' },
+          demo_Water: { cid: '962', name: 'Water' },
+        };
 
-          const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
-            cid: '6323',
-            name: 'Methyl bromide',
-          };
-          const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
-            cid: '961',
-            name: 'Hydroxide ion',
-          };
+        const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
+          cid: '6323',
+          name: 'Methyl bromide',
+        };
+        const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
+          cid: '961',
+          name: 'Hydroxide ion',
+        };
 
-          const particleCount = concentrationToParticleCount(uiState.concentration);
-          await threeJSBridge.startRateSimulation(
-            particleCount,
-            uiState.temperature,
-            uiState.reactionType,
-            substrateMolecule,
-            nucleophileMolecule
-          );
-          updateUIState({ isPlaying: true, reactionInProgress: true });
+        const particleCount = concentrationToParticleCount(uiState.concentration);
+        await threeJSBridge.startRateSimulation(
+          particleCount,
+          uiState.temperature,
+          uiState.reactionType,
+          substrateMolecule,
+          nucleophileMolecule
+        );
+        updateUIState({ isPlaying: true, reactionInProgress: true });
         }
       } else {
         if (uiState.reactionInProgress) {
@@ -283,6 +285,30 @@ export const App: React.FC = () => {
     physicsEngine.pause();
     threeJSBridge.pauseReactionAnimation();
   }, [updateUIState]);
+
+  // Force autoplay to always be true (bandaid solution - autoplay is always on)
+  useEffect(() => {
+    if (!uiState.autoplay) {
+      updateUIState({ autoplay: true });
+    }
+  }, [uiState.autoplay, updateUIState]);
+
+  // Auto-start play on initial load in single collision mode
+  useEffect(() => {
+    if (
+      !hasAutoStartedRef.current &&
+      uiState.simulationMode === 'single' &&
+      uiState.autoplay &&
+      !uiState.isPlaying &&
+      !uiState.reactionInProgress
+    ) {
+      hasAutoStartedRef.current = true;
+      // Small delay to ensure scene is initialized
+      setTimeout(() => {
+        handlePlay();
+      }, 500);
+    }
+  }, [uiState.simulationMode, uiState.autoplay, uiState.isPlaying, uiState.reactionInProgress, handlePlay]);
 
   // Autoplay is now handled by AutoplayManager component
 

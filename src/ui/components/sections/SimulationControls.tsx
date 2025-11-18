@@ -88,17 +88,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           </button>
         </div>
 
-        {/* Autoplay toggle under the buttons */}
-        <div className="mt-2">
-          <label className="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={autoplay}
-              onChange={e => onAutoplayChange(e.target.checked)}
-            />
-            Autoplay
-          </label>
-        </div>
+        {/* Autoplay toggle - hidden, always enabled */}
+        {/* Autoplay is always on, no toggle needed */}
       </div>
     </section>
   );

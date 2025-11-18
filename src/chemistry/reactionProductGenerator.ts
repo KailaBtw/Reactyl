@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { applyProductOrientation, getAttackModeConfig } from '../config/attackModes';
+import { ATOM_CONFIGS } from '../config/atomConfig';
 import { createMoleculeGroup } from '../services/moleculeManager';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
@@ -266,13 +267,20 @@ export class ReactionProductGenerator {
         currentAttackMode = 'backside';
       }
 
+      log(`🔍 Product orientation - Reaction: ${currentReactionType}, Attack: ${currentAttackMode}, Angle: ${currentApproachAngle}°`);
+      
       const config = getAttackModeConfig(currentReactionType, currentAttackMode as any);
+      log(`🔍 Config productYaw: ${config.productYaw} radians (${((config.productYaw * 180) / Math.PI).toFixed(1)}°)`);
+      log(`🔍 Product rotation BEFORE: x=${product.group.rotation.x.toFixed(2)}, y=${product.group.rotation.y.toFixed(2)}, z=${product.group.rotation.z.toFixed(2)}`);
+      
       applyProductOrientation(product.group, config.productYaw);
+      
+      log(`🔍 Product rotation AFTER: x=${product.group.rotation.x.toFixed(2)}, y=${product.group.rotation.y.toFixed(2)}, z=${product.group.rotation.z.toFixed(2)}`);
       log(
-        `Applied product orientation: ${((config.productYaw * 180) / Math.PI).toFixed(1)}° for ${currentReactionType} ${currentAttackMode} (angle: ${currentApproachAngle}°)`
+        `✅ Applied product orientation: ${((config.productYaw * 180) / Math.PI).toFixed(1)}° for ${currentReactionType} ${currentAttackMode} (angle: ${currentApproachAngle}°)`
       );
     } catch (error) {
-      log(`Failed to apply product orientation: ${error}`);
+      log(`❌ Failed to apply product orientation: ${error}`);
     }
 
     // Add to scene
@@ -285,22 +293,12 @@ export class ReactionProductGenerator {
       };
       const atoms = Array.isArray(mol?.atoms) ? mol!.atoms : [];
 
-      // Basic color map by element
-      const colorByElement: Record<string, number> = {
-        H: 0xffffff,
-        C: 0x333333,
-        O: 0xff0000,
-        N: 0x0000ff,
-        F: 0x00ff00,
-        Cl: 0x00ff00,
-        Br: 0x8a2be2,
-        I: 0x800080,
-      };
-
+      // Use centralized CPK color configuration
       const defaultGeom = new THREE.SphereGeometry(0.5, 16, 16);
       atoms.forEach(atom => {
         const element = atom.type || 'C';
-        const color = colorByElement[element] ?? 0x999999;
+        const atomConfig = ATOM_CONFIGS[element];
+        const color = atomConfig?.color ?? 0x999999;
         const mat = new THREE.MeshPhongMaterial({ color });
         const sphere = new THREE.Mesh(defaultGeom, mat);
         const x = parseFloat(atom.position.x) || 0;

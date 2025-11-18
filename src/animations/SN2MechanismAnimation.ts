@@ -10,6 +10,8 @@ import type { MoleculeState } from '../systems/ReactionOrchestrator';
 import { log } from '../utils/debug';
 import { type AnimationOptions, AnimationRunner, EasingFunctions } from './AnimationUtils';
 import { addProductOutline } from '../utils/moleculeOutline';
+import { collisionEventSystem } from '../physics/collisionEventSystem';
+import { applyProductOrientation, getAttackModeConfig } from '../config/attackModes';
 
 export interface SN2MechanismOptions {
   duration?: number;
@@ -508,10 +510,39 @@ export class SN2MechanismAnimation {
           setTimeout(() => {
             const newMolecule = moleculeManager.getMolecule(newName);
             if (newMolecule) {
-              const { collisionEventSystem } = require('../physics/collisionEventSystem');
               const simulationMode = collisionEventSystem.getSimulationMode();
               const isRateMode = simulationMode === 'rate';
               newMolecule.isProduct = true;
+              
+              // Apply product orientation based on reaction type and attack mode
+              try {
+                const uiState = (window as any).uiState;
+                const currentReactionType = uiState?.reactionType || 'sn2';
+                const currentApproachAngle = uiState?.approachAngle || 180;
+                
+                // Determine attack mode from approach angle
+                let currentAttackMode: string;
+                if (Math.abs(currentApproachAngle % 180) === 90) {
+                  currentAttackMode = 'perpendicular';
+                } else if (currentApproachAngle === 0) {
+                  currentAttackMode = 'frontside';
+                } else {
+                  currentAttackMode = 'backside';
+                }
+                
+                log(`🔍 Product ${newName} - Reaction: ${currentReactionType}, Attack: ${currentAttackMode}, Angle: ${currentApproachAngle}°`);
+                
+                const config = getAttackModeConfig(currentReactionType, currentAttackMode as any);
+                log(`🔍 Config productYaw: ${config.productYaw} radians (${((config.productYaw * 180) / Math.PI).toFixed(1)}°)`);
+                log(`🔍 Product rotation BEFORE: x=${newMolecule.group.rotation.x.toFixed(2)}, y=${newMolecule.group.rotation.y.toFixed(2)}, z=${newMolecule.group.rotation.z.toFixed(2)}`);
+                
+                applyProductOrientation(newMolecule.group, config.productYaw);
+                
+                log(`🔍 Product rotation AFTER: x=${newMolecule.group.rotation.x.toFixed(2)}, y=${newMolecule.group.rotation.y.toFixed(2)}, z=${newMolecule.group.rotation.z.toFixed(2)}`);
+                log(`✅ Applied product orientation: ${((config.productYaw * 180) / Math.PI).toFixed(1)}° for ${newName}`);
+              } catch (error) {
+                log(`❌ Failed to apply product orientation to ${newName}: ${error}`);
+              }
               
               if (isRateMode) {
                 addProductOutline(newMolecule);

@@ -3,6 +3,7 @@ import { createAtomMesh, getAtomConfig } from '../config/atomConfig';
 import type { MoleculeGroup } from '../types';
 import { log } from '../utils/debug';
 import { addProductOutline } from '../utils/moleculeOutline';
+import { collisionEventSystem } from '../physics/collisionEventSystem';
 
 /**
  * Minimal Reaction Graphics System
@@ -15,10 +16,10 @@ export class ReactionGraphics {
 
   /**
    * Execute SN2 reaction: CH3X + OH⁻ → CH3OH + X⁻
-   * Minimal approach: just modify the substrate molecule
+   * Creates leaving group molecule with proper physics and momentum conservation
    */
   executeSN2Reaction(substrate: MoleculeGroup, _nucleophile: MoleculeGroup): boolean {
-    log('🧪 Minimal SN2 reaction...');
+    log('🧪 SN2 reaction with leaving group separation...');
 
     try {
       // Step 1: Find leaving group and its bonded carbon BEFORE edits
@@ -41,6 +42,11 @@ export class ReactionGraphics {
         log('❌ Atom meshes not found to compute geometry');
         return false;
       }
+
+      // Store leaving group info before removal
+      const leavingGroupElement = substrate.molObject?.atoms?.[leavingGroupIndex]?.type || 'Br';
+      const leavingGroupWorldPos = new THREE.Vector3();
+      leavingMesh.getWorldPosition(leavingGroupWorldPos);
 
       // Direction from carbon to leaving group (backside attack direction)
       const dir = new THREE.Vector3()
@@ -68,14 +74,23 @@ export class ReactionGraphics {
         .normalize();
       const hPos = new THREE.Vector3().copy(oPos).addScaledVector(hDir, ohLength);
 
-      // Step 2: Remove leaving group (affects indices, so done AFTER computing positions)
+      // Step 2: Create leaving group molecule BEFORE removing from substrate
+      const leavingGroupMolecule = this.createLeavingGroupMolecule(
+        leavingGroupElement,
+        leavingGroupWorldPos,
+        substrate
+      );
+
+      // Step 3: Remove leaving group from substrate (affects indices, so done AFTER creating separate molecule)
       this.removeLeavingGroup(substrate, leavingGroupIndex);
 
-      // Step 3: Add OH group at the computed positions, bonded to the original carbon index
+      // Step 4: Add OH group at the computed positions, bonded to the original carbon index
       this.addOHGroup(substrate, carbonIndex, oPos, hPos);
 
-      // Step 4: Mark both molecules as products and add red outline (only in rate mode)
-      const { collisionEventSystem } = require('../physics/collisionEventSystem');
+      // Step 5: Apply physics and momentum conservation
+      this.applyReactionMomentum(substrate, _nucleophile, leavingGroupMolecule, dir);
+
+      // Step 6: Mark molecules as products and add red outline (only in rate mode)
       const isRateMode = collisionEventSystem.getSimulationMode() === 'rate';
       
       // Mark substrate as product (it's been transformed)
@@ -87,7 +102,7 @@ export class ReactionGraphics {
         _nucleophile.isProduct = true;
       }
       
-      // Add outline immediately in rate mode for both molecules
+      // Add outline immediately in rate mode for all products
       if (isRateMode) {
         substrate.addOutline();
         log(`✅ Added red outline to product ${substrate.name} in rate mode`);
@@ -96,6 +111,11 @@ export class ReactionGraphics {
           _nucleophile.addOutline();
           log(`✅ Added red outline to product ${_nucleophile.name} in rate mode`);
         }
+        
+        if (leavingGroupMolecule.addOutline) {
+          leavingGroupMolecule.addOutline();
+          log(`✅ Added red outline to leaving group ${leavingGroupMolecule.name} in rate mode`);
+        }
       } else {
         log(`✅ Product ${substrate.name} marked (no outline in single mode)`);
         if (_nucleophile) {
@@ -103,12 +123,181 @@ export class ReactionGraphics {
         }
       }
 
-      log('✅ Minimal SN2 reaction completed');
+      log('✅ SN2 reaction completed with leaving group separation');
       return true;
     } catch (error) {
       log(`❌ SN2 reaction failed: ${error}`);
       return false;
     }
+  }
+
+  /**
+   * Create a leaving group molecule with physics
+   */
+  private createLeavingGroupMolecule(
+    element: string,
+    worldPosition: THREE.Vector3,
+    substrate: MoleculeGroup
+  ): any {
+    // Create a new molecule group for the leaving group
+    const leavingGroupMolecule = {
+      name: `${element}⁻_leaving`,
+      group: new THREE.Group(),
+      velocity: new THREE.Vector3(0, 0, 0),
+      rotation: new THREE.Euler(),
+      physicsBody: null,
+      molecularProperties: {
+        totalMass: this.getElementMass(element),
+        boundingRadius: 0.5,
+      },
+      hasPhysics: false,
+      isProduct: true, // Mark as product so it doesn't react again
+      addOutline: () => {
+        // Add outline functionality
+        try {
+          addProductOutline(leavingGroupMolecule as any);
+        } catch (error) {
+          log(`Error adding outline to leaving group: ${error}`);
+        }
+      },
+    };
+
+    // Position the molecule at the leaving group's world position
+    leavingGroupMolecule.group.position.copy(worldPosition);
+
+    // Create atom mesh for the leaving group
+    const atomMesh = createAtomMesh(element, new THREE.Vector3(0, 0, 0));
+    atomMesh.userData = { element, atomIndex: 0, type: 'atom' };
+    leavingGroupMolecule.group.add(atomMesh);
+
+    // Find the main scene by traversing up the parent hierarchy
+    let scene = substrate.group.parent;
+    while (scene && scene.type !== 'Scene') {
+      scene = scene.parent;
+    }
+
+    // Add to the main scene if found
+    try {
+      if (scene && scene.type === 'Scene') {
+        scene.add(leavingGroupMolecule.group);
+        log(`✅ Added leaving group molecule to scene: ${leavingGroupMolecule.name}`);
+      } else if (substrate.group.parent) {
+        substrate.group.parent.add(leavingGroupMolecule.group);
+        log(`✅ Added leaving group molecule to substrate parent: ${leavingGroupMolecule.name}`);
+      }
+    } catch (error) {
+      log(`Error adding leaving group to scene: ${error}`);
+    }
+
+    return leavingGroupMolecule;
+  }
+
+  /**
+   * Apply reaction momentum - leaving group flies backward, product recoils
+   * Uses Newton's laws of motion for realistic physics
+   */
+  private applyReactionMomentum(
+    substrate: MoleculeGroup,
+    nucleophile: MoleculeGroup,
+    leavingGroupMolecule: any,
+    leavingGroupDirection: THREE.Vector3
+  ): void {
+    try {
+      // Get physics engine
+      const { physicsEngine } = require('../physics/cannonPhysicsEngine');
+
+      // Step 1: Add physics body to leaving group
+      const success = physicsEngine.addMolecule(
+        leavingGroupMolecule,
+        leavingGroupMolecule.molecularProperties
+      );
+
+      if (!success) {
+        log('⚠️ Failed to add physics to leaving group');
+        return;
+      }
+
+      leavingGroupMolecule.hasPhysics = true;
+      leavingGroupMolecule.physicsBody = physicsEngine.getPhysicsBody(leavingGroupMolecule);
+
+      // Step 2: Calculate masses for momentum conservation
+      const substrateMass = substrate.molecularProperties?.totalMass || 50;
+      const leavingGroupMass = leavingGroupMolecule.molecularProperties.totalMass;
+      
+      // Step 3: Calculate velocities using conservation of momentum
+      // Leaving group flies backward (opposite to nucleophile approach direction)
+      // Product recoils forward to conserve momentum
+      
+      // Get current velocities (before reaction)
+      const substrateVel = substrate.velocity ? substrate.velocity.clone() : new THREE.Vector3(0, 0, 0);
+      const nucleophileVel = nucleophile.velocity ? nucleophile.velocity.clone() : new THREE.Vector3(0, 0, 0);
+      
+      // Total momentum before reaction (substrate + nucleophile)
+      const totalMomentum = new THREE.Vector3()
+        .addScaledVector(substrateVel, substrateMass)
+        .addScaledVector(nucleophileVel, leavingGroupMass);
+      
+      // Leaving group velocity: flies backward with significant speed (5-8 m/s in leaving group direction)
+      const leavingGroupSpeed = 6.0; // m/s - moderate speed for visibility
+      const leavingGroupVelocity = leavingGroupDirection.clone().multiplyScalar(leavingGroupSpeed);
+      
+      // Product velocity: calculated from momentum conservation
+      // p_total = p_product + p_leaving
+      // v_product = (p_total - p_leaving) / m_product
+      const productMomentum = totalMomentum.clone().sub(
+        leavingGroupVelocity.clone().multiplyScalar(leavingGroupMass)
+      );
+      const productVelocity = productMomentum.divideScalar(substrateMass);
+      
+      // Step 4: Apply velocities
+      physicsEngine.setVelocity(leavingGroupMolecule, leavingGroupVelocity);
+      log(
+        `🚀 Leaving group velocity: (${leavingGroupVelocity.x.toFixed(2)}, ${leavingGroupVelocity.y.toFixed(2)}, ${leavingGroupVelocity.z.toFixed(2)}) m/s`
+      );
+      
+      // Apply product velocity (substrate now contains the nucleophile, so it's the main product)
+      if (substrate.hasPhysics) {
+        physicsEngine.setVelocity(substrate, productVelocity);
+        log(
+          `🚀 Product recoil velocity: (${productVelocity.x.toFixed(2)}, ${productVelocity.y.toFixed(2)}, ${productVelocity.z.toFixed(2)}) m/s`
+        );
+      }
+      
+      // Remove nucleophile physics body since it's been consumed (becomes part of product)
+      if (nucleophile.hasPhysics && nucleophile.physicsBody) {
+        try {
+          physicsEngine.removeMolecule(nucleophile);
+          nucleophile.hasPhysics = false;
+          nucleophile.physicsBody = null;
+          log('✅ Nucleophile physics removed (consumed in reaction)');
+        } catch (error) {
+          log(`⚠️ Error removing nucleophile physics: ${error}`);
+        }
+      }
+
+      log('✅ Reaction momentum applied successfully');
+    } catch (error) {
+      log(`❌ Error applying reaction momentum: ${error}`);
+    }
+  }
+
+  /**
+   * Get atomic mass for common elements (in AMU)
+   */
+  private getElementMass(element: string): number {
+    const masses: { [key: string]: number } = {
+      H: 1.008,
+      C: 12.011,
+      N: 14.007,
+      O: 15.999,
+      F: 18.998,
+      P: 30.974,
+      S: 32.065,
+      Cl: 35.453,
+      Br: 79.904,
+      I: 126.904,
+    };
+    return masses[element] || 12.011; // Default to carbon mass
   }
 
   /**

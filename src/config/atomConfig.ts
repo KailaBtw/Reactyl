@@ -3,6 +3,14 @@ import * as THREE from 'three';
 /**
  * Centralized configuration for all atom types
  * This replaces scattered atom configurations across the codebase
+ * 
+ * Colors follow CPK coloring convention (Corey-Pauling-Koltun):
+ * - H: White, C: Black, N: Blue, O: Red
+ * - S: Yellow, P: Orange
+ * - F, Cl: Green, Br: Dark red, I: Dark violet
+ * - Alkali metals (Li, Na, K): Violet
+ * - Alkaline earth metals (Mg, Ca): Dark green
+ * - B, Si: Beige/tan
  */
 export interface AtomConfig {
   element: string;
@@ -55,9 +63,9 @@ export const ATOM_CONFIGS: Record<string, AtomConfig> = {
   P: {
     element: 'P',
     radius: 0.9,
-    color: 0xff00ff,
+    color: 0xffa500, // CPK: Orange
     geometry: new THREE.SphereGeometry(0.9, 32, 32),
-    material: new THREE.MeshStandardMaterial({ color: 0xff00ff }),
+    material: new THREE.MeshStandardMaterial({ color: 0xffa500 }),
   },
   F: {
     element: 'F',
@@ -76,16 +84,16 @@ export const ATOM_CONFIGS: Record<string, AtomConfig> = {
   Br: {
     element: 'Br',
     radius: 0.6,
-    color: 0x8a2be2,
+    color: 0xa52a2a, // CPK: Dark red
     geometry: new THREE.SphereGeometry(0.6, 32, 32),
-    material: new THREE.MeshStandardMaterial({ color: 0x8a2be2 }),
+    material: new THREE.MeshStandardMaterial({ color: 0xa52a2a }),
   },
   I: {
     element: 'I',
     radius: 0.7,
-    color: 0x800080,
+    color: 0x940094, // CPK: Dark violet
     geometry: new THREE.SphereGeometry(0.7, 32, 32),
-    material: new THREE.MeshStandardMaterial({ color: 0x800080 }),
+    material: new THREE.MeshStandardMaterial({ color: 0x940094 }),
   },
   Li: {
     element: 'Li',
@@ -111,16 +119,16 @@ export const ATOM_CONFIGS: Record<string, AtomConfig> = {
   Mg: {
     element: 'Mg',
     radius: 0.9,
-    color: 0x8aff00,
+    color: 0x228b22, // CPK: Dark green (alkaline earth metals)
     geometry: new THREE.SphereGeometry(0.9, 32, 32),
-    material: new THREE.MeshStandardMaterial({ color: 0x8aff00 }),
+    material: new THREE.MeshStandardMaterial({ color: 0x228b22 }),
   },
   Ca: {
     element: 'Ca',
     radius: 1.0,
-    color: 0x3dff00,
+    color: 0x228b22, // CPK: Dark green (alkaline earth metals)
     geometry: new THREE.SphereGeometry(1.0, 32, 32),
-    material: new THREE.MeshStandardMaterial({ color: 0x3dff00 }),
+    material: new THREE.MeshStandardMaterial({ color: 0x228b22 }),
   },
   Si: {
     element: 'Si',
@@ -132,9 +140,9 @@ export const ATOM_CONFIGS: Record<string, AtomConfig> = {
   B: {
     element: 'B',
     radius: 0.7,
-    color: 0x00ff80,
+    color: 0xffb5a7, // CPK: Beige/peach
     geometry: new THREE.SphereGeometry(0.7, 32, 32),
-    material: new THREE.MeshStandardMaterial({ color: 0x00ff80 }),
+    material: new THREE.MeshStandardMaterial({ color: 0xffb5a7 }),
   },
 };
 

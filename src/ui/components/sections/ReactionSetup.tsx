@@ -407,12 +407,12 @@ Where:
 In this simulation, all molecules use:
 v = baseSpeed × √(T/T_ref)
 
-Where baseSpeed = 12.0 m/s and T_ref = 298K (room temperature).
+Where baseSpeed = 60.0 m/s and T_ref = 298K (room temperature).
 
 Examples:
-• 200K (cryogenic): v = 12.0 × √(200/298) ≈ 9.8 m/s
-• 298K (room temp): v = 12.0 × √(298/298) = 12.0 m/s
-• 473K (200°C): v = 12.0 × √(473/298) ≈ 15.1 m/s
+• 200K (cryogenic): v = 60.0 × √(200/298) ≈ 49.1 m/s
+• 298K (room temp): v = 60.0 × √(298/298) = 60.0 m/s
+• 473K (200°C): v = 60.0 × √(473/298) ≈ 75.5 m/s
 
 Doubling temperature increases velocity by √2 ≈ 1.41×. At higher temperatures, molecules move faster and collide more frequently, increasing reaction rates according to the Arrhenius equation:
 

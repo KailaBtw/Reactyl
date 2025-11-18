@@ -9,12 +9,13 @@ interface EnergyProfileData {
   enthalpyChange: number; // ΔH - final energy relative to reactants
   reactionProgress: number; // 0-1 for animation
   reactionType: string; // SN1, SN2, E2, etc.
-  currentVelocity: number; // For kinetic energy calculations (m/s)
+  currentVelocity: number; // For kinetic energy calculations (m/s) - used only if kineticEnergy not provided
   attackAngle?: number; // 0-180 degrees (0=frontside, 180=backside)
   temperature?: number; // For rate calculations (K)
   distance?: number; // Current molecular distance
   substrateMass?: number; // Molecular mass of substrate (kg/mol)
   nucleophileMass?: number; // Molecular mass of nucleophile (kg/mol)
+  kineticEnergy?: number; // Direct kinetic energy value (kJ/mol) - if provided, overrides velocity calculation
 }
 
 interface PlotlyEnergyProfileProps {
@@ -129,7 +130,14 @@ export const PlotlyEnergyProfile: React.FC<PlotlyEnergyProfileProps> = ({
   };
 
   // Calculate kinetic energy from velocity using reduced mass (kJ/mol)
+  // OR use directly provided kineticEnergy if available (for demo-scaled values)
   const calculateKineticEnergy = () => {
+    // Use directly provided kinetic energy if available (takes precedence)
+    if (typeof data.kineticEnergy === 'number' && data.kineticEnergy >= 0) {
+      return data.kineticEnergy;
+    }
+    
+    // Fallback: calculate from velocity using standard physics
     if (currentVelocity <= 0) return 0;
 
     const DEFAULT_REDUCED_MASS = 0.028; // kg/mol, approximate for CH3Br collisions

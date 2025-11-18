@@ -6,6 +6,7 @@ import { useUIState } from '../context/UIStateContext';
 import { calculateThermodynamicData } from '../utils/thermodynamicCalculator';
 import { getMoleculeData } from '../utils/moleculeLookup';
 import { useResizable } from '../hooks/useResizable';
+import { energyFromVelocityScaled } from '../utils/kineticEnergyScaling';
 import { ControlsHelp } from './ControlsHelp';
 import { SettingsModal } from './SettingsModal';
 import { BottomEnergyPanel } from './sections/BottomEnergyPanel';
@@ -267,6 +268,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 reactionType={currentReaction}
                 reactionProgress={0}
                 currentVelocity={relativeVelocity}
+                kineticEnergy={energyFromVelocityScaled(relativeVelocity, thermodynamicData.activationEnergy)}
                 substrate={substrate}
                 nucleophile={nucleophile}
                 substrateMass={thermodynamicData.substrateMass}
@@ -320,9 +322,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 const { collisionEventSystem } = await import('../../physics/collisionEventSystem');
                 collisionEventSystem.setSimulationMode(mode);
                 
-                // Clear molecules when leaving molecule mode
-                if (previousMode === 'molecule') {
+                // Clear molecules when switching modes
+                if (previousMode === 'molecule' || previousMode === 'rate') {
                   threeJSBridge.clear();
+                  // Also stop rate simulation if it was running
+                  if (previousMode === 'rate') {
+                    threeJSBridge.stopRateSimulation();
+                  }
                 }
                 
                 // Animate camera when switching modes
@@ -353,20 +359,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   // Clear any running simulations
                   if (previousMode === 'rate') {
                     threeJSBridge.stopRateSimulation();
-                    updateUIState({ isPlaying: false, reactionInProgress: false });
                   }
                   
                   // Clear any existing molecules/simulations from other modes
                   // This ensures a clean state for molecule search
                   threeJSBridge.clear();
+                  updateUIState({ isPlaying: false, reactionInProgress: false, autoplay: true });
                 } else {
                   // Single collision mode
                   threeJSBridge.animateCameraToSingleView();
                   // Always clear rate simulation when switching to single mode
                   if (previousMode === 'rate') {
                     threeJSBridge.stopRateSimulation();
-                    updateUIState({ isPlaying: false, reactionInProgress: false });
                   }
+                  // Clear all molecules and reset state
+                  threeJSBridge.clear();
+                  updateUIState({ 
+                    isPlaying: false, 
+                    reactionInProgress: false,
+                    autoplay: true // Force autoplay on
+                  });
                 }
               }}
               themeClasses={themeClasses}

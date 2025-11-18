@@ -69,20 +69,20 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
 
       {/* Reaction Probability Sub-section - only show in single collision mode */}
       {!isRateMode && (
-        <div className={sectionDividerClasses}>
-          <label className={`${subHeaderClasses} ${themeClasses.textSecondary}`}>
-            Reaction Probability
-          </label>
-          <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
-            {reactionProbability.toFixed(1)}%
-          </div>
-          <div className={probabilityBarClasses}>
-            <div
-              className={`h-full ${getProbabilityColor()} transition-all duration-300`}
-              style={{ width: `${Math.min(reactionProbability, 100)}%` }}
-            />
-          </div>
+      <div className={sectionDividerClasses}>
+        <label className={`${subHeaderClasses} ${themeClasses.textSecondary}`}>
+          Reaction Probability
+        </label>
+        <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
+          {reactionProbability.toFixed(1)}%
         </div>
+        <div className={probabilityBarClasses}>
+          <div
+            className={`h-full ${getProbabilityColor()} transition-all duration-300`}
+            style={{ width: `${Math.min(reactionProbability, 100)}%` }}
+          />
+        </div>
+      </div>
       )}
 
       {/* Playback Speed Sub-section */}
@@ -127,17 +127,8 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
         </button>
       </div>
 
-      {/* Autoplay toggle */}
-      <div>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={autoplay}
-            onChange={e => onAutoplayChange(e.target.checked)}
-          />
-          <span className={themeClasses.textSecondary}>Autoplay</span>
-        </label>
-      </div>
+      {/* Autoplay toggle - hidden, always enabled */}
+      {/* Autoplay is always on, no toggle needed */}
     </div>
   );
 };

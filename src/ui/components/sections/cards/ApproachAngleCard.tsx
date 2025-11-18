@@ -7,7 +7,7 @@ import { InfoBubble } from '../../common/InfoBubble';
 // Constants for Approach Angle
 const ANGLE_IDEAL_SN2 = 180; // Backside attack for SN2
 const ANGLE_TOLERANCE = 5; // Within 5 degrees is considered ideal
-const SIGMA = 60; // Standard deviation for orientation factor (matches reactionDetector.ts)
+const SIGMA = 20; // Standard deviation for orientation factor - strict for SN2 backside attack requirement
 
 // Calculate orientation factor for a given angle (Gaussian distribution)
 const calculateOrientationFactor = (angle: number, optimal: number): number => {
@@ -43,12 +43,12 @@ const controlCardThemes = {
   },
 } as const;
 
-// Clear color zones for angle ranges (scientifically accurate)
+// Clear color zones for angle ranges (scientifically accurate - strict SN2 requirement)
 const angleZoneColors = {
-  excellent: 'bg-emerald-200 dark:bg-emerald-700',  // 135°-180°: Strong orbital overlap
-  good: 'bg-lime-200 dark:bg-lime-700',              // 100°-135°: Moderate overlap
-  moderate: 'bg-amber-200 dark:bg-amber-300',        // 70°-100°: Weak overlap
-  poor: 'bg-rose-200 dark:bg-rose-600',              // <70°: Blocked
+  excellent: 'bg-emerald-200 dark:bg-emerald-700',  // ~166°-180°: Strong orbital overlap (±14°)
+  good: 'bg-lime-200 dark:bg-lime-700',              // ~159°-166°: Moderate overlap (±21°)
+  moderate: 'bg-amber-200 dark:bg-amber-300',        // ~149°-159°: Weak overlap (±31°)
+  poor: 'bg-rose-200 dark:bg-rose-600',              // <149°: Blocked/unfavorable geometry
 };
 
 interface ApproachAngleCardProps {
@@ -127,20 +127,20 @@ export const ApproachAngleCard: React.FC<ApproachAngleCardProps> = ({
         <label className={`${cardTitleClasses} ${themeClasses.text}`}>Approach Angle</label>
         <InfoBubble
           term="SN2 Approach Angle"
-          explanation={`The approach angle determines how the nucleophile attacks the substrate. For SN2 reactions, backside attack (180°) is required for optimal orbital overlap.
+          explanation={`The approach angle determines how the nucleophile attacks the substrate. For SN2 reactions, backside attack (180°) is CRITICAL for orbital overlap.
 
-Orbital Overlap Zones:
-• 135°-180° (Excellent): Strong HOMO-LUMO overlap, high reaction probability
-• 100°-135° (Good): Moderate overlap, reactions possible
-• 70°-100° (Moderate): Weak overlap, rare reactions
-• <70° (Poor): Sterically/electronically blocked
+Orbital Overlap Zones (Strict Requirements):
+• 166°-180° (Excellent): Strong HOMO-LUMO overlap, high reaction probability
+• 159°-166° (Good): Moderate overlap, reactions possible but slower
+• 149°-159° (Moderate): Weak overlap, rare reactions
+• <149° (Poor): Sterically/electronically blocked - no reaction
 
 SN2 Mechanism:
-The nucleophile's HOMO (Highest Occupied Molecular Orbital) must overlap with the C-X σ* antibonding orbital. Frontal attack is blocked by electron repulsion from the leaving group's lone pairs.
+The nucleophile's HOMO (Highest Occupied Molecular Orbital) must overlap with the C-X σ* antibonding orbital. Only angles very close to 180° provide proper orbital alignment. Frontal attack is blocked by electron repulsion from the leaving group's lone pairs.
 
 Gaussian Distribution:
 Orientation factor = exp(-(deviation)²/(2σ²))
-Where σ = 60° (standard deviation matching realistic reaction conditions)`}
+Where σ = 20° (strict standard deviation for backside attack requirement)`}
           size="small"
         />
       </div>

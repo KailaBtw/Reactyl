@@ -332,6 +332,7 @@ export class ReactionOrchestrator {
 
   /**
    * Orient molecules for the specific reaction type
+   * For SN2, substrate must be oriented so leaving group (Br) faces away from nucleophile approach
    */
   private orientMoleculesForReaction(reactionType: string): void {
     if (!this.state.molecules.substrate || !this.state.molecules.nucleophile) {
@@ -341,13 +342,17 @@ export class ReactionOrchestrator {
     const substrate = this.state.molecules.substrate;
     const nucleophile = this.state.molecules.nucleophile;
 
-    // Decomplicate: keep both molecules with identity rotation; encounter planner handles positions/velocities.
+    // Start with identity rotation for both molecules
     substrate.group.quaternion.set(0, 0, 0, 1);
     substrate.group.rotation.set(0, 0, 0);
-    // // Adjust substrate to face correctly: rotate 90° around Y
-    substrate.group.rotateY((3 * Math.PI) / 2);
+    
+    // For SN2 reactions: Orient substrate so leaving group (Br) faces correctly
+    // Rotate 90° (π/2) around Y-axis so Br is positioned for backside attack
+    // This is 180° different from the previous incorrect orientation
+    substrate.group.rotateY(Math.PI / 2);
     substrate.rotation.copy(substrate.group.rotation);
 
+    // Nucleophile: keep at identity rotation (faces along Z-axis toward substrate)
     nucleophile.group.quaternion.set(0, 0, 0, 1);
     nucleophile.group.rotation.set(0, 0, 0);
     nucleophile.rotation.copy(nucleophile.group.rotation);
@@ -355,6 +360,8 @@ export class ReactionOrchestrator {
     // Sync to physics bodies
     this.syncOrientationToPhysics(substrate);
     this.syncOrientationToPhysics(nucleophile);
+    
+    log(`✅ Substrate oriented: ${(substrate.group.rotation.y * 180 / Math.PI).toFixed(1)}° around Y-axis`);
   }
 
   // Orientation helpers consolidated into orientationStrategies.ts

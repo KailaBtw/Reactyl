@@ -282,12 +282,12 @@ class CollisionEventSystem {
     // ALWAYS use main thread for reaction detection (workers cause issues with batching/debugging)
     // This ensures consistent behavior and proper debug logging
     let reactionResult: ReactionResult = this.reactionDetector.detectReaction(
-      collisionData,
-      this.currentReactionType,
-      this.temperature,
-      event.moleculeA,
-      event.moleculeB
-    );
+          collisionData,
+          this.currentReactionType,
+          this.temperature,
+          event.moleculeA,
+          event.moleculeB
+        );
     
     // CRITICAL: Create a defensive copy to prevent mutation
     // The original result might be getting modified somewhere

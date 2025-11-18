@@ -39,6 +39,7 @@ interface BottomEnergyPanelProps {
   reactionType?: string;
   reactionProgress?: number;
   currentVelocity?: number;
+  kineticEnergy?: number; // Direct kinetic energy value (kJ/mol) - overrides velocity calculation
   substrate?: string;
   nucleophile?: string;
   substrateMass?: number;
@@ -56,6 +57,7 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
   reactionType = 'SN2',
   reactionProgress = 0,
   currentVelocity = 0,
+  kineticEnergy,
   substrate = 'demo_Methyl_bromide',
   nucleophile = 'demo_Hydroxide_ion',
   substrateMass: propSubstrateMass,
@@ -157,6 +159,7 @@ export const BottomEnergyPanel: React.FC<BottomEnergyPanelProps> = ({
                 reactionProgress: reactionProgress,
                 reactionType: reactionType,
                 currentVelocity: currentVelocity,
+                kineticEnergy: kineticEnergy,
                 attackAngle: attackAngle,
                 substrateMass: substrateMass,
                 nucleophileMass: nucleophileMass,
