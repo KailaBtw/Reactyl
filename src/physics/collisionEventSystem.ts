@@ -45,6 +45,17 @@ class CollisionEventSystem {
   private demoEasyMode: boolean = false; // Forces high reaction probability for demos
   private simulationMode: 'molecule' | 'single' | 'rate' = 'single'; // Current simulation mode
 
+  // Batching queue for worker messages
+  private pendingCollisionBatch: Array<{
+    event: CollisionEvent;
+    collisionData: CollisionData;
+    resolve: (result: ReactionResult) => void;
+    reject: (error: Error) => void;
+  }> = [];
+  private batchProcessingScheduled = false;
+  private readonly batchSize = 10; // Process up to 10 collisions per batch
+  private readonly batchDelay = 16; // ~1 frame at 60fps
+
   constructor() {
     this.reactionDetector = new ReactionDetector();
   }
@@ -159,7 +170,7 @@ class CollisionEventSystem {
   }
 
   /**
-   * Detect reaction using chemistry worker
+   * Detect reaction using chemistry worker (batched)
    */
   private async detectReactionWithWorker(
     collisionData: CollisionData,
@@ -168,26 +179,149 @@ class CollisionEventSystem {
     substrate: MoleculeGroup,
     nucleophile: MoleculeGroup
   ): Promise<ReactionResult> {
-    // Serialize reaction type (cached)
-    const serializedReactionType =
-      this.serializedReactionType ?? this.serializeReactionType(reactionType);
-
-    // Send to chemistry worker
-    const message: ChemistryWorkerMessage = {
-      type: 'detectReaction',
-      collisionData: serializeCollisionData(collisionData),
-      reactionType: serializedReactionType,
-      temperature,
-    };
-
-    const response = await workerManager.sendChemistryMessage(message);
-
-    if (response.type === 'reactionResult' && response.reactionResult) {
-      // Deserialize and restore molecule references
-      return deserializeReactionResult(response.reactionResult, substrate, nucleophile);
+    // If worker is not enabled, use main thread
+    if (!workerManager.isChemistryWorkerEnabled()) {
+      return this.reactionDetector.detectReaction(
+        collisionData,
+        reactionType,
+        temperature,
+        substrate,
+        nucleophile
+      );
     }
 
-    throw new Error('Invalid response from chemistry worker');
+    // Queue for batch processing
+    return new Promise((resolve, reject) => {
+      // Create a dummy event for batching (we only need collisionData)
+      const dummyEvent: CollisionEvent = {
+        moleculeA: substrate,
+        moleculeB: nucleophile,
+        collisionPoint: collisionData.impactPoint,
+        collisionNormal: new THREE.Vector3(),
+        relativeVelocity: collisionData.relativeVelocity,
+        timestamp: performance.now() / 1000,
+      };
+
+      this.pendingCollisionBatch.push({
+        event: dummyEvent,
+        collisionData,
+        resolve,
+        reject,
+      });
+
+      // Schedule batch processing if not already scheduled
+      if (!this.batchProcessingScheduled) {
+        this.batchProcessingScheduled = true;
+        // Process immediately if batch is full, otherwise wait a bit
+        if (this.pendingCollisionBatch.length >= this.batchSize) {
+          // Use microtask to process immediately but not block current execution
+          Promise.resolve().then(() => this.processBatch());
+        } else {
+          // Use setTimeout for smaller batches to allow more to accumulate
+          setTimeout(() => this.processBatch(), this.batchDelay);
+        }
+      }
+    });
+  }
+
+  /**
+   * Process batched collision detection requests
+   */
+  private async processBatch(): Promise<void> {
+    this.batchProcessingScheduled = false;
+
+    if (this.pendingCollisionBatch.length === 0) {
+      return;
+    }
+
+    // Take up to batchSize items from the queue
+    const batch = this.pendingCollisionBatch.splice(0, this.batchSize);
+
+    if (batch.length === 0) {
+      return;
+    }
+
+    // If worker is not enabled, process on main thread
+    if (!workerManager.isChemistryWorkerEnabled()) {
+      for (const item of batch) {
+        try {
+          const result = this.reactionDetector.detectReaction(
+            item.collisionData,
+            this.currentReactionType!,
+            this.temperature,
+            item.event.moleculeA,
+            item.event.moleculeB
+          );
+          item.resolve(result);
+        } catch (error) {
+          item.reject(error as Error);
+        }
+      }
+      // Schedule next batch if there are more items
+      if (this.pendingCollisionBatch.length > 0) {
+        this.batchProcessingScheduled = true;
+        setTimeout(() => this.processBatch(), this.batchDelay);
+      }
+      return;
+    }
+
+    // Serialize reaction type (cached)
+    const serializedReactionType =
+      this.serializedReactionType ?? this.serializeReactionType(this.currentReactionType!);
+
+    // Create batch messages
+    const messages: ChemistryWorkerMessage[] = batch.map(item => ({
+      type: 'detectReaction',
+      collisionData: serializeCollisionData(item.collisionData),
+      reactionType: serializedReactionType,
+      temperature: this.temperature,
+    }));
+
+    try {
+      // Send batch to worker
+      const responses = await workerManager.batchSendChemistryMessages(messages);
+
+      // Process responses
+      for (let i = 0; i < batch.length; i++) {
+        const item = batch[i];
+        const response = responses[i];
+
+        if (response && response.type === 'reactionResult' && response.reactionResult) {
+          // Deserialize and restore molecule references
+          const result = deserializeReactionResult(
+            response.reactionResult,
+            item.event.moleculeA,
+            item.event.moleculeB
+          );
+          item.resolve(result);
+        } else {
+          item.reject(new Error('Invalid response from chemistry worker'));
+        }
+      }
+    } catch (error) {
+      // Fallback to main thread for all items in batch
+      console.warn('Batch worker failed, falling back to main thread:', error);
+      for (const item of batch) {
+        try {
+          const result = this.reactionDetector.detectReaction(
+            item.collisionData,
+            this.currentReactionType!,
+            this.temperature,
+            item.event.moleculeA,
+            item.event.moleculeB
+          );
+          item.resolve(result);
+        } catch (fallbackError) {
+          item.reject(fallbackError as Error);
+        }
+      }
+    }
+
+    // Schedule next batch if there are more items
+    if (this.pendingCollisionBatch.length > 0) {
+      this.batchProcessingScheduled = true;
+      setTimeout(() => this.processBatch(), this.batchDelay);
+    }
   }
 
   /**

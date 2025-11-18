@@ -107,7 +107,7 @@ const initialState: UIState = {
   timeToCollision: 0,
   reactionProbability: 0,
   autoplay: true, // Default to autoplay in single collision mode
-  concentration: 0.1, // Default concentration: 0.1 mol/L
+  concentration: 0.5, // Default concentration: 1.0 mol/L
   particleCount: 20, // Will be calculated from concentration when needed
   reactionRate: 0,
   remainingReactants: 100,

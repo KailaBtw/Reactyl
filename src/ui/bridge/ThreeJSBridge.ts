@@ -199,6 +199,11 @@ export class ThreeJSBridge {
             this.moleculeManager
           );
           (window as any).reactionRateSimulator = this.reactionRateSimulator;
+          // Expose debug methods globally for easy access
+          (window as any).enableRateDebug = (enabled: boolean = true) => {
+            this.setRateSimulationDebugMode(enabled);
+          };
+          (window as any).getEscapeStats = () => this.getEscapeStats();
         }
       } catch (error) {
         console.error('❌ Reaction rate simulator failed to initialize:', error);
@@ -336,12 +341,26 @@ export class ThreeJSBridge {
     const isPaused = physicsEngine.isSimulationPaused();
     if (!isPaused) {
       const physicsDeltaTime = 1 / 60; // Fixed timestep for physics stability
-      physicsEngine.step(physicsDeltaTime); // Now handles async worker internally
-
-      // Update rate simulation if active (handles boundary collisions)
+      
+      // Update rate simulation BEFORE physics step (preventive boundary check)
       if (this.reactionRateSimulator) {
         if (uiState?.simulationMode === 'rate' && uiState?.isPlaying) {
+          this.reactionRateSimulator.enforceBoundaries();
+        }
+      }
+
+      physicsEngine.step(physicsDeltaTime); // Now handles async worker internally
+
+      // Update rate simulation AFTER physics step (corrective boundary check)
+      // This ensures molecules are clamped even if physics moved them outside bounds
+      // CRITICAL: Check boundaries immediately after physics step to catch any escapes
+      if (this.reactionRateSimulator) {
+        if (uiState?.simulationMode === 'rate' && uiState?.isPlaying) {
+          // Enforce boundaries immediately after physics step (before sync can overwrite)
+          this.reactionRateSimulator.enforceBoundaries();
           this.updateRateSimulation(physicsDeltaTime);
+          // Force boundary enforcement again after update (defensive)
+          this.reactionRateSimulator.enforceBoundaries();
         }
       }
     }
@@ -529,6 +548,26 @@ export class ThreeJSBridge {
       collisionCount: 0,
       elapsedTime: 0,
     };
+  }
+
+  /**
+   * Enable/disable debug mode for boundary tracking
+   */
+  setRateSimulationDebugMode(enabled: boolean): void {
+    if (this.reactionRateSimulator) {
+      this.reactionRateSimulator.setDebugMode(enabled);
+      console.log(`🔍 Rate simulation debug mode: ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    }
+  }
+
+  /**
+   * Get escape statistics
+   */
+  getEscapeStats(): { escapeCount: number; debugMode: boolean } | null {
+    if (this.reactionRateSimulator) {
+      return this.reactionRateSimulator.getEscapeStats();
+    }
+    return null;
   }
 
   stopRateSimulation(): void {

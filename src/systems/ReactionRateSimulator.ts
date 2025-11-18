@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { REACTION_TYPES } from '../chemistry/reactionDatabase';
 import { ContainerVisualization } from '../components/ContainerVisualization';
 import type { CannonPhysicsEngine } from '../physics/cannonPhysicsEngine';
@@ -35,6 +36,12 @@ export class ReactionRateSimulator {
   // Container visualization
   private containerVisualization: ContainerVisualization;
 
+  // Debug tracking
+  private debugMode = true; // Enabled by default to catch escape issues
+  private escapeCount = 0;
+  private lastEscapeLog = 0;
+  private readonly escapeLogInterval = 1000; // Log escapes at most once per second
+
   constructor(
     scene: THREE.Scene,
     physicsEngine: CannonPhysicsEngine,
@@ -45,11 +52,16 @@ export class ReactionRateSimulator {
     this.moleculeManager = moleculeManager;
     this.moleculeSpawner = new MoleculeSpawner(scene, moleculeManager);
     this.containerVisualization = new ContainerVisualization(scene, this.boundarySize);
+    
+    // Log debug mode status on initialization
+    if (this.debugMode) {
+      console.log('🔍 Rate simulation debug mode: ENABLED (escape detection active)');
+    }
   }
 
   /**
    * Initialize simulation with N molecule pairs
-   * Clean, sequential initialization with proper error handling
+   * Uses the same spawning method as adjustConcentration for consistency
    */
   async initializeSimulation(
     substrateData: any,
@@ -58,43 +70,46 @@ export class ReactionRateSimulator {
     temperature: number,
     reactionType: string
   ): Promise<void> {
-    // Step 1: Reset state (container should already be visible from showContainer() call)
-    this.resetState();
-
-    // Step 2: Configure collision detection system
-    this.configureCollisionSystem(reactionType, temperature);
-
-    // Step 3: Store simulation parameters
-    this.substrateData = substrateData;
-    this.nucleophileData = nucleophileData;
-    this.temperature = temperature;
-    this.nextPairIndex = 0;
-
-    // Step 4: Spawn all molecule pairs with proper boundary enforcement
-    await this.spawnAllMolecules(substrateData, nucleophileData, particleCount, temperature);
-
-    // Step 5: Initialize timing
-    this.startTime = performance.now();
-    this.nextPairIndex = particleCount;
-
-    console.log(`✅ Rate simulation initialized: ${this.moleculePairs.length} pairs`);
-  }
-
-  /**
-   * Reset simulation state without removing container visualization
-   */
-  private resetState(): void {
-    // Clear all molecules
+    // Step 1: Clear ALL molecules (not just rate simulation ones)
+    // This ensures a clean slate when switching to rate mode
     this.moleculeManager.clearAllMolecules(molecule => {
       if (molecule.hasPhysics && molecule.physicsBody) {
         this.physicsEngine.removeMolecule(molecule);
       }
     });
 
-    // Reset tracking
+    // Step 2: Reset state (container should already be visible from showContainer() call)
+    this.resetState();
+
+    // Step 3: Configure collision detection system
+    this.configureCollisionSystem(reactionType, temperature);
+
+    // Step 4: Store simulation parameters
+    this.substrateData = substrateData;
+    this.nucleophileData = nucleophileData;
+    this.temperature = temperature;
+    this.nextPairIndex = 0;
+
+    // Step 5: Use adjustConcentration to spawn molecules (same method as concentration changes)
+    // This ensures consistent spawning behavior and proper boundary enforcement
+    await this.adjustConcentration(particleCount, temperature);
+
+    // Step 6: Initialize timing
+    this.startTime = performance.now();
+
+    console.log(`✅ Rate simulation initialized: ${this.moleculePairs.length} pairs`);
+  }
+
+  /**
+   * Reset simulation state without removing container visualization
+   * Note: Molecules are cleared separately in initializeSimulation to ensure ALL molecules are removed
+   */
+  private resetState(): void {
+    // Reset tracking (molecules are cleared separately)
     this.moleculePairs = [];
     this.reactionCount = 0;
     this.collisionCount = 0;
+    this.escapeCount = 0; // Reset escape counter
     this.startTime = 0;
     this.nextPairIndex = 0;
 
@@ -241,12 +256,21 @@ export class ReactionRateSimulator {
     );
 
     // Spawn nucleophile near substrate, ensuring it stays within bounds
+    // Use larger margin to prevent any possibility of escape
     const halfSize = this.boundarySize / 2;
-    const safeMargin = 2.0;
+    const safeMargin = 3.0; // Increased margin for safety during spawn
     const safeBoundary = halfSize - safeMargin;
     const offset = 1.5;
 
-    const substratePos = substrateMolecule.group.position;
+    // Get substrate position and ensure it's within safe bounds first
+    let substratePos = substrateMolecule.group.position;
+    substratePos = {
+      x: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.x)),
+      y: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.y)),
+      z: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.z)),
+    };
+    
+    // Calculate nucleophile position with extra safety margin
     const nucleophilePosition = {
       x: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.x + offset)),
       y: Math.max(-safeBoundary, Math.min(safeBoundary, substratePos.y)),
@@ -264,9 +288,28 @@ export class ReactionRateSimulator {
       }
     );
 
-    // Ensure both molecules are within bounds immediately
+    // CRITICAL: Ensure both molecules are within bounds immediately
+    // Use handleBoundaryCollision for more aggressive enforcement
+    this.handleBoundaryCollision(substrateId);
+    this.handleBoundaryCollision(nucleophileId);
+    
+    // Also clamp as backup
     this.clampMoleculeToBounds(substrateMolecule);
     this.clampMoleculeToBounds(nucleophileMolecule);
+    
+    // Force physics body positions to match clamped positions
+    if (substrateMolecule.hasPhysics && substrateMolecule.physicsBody) {
+      const body = substrateMolecule.physicsBody as any;
+      const pos = substrateMolecule.group.position;
+      body.position.set(pos.x, pos.y, pos.z);
+      body.velocity.set(0, 0, 0); // Ensure zero velocity during spawn
+    }
+    if (nucleophileMolecule.hasPhysics && nucleophileMolecule.physicsBody) {
+      const body = nucleophileMolecule.physicsBody as any;
+      const pos = nucleophileMolecule.group.position;
+      body.position.set(pos.x, pos.y, pos.z);
+      body.velocity.set(0, 0, 0); // Ensure zero velocity during spawn
+    }
 
     // Track the pair
     this.moleculePairs.push({
@@ -462,86 +505,186 @@ export class ReactionRateSimulator {
   }
 
   /**
+   * Enable/disable debug mode for boundary tracking
+   */
+  setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled;
+  }
+
+  /**
    * Handle boundary collisions (physics is updated elsewhere)
+   * Checks ALL rate simulation molecules directly from the manager to ensure none escape
+   * Runs MULTIPLE times per frame to catch any escapes
    */
   update(_deltaTime: number): void {
-    // Check and handle boundary collisions for each molecule in pairs
-    this.moleculePairs.forEach(pair => {
-      this.handleBoundaryCollision(pair.substrateId);
-      this.handleBoundaryCollision(pair.nucleophileId);
-    });
-
-    // Also check all molecules in the manager that match our naming pattern
-    // This catches any molecules that might not be properly tracked in moleculePairs
+    // Get ALL molecules from manager and check boundary for rate simulation molecules
+    // This is more reliable than relying on moleculePairs array which may have timing issues
     const allMolecules = this.moleculeManager.getAllMolecules();
-    allMolecules.forEach(molecule => {
+    
+    // Check boundary for ALL rate simulation molecules (substrate_X or nucleophile_X)
+    // This ensures we never miss any molecule, regardless of pair tracking status
+    // Run TWICE per frame: once before and once after physics updates
+    for (const molecule of allMolecules) {
       const name = molecule.name;
-      // Only check rate simulation molecules (substrate_X or nucleophile_X)
-      if (
-        (name.startsWith('substrate_') || name.startsWith('nucleophile_')) &&
-        !this.moleculePairs.some(p => p.substrateId === name || p.nucleophileId === name)
-      ) {
-        // This molecule exists but isn't tracked - handle boundary collision anyway
+      // Only check rate simulation molecules
+      if (name.startsWith('substrate_') || name.startsWith('nucleophile_')) {
         this.handleBoundaryCollision(name);
       }
-    });
+    }
+  }
+
+  /**
+   * Force boundary check on all molecules (call after physics step)
+   */
+  enforceBoundaries(): void {
+    const allMolecules = this.moleculeManager.getAllMolecules();
+    for (const molecule of allMolecules) {
+      const name = molecule.name;
+      if (name.startsWith('substrate_') || name.startsWith('nucleophile_')) {
+        this.handleBoundaryCollision(name);
+      }
+    }
   }
 
   /**
    * Handle wall collisions (elastic bouncing)
-   * Checks both visual and physics positions to prevent escape
+   * Always clamps positions to prevent escape, bounces when hitting boundaries
    */
   private handleBoundaryCollision(moleculeId: string): void {
     const molecule = this.moleculeManager.getMolecule(moleculeId);
-    if (!molecule) return;
+    if (!molecule || !molecule.group) return;
 
     const halfSize = this.boundarySize / 2;
-    const margin = 1.5; // Increased margin to prevent escape
+    const margin = 2.0; // Increased safety margin to prevent escape
+    const safeBoundary = halfSize - margin;
+    const absoluteBoundary = halfSize; // Hard boundary - molecules should NEVER exceed this
 
-    // Get physics body position (source of truth)
-    let physicsPos: { x: number; y: number; z: number } | null = null;
+    // Get physics body position (source of truth) - read directly every time
+    let position: { x: number; y: number; z: number };
     if (molecule.hasPhysics && molecule.physicsBody) {
       const body = molecule.physicsBody as any;
-      physicsPos = {
-        x: body.position.x,
-        y: body.position.y,
-        z: body.position.z,
+      // Read position directly from physics body (most up-to-date)
+      position = {
+        x: body.position.x || 0,
+        y: body.position.y || 0,
+        z: body.position.z || 0,
+      };
+    } else {
+      // Fallback to visual position if no physics body
+      position = {
+        x: molecule.group.position.x || 0,
+        y: molecule.group.position.y || 0,
+        z: molecule.group.position.z || 0,
       };
     }
 
-    // Use physics position if available, otherwise visual position
-    const position = physicsPos || molecule.group.position;
-    const currentVelocity = molecule.velocity.clone();
+    // Validate position values (defensive check)
+    if (!isFinite(position.x) || !isFinite(position.y) || !isFinite(position.z)) {
+      console.warn(`⚠️ Invalid position for molecule ${moleculeId}, resetting to center`);
+      position = { x: 0, y: 0, z: 0 };
+    }
+
+    // DEBUG: Check for escape (beyond absolute boundary) - LOG BEFORE CLAMPING
+    const escaped = 
+      Math.abs(position.x) > absoluteBoundary ||
+      Math.abs(position.y) > absoluteBoundary ||
+      Math.abs(position.z) > absoluteBoundary;
+
+    if (escaped) {
+      this.escapeCount++;
+      const now = performance.now();
+      if (this.debugMode) {
+        const distance = Math.max(
+          Math.abs(position.x) - absoluteBoundary,
+          Math.abs(position.y) - absoluteBoundary,
+          Math.abs(position.z) - absoluteBoundary
+        );
+        // Always log first escape, then throttle subsequent logs (but log more frequently)
+        if (this.escapeCount === 1 || (now - this.lastEscapeLog > this.escapeLogInterval / 2)) {
+          const velocity = molecule.velocity ? 
+            `Vel: (${molecule.velocity.x.toFixed(2)}, ${molecule.velocity.y.toFixed(2)}, ${molecule.velocity.z.toFixed(2)})` : 
+            'Vel: unknown';
+          console.warn(
+            `🚨 MOLECULE ESCAPE DETECTED: ${moleculeId} | ` +
+            `Pos: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)}) | ` +
+            `${velocity} | ` +
+            `Boundary: ±${absoluteBoundary.toFixed(2)} | ` +
+            `Distance: ${distance.toFixed(2)} | ` +
+            `Total escapes: ${this.escapeCount}`
+          );
+          this.lastEscapeLog = now;
+        }
+      }
+    }
+
+    const currentVelocity = molecule.velocity ? molecule.velocity.clone() : new THREE.Vector3(0, 0, 0);
     let bounced = false;
-    const clampedPos = { ...position };
 
-    // Check each axis and clamp if needed
-    // SCIENTIFIC CORRECTION: Perfectly elastic collisions (restitution = 1.0)
-    // According to collision theory, molecular collisions with container walls are elastic
-    // Energy is conserved - no energy loss on bounce
-    if (Math.abs(position.x) > halfSize - margin) {
-      currentVelocity.x *= -1.0; // Perfectly elastic bounce - energy conserved
-      clampedPos.x = Math.sign(position.x) * (halfSize - margin);
+    // ALWAYS clamp positions to safe bounds (prevents escape)
+    // Use tighter clamping - if molecule escaped, clamp more aggressively
+    const clampBoundary = escaped ? safeBoundary - 0.5 : safeBoundary; // Extra margin if escaped
+    const clampedPos = {
+      x: Math.max(-clampBoundary, Math.min(clampBoundary, position.x)),
+      y: Math.max(-clampBoundary, Math.min(clampBoundary, position.y)),
+      z: Math.max(-clampBoundary, Math.min(clampBoundary, position.z)),
+    };
+
+    // Check if molecule hit boundary (for velocity reversal)
+    // Only reverse velocity if molecule was actually outside bounds
+    if (Math.abs(position.x) > safeBoundary) {
+      // Only reverse if velocity is pointing outward
+      if ((position.x > 0 && currentVelocity.x > 0) || (position.x < 0 && currentVelocity.x < 0)) {
+        currentVelocity.x *= -1.0; // Perfectly elastic bounce - energy conserved
+      }
       bounced = true;
     }
 
-    if (Math.abs(position.y) > halfSize - margin) {
-      currentVelocity.y *= -1.0; // Perfectly elastic bounce - energy conserved
-      clampedPos.y = Math.sign(position.y) * (halfSize - margin);
+    if (Math.abs(position.y) > safeBoundary) {
+      if ((position.y > 0 && currentVelocity.y > 0) || (position.y < 0 && currentVelocity.y < 0)) {
+        currentVelocity.y *= -1.0; // Perfectly elastic bounce - energy conserved
+      }
       bounced = true;
     }
 
-    if (Math.abs(position.z) > halfSize - margin) {
-      currentVelocity.z *= -1.0; // Perfectly elastic bounce - energy conserved
-      clampedPos.z = Math.sign(position.z) * (halfSize - margin);
+    if (Math.abs(position.z) > safeBoundary) {
+      if ((position.z > 0 && currentVelocity.z > 0) || (position.z < 0 && currentVelocity.z < 0)) {
+        currentVelocity.z *= -1.0; // Perfectly elastic bounce - energy conserved
+      }
       bounced = true;
     }
 
-    if (bounced) {
-      // Update physics body position and velocity
-      if (molecule.hasPhysics && molecule.physicsBody) {
-        const body = molecule.physicsBody as any;
-        body.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
+    // ALWAYS update positions (even if no bounce) to prevent escape
+    // Update physics body position and velocity
+    if (molecule.hasPhysics && molecule.physicsBody) {
+      const body = molecule.physicsBody as any;
+      // Always update physics body position to clamped position
+      body.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
+      
+      // If molecule escaped, reduce velocity to prevent immediate re-escape
+      if (escaped) {
+        const velScale = 0.7; // Reduce velocity by 30% when escaping
+        body.velocity.x *= velScale;
+        body.velocity.y *= velScale;
+        body.velocity.z *= velScale;
+        if (molecule.velocity) {
+          molecule.velocity.multiplyScalar(velScale);
+        }
+        // Also reverse velocity component pointing outward
+        if (Math.abs(position.x) > absoluteBoundary) {
+          body.velocity.x *= -0.5; // Reverse and reduce
+        }
+        if (Math.abs(position.y) > absoluteBoundary) {
+          body.velocity.y *= -0.5; // Reverse and reduce
+        }
+        if (Math.abs(position.z) > absoluteBoundary) {
+          body.velocity.z *= -0.5; // Reverse and reduce
+        }
+        currentVelocity.set(body.velocity.x, body.velocity.y, body.velocity.z);
+        bounced = true; // Treat escape as a bounce
+      }
+      
+      // Only update velocity if there was a bounce
+      if (bounced) {
         body.velocity.set(currentVelocity.x, currentVelocity.y, currentVelocity.z);
 
         // Preserve angular velocity during wall bounce (rotation continues)
@@ -574,16 +717,24 @@ export class ReactionRateSimulator {
             angularDirection.z * angularSpeed
           );
         }
-
-        body.wakeUp(); // Ensure body stays active
       }
 
-      // Update visual position
-      molecule.group.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
-      molecule.velocity.copy(currentVelocity);
+      body.wakeUp(); // Ensure body stays active
+    }
 
-      // Also update through physics engine for consistency
-      this.physicsEngine.setVelocity(molecule, currentVelocity);
+    // ALWAYS update visual position to match clamped position (critical for preventing escape)
+    // This ensures visual and physics positions stay in sync
+    molecule.group.position.set(clampedPos.x, clampedPos.y, clampedPos.z);
+    
+    // Update velocity if there was a bounce
+    if (bounced) {
+      if (molecule.velocity) {
+        molecule.velocity.copy(currentVelocity);
+      }
+      // Also update through physics engine for consistency (if molecule has physics)
+      if (molecule.hasPhysics) {
+        this.physicsEngine.setVelocity(molecule, currentVelocity);
+      }
     }
   }
 
@@ -602,6 +753,7 @@ export class ReactionRateSimulator {
     productsFormed: number; // count
     collisionCount: number; // total collisions
     elapsedTime: number; // seconds
+    escapeCount?: number; // number of escape attempts detected (debug)
   } {
     const elapsedTime = (performance.now() - this.startTime) / 1000; // seconds
     // Average reaction rate: total reactions / elapsed time
@@ -610,13 +762,37 @@ export class ReactionRateSimulator {
     const remainingPairs = this.moleculePairs.filter(p => !p.reacted).length;
     const remainingReactants = (remainingPairs / this.moleculePairs.length) * 100;
 
-    return {
+    const metrics: any = {
       reactionRate, // reactions per second
       remainingReactants, // percentage of unreacted pairs
       productsFormed: this.reactionCount,
       collisionCount: this.collisionCount,
       elapsedTime,
     };
+
+    // Include escape count in debug mode
+    if (this.debugMode) {
+      metrics.escapeCount = this.escapeCount;
+    }
+
+    return metrics;
+  }
+
+  /**
+   * Get escape statistics (for debugging)
+   */
+  getEscapeStats(): { escapeCount: number; debugMode: boolean } {
+    return {
+      escapeCount: this.escapeCount,
+      debugMode: this.debugMode,
+    };
+  }
+
+  /**
+   * Reset escape counter
+   */
+  resetEscapeCounter(): void {
+    this.escapeCount = 0;
   }
 
   /**
@@ -831,20 +1007,34 @@ export class ReactionRateSimulator {
     if (difference === 0) return;
 
     if (difference > 0) {
-      // Add molecules - spawn with zero velocity first, then apply velocities
+      // Add molecules - spawn SEQUENTIALLY with immediate boundary enforcement
+      // This prevents molecules from escaping during parallel spawning
       const bounds = this.getContainerBounds();
-      const spawnPromises: Promise<void>[] = [];
+      
+      // Spawn sequentially to ensure boundaries are enforced immediately after each spawn
       for (let i = 0; i < difference; i++) {
         const index = this.nextPairIndex++;
-        spawnPromises.push(
-          this.spawnMoleculePair(this.substrateData, this.nucleophileData, index, 0, bounds) // Zero velocity initially
-        );
+        // Spawn one pair at a time
+        await this.spawnMoleculePair(this.substrateData, this.nucleophileData, index, 0, bounds);
+        
+        // CRITICAL: Enforce boundaries immediately after each spawn
+        // This prevents any molecule from escaping before the next one spawns
+        const substrate = this.moleculeManager.getMolecule(`substrate_${index}`);
+        const nucleophile = this.moleculeManager.getMolecule(`nucleophile_${index}`);
+        if (substrate) {
+          this.handleBoundaryCollision(`substrate_${index}`);
+        }
+        if (nucleophile) {
+          this.handleBoundaryCollision(`nucleophile_${index}`);
+        }
       }
-      await Promise.all(spawnPromises);
       
-      // Enforce boundaries, then apply velocities
+      // Final boundary enforcement pass, then apply velocities
       this.enforceBoundariesForAllMolecules();
       this.applyVelocitiesToAllMolecules(spawnTemperature);
+      
+      // One more boundary check after velocities are applied
+      this.enforceBoundariesForAllMolecules();
     } else {
       // Remove molecules - batch removal for efficiency
       const toRemove = Math.abs(difference);

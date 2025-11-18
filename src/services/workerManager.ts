@@ -145,7 +145,11 @@ export class WorkerManager {
       throw new Error('Chemistry worker not initialized');
     }
 
-    // Use worker's batch capability if available
+    if (messages.length === 0) {
+      return [];
+    }
+
+    // Use worker's batch capability if available (for 2+ messages)
     if (messages.length > 1) {
       try {
         const batchMessage: ChemistryWorkerMessage = {
@@ -156,12 +160,14 @@ export class WorkerManager {
         if (response.type === 'batchResult' && response.results) {
           return response.results;
         }
+        // If batch response format is unexpected, fall through to individual messages
       } catch (error) {
         console.warn('Batch send failed, falling back to individual messages:', error);
+        // Fall through to individual messages
       }
     }
 
-    // Fallback to individual messages
+    // Fallback to individual messages (or single message case)
     const promises = messages.map(msg => this.sendChemistryMessage(msg));
     return Promise.all(promises);
   }
