@@ -119,10 +119,10 @@ export const ReactionSetup: React.FC<ReactionSetupProps> = ({
               : `${themeClasses.textSecondary} hover:${themeClasses.text}`
           }`}
         >
-          Single Collision
+          Single Reaction
           <span data-infobubble>
             <InfoBubble
-              term="Single Collision"
+              term="Single Reaction"
               explanation="Simulate a single collision between two molecules. Control the approach angle, collision velocity, and temperature to see how these factors affect reaction probability. Perfect for understanding the fundamentals of reaction mechanisms."
               size="small"
             />
