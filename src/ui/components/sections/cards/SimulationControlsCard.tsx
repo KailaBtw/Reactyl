@@ -23,6 +23,7 @@ interface SimulationControlsCardProps {
   isPlaying: boolean;
   timeScale: number;
   reactionProbability: number;
+  simulationMode?: 'single' | 'rate';
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -36,6 +37,7 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
   isPlaying,
   timeScale,
   reactionProbability,
+  simulationMode = 'single',
   onPlay,
   onPause,
   onReset,
@@ -54,6 +56,8 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
     return 'bg-red-500';
   };
 
+  const isRateMode = simulationMode === 'rate';
+
   return (
     <div
       className={`${controlCardClasses} ${themeClasses.card} ${theme.border} ${theme.gradient}`}
@@ -63,21 +67,23 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
         Simulation Controls
       </label>
 
-      {/* Reaction Probability Sub-section */}
-      <div className={sectionDividerClasses}>
-        <label className={`${subHeaderClasses} ${themeClasses.textSecondary}`}>
-          Reaction Probability
-        </label>
-        <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
-          {reactionProbability.toFixed(1)}%
+      {/* Reaction Probability Sub-section - only show in single collision mode */}
+      {!isRateMode && (
+        <div className={sectionDividerClasses}>
+          <label className={`${subHeaderClasses} ${themeClasses.textSecondary}`}>
+            Reaction Probability
+          </label>
+          <div className={`text-2xl font-bold mb-2 ${themeClasses.text}`}>
+            {reactionProbability.toFixed(1)}%
+          </div>
+          <div className={probabilityBarClasses}>
+            <div
+              className={`h-full ${getProbabilityColor()} transition-all duration-300`}
+              style={{ width: `${Math.min(reactionProbability, 100)}%` }}
+            />
+          </div>
         </div>
-        <div className={probabilityBarClasses}>
-          <div
-            className={`h-full ${getProbabilityColor()} transition-all duration-300`}
-            style={{ width: `${Math.min(reactionProbability, 100)}%` }}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Playback Speed Sub-section */}
       <div className="mb-3">
@@ -101,6 +107,7 @@ export const SimulationControlsCard: React.FC<SimulationControlsCardProps> = ({
 
       {/* Play/Pause and Reset Buttons */}
       <div className="flex gap-2 mb-2">
+        {/* Play/Pause button - show in both modes, but behavior differs */}
         <button
           className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer transition-all font-medium transform hover:scale-105 active:scale-95 ${
             isPlaying

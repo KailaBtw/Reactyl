@@ -200,26 +200,36 @@ export class CannonPhysicsEngine {
       // Set initial velocity
       body.velocity.set(molecule.velocity.x, molecule.velocity.y, molecule.velocity.z);
 
-      // Set random angular velocity for realistic molecular rotation
-      // Angular velocity is proportional to linear velocity for realistic motion
-      const linearSpeed = Math.sqrt(
-        molecule.velocity.x * molecule.velocity.x +
-          molecule.velocity.y * molecule.velocity.y +
-          molecule.velocity.z * molecule.velocity.z
-      );
-      // Angular velocity in rad/s - molecules rotate as they move
-      // Scale: ~0.5-2.0 rad/s for typical molecular speeds
-      const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
-      const angularDirection = new CANNON.Vec3(
-        Math.random() - 0.5,
-        Math.random() - 0.5,
-        Math.random() - 0.5
-      ).unit();
-      body.angularVelocity.set(
-        angularDirection.x * angularSpeed,
-        angularDirection.y * angularSpeed,
-        angularDirection.z * angularSpeed
-      );
+      // Set angular velocity - disable random spin in single collision mode for precise orientation control
+      // Check simulation mode to determine if we should apply random angular velocity
+      const simulationMode = collisionEventSystem.getSimulationMode();
+      const isSingleCollisionMode = simulationMode === 'single';
+      
+      if (isSingleCollisionMode) {
+        // In single collision mode, disable random angular velocity to maintain precise orientation
+        body.angularVelocity.set(0, 0, 0);
+      } else {
+        // In rate mode, apply random angular velocity for realistic molecular rotation
+        // Angular velocity is proportional to linear velocity for realistic motion
+        const linearSpeed = Math.sqrt(
+          molecule.velocity.x * molecule.velocity.x +
+            molecule.velocity.y * molecule.velocity.y +
+            molecule.velocity.z * molecule.velocity.z
+        );
+        // Angular velocity in rad/s - molecules rotate as they move
+        // Scale: ~0.5-2.0 rad/s for typical molecular speeds
+        const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
+        const angularDirection = new CANNON.Vec3(
+          Math.random() - 0.5,
+          Math.random() - 0.5,
+          Math.random() - 0.5
+        ).unit();
+        body.angularVelocity.set(
+          angularDirection.x * angularSpeed,
+          angularDirection.y * angularSpeed,
+          angularDirection.z * angularSpeed
+        );
+      }
 
       // NO DAMPING - Newton's laws: objects in motion stay in motion
       // In a vacuum (molecular simulation), there's no air resistance or friction
@@ -822,24 +832,33 @@ export class CannonPhysicsEngine {
       // Set velocity directly on Cannon.js body
       body.velocity.set(velocity.x, velocity.y, velocity.z);
 
-      // Set realistic angular velocity for molecular rotation
-      // Angular velocity is proportional to linear velocity
-      const linearSpeed = Math.sqrt(
-        velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z
-      );
-      // Angular velocity in rad/s - molecules rotate as they move
-      // Scale: ~0.5-2.0 rad/s for typical molecular speeds
-      const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
-      const angularDirection = new CANNON.Vec3(
-        Math.random() - 0.5,
-        Math.random() - 0.5,
-        Math.random() - 0.5
-      ).unit();
-      body.angularVelocity.set(
-        angularDirection.x * angularSpeed,
-        angularDirection.y * angularSpeed,
-        angularDirection.z * angularSpeed
-      );
+      // Set angular velocity - disable random spin in single collision mode for precise orientation control
+      const simulationMode = collisionEventSystem.getSimulationMode();
+      const isSingleCollisionMode = simulationMode === 'single';
+      
+      if (isSingleCollisionMode) {
+        // In single collision mode, disable random angular velocity to maintain precise orientation
+        body.angularVelocity.set(0, 0, 0);
+      } else {
+        // In rate mode, apply random angular velocity for realistic molecular rotation
+        // Angular velocity is proportional to linear velocity
+        const linearSpeed = Math.sqrt(
+          velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z
+        );
+        // Angular velocity in rad/s - molecules rotate as they move
+        // Scale: ~0.5-2.0 rad/s for typical molecular speeds
+        const angularSpeed = linearSpeed > 0 ? (0.5 + Math.random() * 1.5) * (linearSpeed / 10.0) : 0;
+        const angularDirection = new CANNON.Vec3(
+          Math.random() - 0.5,
+          Math.random() - 0.5,
+          Math.random() - 0.5
+        ).unit();
+        body.angularVelocity.set(
+          angularDirection.x * angularSpeed,
+          angularDirection.y * angularSpeed,
+          angularDirection.z * angularSpeed
+        );
+      }
 
       // NO DAMPING - Newton's laws: objects in motion stay in motion
       body.linearDamping = 0.0;

@@ -163,6 +163,7 @@ export const App: React.FC = () => {
 
   const handleReset = useCallback(async () => {
     if (uiState.simulationMode === 'rate') {
+      // Stop and clear the current simulation
       threeJSBridge.stopRateSimulation();
       updateUIState({
         isPlaying: false,
@@ -171,6 +172,33 @@ export const App: React.FC = () => {
         remainingReactants: 100,
         productsFormed: 0,
       });
+      
+      // Repopulate the scene with a fresh simulation
+      const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
+        demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
+        demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
+        demo_Methanol: { cid: '887', name: 'Methanol' },
+        demo_Water: { cid: '962', name: 'Water' },
+      };
+
+      const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
+        cid: '6323',
+        name: 'Methyl bromide',
+      };
+      const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
+        cid: '961',
+        name: 'Hydroxide ion',
+      };
+
+      const particleCount = concentrationToParticleCount(uiState.concentration);
+      await threeJSBridge.startRateSimulation(
+        particleCount,
+        uiState.temperature,
+        uiState.reactionType,
+        substrateMolecule,
+        nucleophileMolecule
+      );
+      updateUIState({ isPlaying: true, reactionInProgress: true });
     } else {
       threeJSBridge.clear();
       updateUIState({
@@ -180,36 +208,55 @@ export const App: React.FC = () => {
         timeToCollision: 0,
       });
     }
-  }, [uiState.simulationMode, updateUIState]);
+  }, [
+    uiState.simulationMode,
+    uiState.substrateMolecule,
+    uiState.nucleophileMolecule,
+    uiState.concentration,
+    uiState.temperature,
+    uiState.reactionType,
+    updateUIState,
+  ]);
 
   const handlePlay = useCallback(async () => {
     try {
       if (uiState.simulationMode === 'rate') {
-        const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
-          demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
-          demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
-          demo_Methanol: { cid: '887', name: 'Methanol' },
-          demo_Water: { cid: '962', name: 'Water' },
-        };
+        // Check if simulation is already initialized and just paused
+        const rateSimulator = threeJSBridge.getReactionRateSimulator();
+        const isPaused = physicsEngine.isSimulationPaused();
+        
+        if (rateSimulator && isPaused && uiState.reactionInProgress) {
+          // Resume existing simulation
+          physicsEngine.resume();
+          updateUIState({ isPlaying: true });
+        } else {
+          // Start new simulation
+          const moleculeMapping: { [key: string]: { cid: string; name: string } } = {
+            demo_Methyl_bromide: { cid: '6323', name: 'Methyl bromide' },
+            demo_Hydroxide_ion: { cid: '961', name: 'Hydroxide ion' },
+            demo_Methanol: { cid: '887', name: 'Methanol' },
+            demo_Water: { cid: '962', name: 'Water' },
+          };
 
-        const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
-          cid: '6323',
-          name: 'Methyl bromide',
-        };
-        const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
-          cid: '961',
-          name: 'Hydroxide ion',
-        };
+          const substrateMolecule = moleculeMapping[uiState.substrateMolecule] || {
+            cid: '6323',
+            name: 'Methyl bromide',
+          };
+          const nucleophileMolecule = moleculeMapping[uiState.nucleophileMolecule] || {
+            cid: '961',
+            name: 'Hydroxide ion',
+          };
 
-        const particleCount = concentrationToParticleCount(uiState.concentration);
-        await threeJSBridge.startRateSimulation(
-          particleCount,
-          uiState.temperature,
-          uiState.reactionType,
-          substrateMolecule,
-          nucleophileMolecule
-        );
-        updateUIState({ isPlaying: true, reactionInProgress: true });
+          const particleCount = concentrationToParticleCount(uiState.concentration);
+          await threeJSBridge.startRateSimulation(
+            particleCount,
+            uiState.temperature,
+            uiState.reactionType,
+            substrateMolecule,
+            nucleophileMolecule
+          );
+          updateUIState({ isPlaying: true, reactionInProgress: true });
+        }
       } else {
         if (uiState.reactionInProgress) {
           threeJSBridge.clear();

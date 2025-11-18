@@ -91,6 +91,7 @@ export const SingleCollisionSidebar: React.FC<SingleCollisionSidebarProps> = ({
         isPlaying={isPlaying}
         timeScale={timeScale}
         reactionProbability={reactionProbability}
+        simulationMode="single"
         onPlay={onPlay}
         onPause={onPause}
         onReset={onReset}

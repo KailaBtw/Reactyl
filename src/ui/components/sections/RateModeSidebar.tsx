@@ -79,11 +79,12 @@ export const RateModeSidebar: React.FC<RateModeSidebarProps> = ({
         themeClasses={themeClasses}
       />
 
-      {/* Simulation Controls with Reaction Probability */}
+      {/* Simulation Controls */}
       <SimulationControlsCard
         isPlaying={isPlaying}
         timeScale={timeScale}
         reactionProbability={reactionProbability}
+        simulationMode="rate"
         onPlay={onPlay}
         onPause={onPause}
         onReset={onReset}

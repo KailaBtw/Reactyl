@@ -128,6 +128,7 @@ export const AutoplayManager: React.FC<AutoplayManagerProps> = ({
 
     // Only schedule initial run once when autoplay is first enabled and not playing
     // Don't auto-restart when user manually pauses
+    // In single collision mode, autoplay should work even if isPlaying is false initially
     if (!isPlaying && !hasInitialRunRef.current) {
       scheduleImmediateRun();
       hasInitialRunRef.current = true;
