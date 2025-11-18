@@ -4,8 +4,8 @@
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { addProductOutline, removeProductOutline, updateMoleculeOutline } from '../../Reactyl/src/utils/moleculeOutline';
-import type { MoleculeGroup } from '../../Reactyl/src/types';
+import { addProductOutline, removeProductOutline, updateMoleculeOutline } from '../../src/utils/moleculeOutline';
+import type { MoleculeGroup } from '../../src/types';
 
 describe('Molecule Outline Utilities', () => {
   /**
